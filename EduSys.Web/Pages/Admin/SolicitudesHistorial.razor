@@ -1,0 +1,296 @@
+﻿@page "/admin/solicitudes-historial"
+@using EduSys.Shared.DTOs
+@using EduSys.Web.Services.Interfaces
+@using Microsoft.AspNetCore.Authorization
+@inject ISolicitudService InscripcionService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@attribute [Authorize(Roles = "Administrador, Secretaria Academica")]
+
+<style>
+    /* ESTILOS DE LA CABECERA DE TABLA */
+    .table-header-custom .mud-table-head .mud-table-cell {
+        color: #456990 !important;
+        font-weight: 800 !important;
+        background-color: #f8fafc !important;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.5px;
+    }
+
+    /* EFECTO HOVER EN FILAS */
+    .row-hover-effect:hover {
+        background-color: #f1f5f9 !important;
+        cursor: pointer;
+    }
+
+    /* --- ESTILO PARA INPUTS DEL BUSCADOR Y FILTRO (BORDE AZUL) --- */
+    .custom-filter-input .mud-input-outlined-border {
+        border-color: #456990 !important;
+    }
+
+    .custom-filter-input .mud-input-label {
+        color: #456990 !important;
+        background-color: white !important;
+        padding: 0 5px;
+    }
+
+    .custom-filter-input input,
+    .custom-filter-input .mud-input-slot {
+        color: #1F2937 !important;
+        font-weight: 500;
+    }
+
+    /* Grosor del borde al hacer foco */
+    .custom-filter-input.mud-input-control.mud-input-focused .mud-input-outlined-border {
+        border-width: 2px !important;
+    }
+</style>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-6">
+
+    @* --- HEADER --- *@
+    <div class="d-flex align-center justify-space-between mb-6">
+        <div>
+            <MudText Typo="Typo.h4" Style="font-weight: 700; color: #456990;">Historial de Admisiones</MudText>
+            <MudText Typo="Typo.subtitle1" Class="mud-text-secondary">Registro histórico de solicitudes procesadas.</MudText>
+        </div>
+        <div class="d-flex gap-2">
+            <MudButton Variant="Variant.Text"
+                       StartIcon="@Icons.Material.Filled.ClearAll"
+                       Color="Color.Default"
+                       OnClick="LimpiarFiltros">
+                Limpiar Filtros
+            </MudButton>
+            <MudButton Variant="Variant.Outlined"
+                       StartIcon="@Icons.Material.Filled.Refresh"
+                       Color="Color.Primary"
+                       OnClick="CargarDatos">
+                Actualizar
+            </MudButton>
+        </div>
+    </div>
+
+    @* --- TABLA DE DATOS --- *@
+    <MudTable T="SolicitudIngresoDTO"
+              Items="@listaSolicitudes"
+              Dense="true"
+              Hover="true"
+              Bordered="false"
+              Striped="false"
+              Filter="new Func<SolicitudIngresoDTO, bool>(FiltrarSolicitudes)"
+              Elevation="3"
+              Class="rounded-lg table-header-custom"
+              Loading="@cargando"
+              LoadingProgressColor="Color.Primary"
+              RowClass="row-hover-effect"
+              OnRowClick="@((TableRowClickEventArgs<SolicitudIngresoDTO> args) => RowClickEvent(args))">
+
+        <ToolBarContent>
+            @* --- BARRA DE FILTROS --- *@
+            <MudGrid Class="pt-2 pb-2 align-center" Spacing="2">
+
+                @* BUSCADOR (Lupa corregida) *@
+                <MudItem xs="12" md="4">
+                    <MudTextField @bind-Value="searchString"
+                                  Label="Buscar"
+                                  Placeholder="DNI, Apellido o Nombre..."
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                  AdornmentColor="Color.Primary"
+                                  IconSize="Size.Medium"
+                                  Class="custom-filter-input"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  FullWidth="true" />
+                </MudItem>
+
+                @* FILTRO ESTADO *@
+                <MudItem xs="6" md="2">
+                    <MudSelect T="string" @bind-Value="filtroEstado"
+                               Label="Estado"
+                               Variant="Variant.Outlined"
+                               Margin="Margin.Dense"
+                               AdornmentColor="Color.Primary"
+                               Class="custom-filter-input"
+                               FullWidth="true">
+                        <MudSelectItem Value="@("Todos")">Todos</MudSelectItem>
+                        <MudSelectItem Value="@("Aprobada")">Aprobadas</MudSelectItem>
+                        <MudSelectItem Value="@("Rechazada")">Rechazadas</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+
+                @* --- FILTRO FECHAS --- *@
+                <MudItem xs="6" md="2">
+                    <MudDatePicker @bind-Date="fechaDesde"
+                                   Label="Desde"
+                                   Variant="Variant.Outlined"
+                                   Margin="Margin.Dense"
+                                   Class="custom-filter-input"
+                                   AdornmentIcon="@Icons.Material.Filled.Event"
+                                   AdornmentColor="Color.Primary"
+                                   MaxDate="@DateTime.Now" />
+                </MudItem>
+
+                <MudItem xs="6" md="2">
+                    <MudDatePicker @bind-Date="fechaHasta"
+                                   Label="Hasta"
+                                   Variant="Variant.Outlined"
+                                   Margin="Margin.Dense"
+                                   Class="custom-filter-input"
+                                   AdornmentIcon="@Icons.Material.Filled.Event"
+                                   AdornmentColor="Color.Primary"
+                                   MaxDate="@DateTime.Now" />
+                </MudItem>
+
+            </MudGrid>
+        </ToolBarContent>
+
+        <HeaderContent>
+            <MudTh>Fecha Proceso</MudTh>
+            <MudTh>DNI</MudTh>
+            <MudTh>Aspirante</MudTh>
+            <MudTh>Carrera Solicitada</MudTh>
+            <MudTh Style="text-align:center;">Estado</MudTh>
+            <MudTh>Observación</MudTh>
+            <MudTh Style="text-align:center;">Acciones</MudTh>
+        </HeaderContent>
+
+        <RowTemplate>
+            <MudTd DataLabel="Fecha">
+                <MudText Typo="Typo.body2">@context.FechaProcesado?.ToString("dd/MM/yyyy")</MudText>
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">@context.FechaProcesado?.ToString("HH:mm") hs</MudText>
+            </MudTd>
+            <MudTd DataLabel="DNI">
+                <MudText Typo="Typo.body2" Style="font-weight: 600;">@context.Dni</MudText>
+            </MudTd>
+            <MudTd DataLabel="Aspirante">@context.Apellido, @context.Nombre</MudTd>
+            <MudTd DataLabel="Carrera">
+                <MudText Typo="Typo.caption" Color="Color.Primary" Style="font-weight:600;">@context.NombreCarrera</MudText>
+            </MudTd>
+            <MudTd DataLabel="Estado" Style="text-align:center;">
+                @if (context.Estado == "Aprobada")
+                {
+                    <MudChip T="string" Color="Color.Success" Variant="Variant.Text" Size="Size.Small" Icon="@Icons.Material.Filled.CheckCircle">APROBADA</MudChip>
+                }
+                else
+                {
+                    <MudChip T="string" Color="Color.Error" Variant="Variant.Text" Size="Size.Small" Icon="@Icons.Material.Filled.Cancel">RECHAZADA</MudChip>
+                }
+            </MudTd>
+            <MudTd DataLabel="Observación">
+                @if (!string.IsNullOrEmpty(context.ObservacionAdmin))
+                {
+                    <MudTooltip Text="@context.ObservacionAdmin" Arrow="true" Placement="Placement.Left">
+                        <div class="d-flex align-center cursor-pointer" style="opacity: 0.7;">
+                            <MudIcon Icon="@Icons.Material.Filled.Comment" Size="Size.Small" Class="mr-1" />
+                            <MudText Typo="Typo.caption" Style="text-decoration: underline;">Ver nota</MudText>
+                        </div>
+                    </MudTooltip>
+                }
+                else
+                {
+                    <span style="color: #cbd5e1;">-</span>
+                }
+            </MudTd>
+            <MudTd Style="text-align:center;">
+                <MudTooltip Text="Ver Documentación">
+                    <MudIconButton Icon="@Icons.Material.Filled.Visibility" Color="Color.Primary" Size="Size.Small" OnClick="@(() => VerDetalle(context.Id))" />
+                </MudTooltip>
+            </MudTd>
+        </RowTemplate>
+
+        <PagerContent>
+            <MudTablePager RowsPerPageString="Filas por página" InfoFormat="{first_item}-{last_item} de {all_items}" />
+        </PagerContent>
+
+        <NoRecordsContent>
+            <MudText>No se encontraron registros en el historial con los filtros aplicados.</MudText>
+        </NoRecordsContent>
+    </MudTable>
+
+</MudContainer>
+
+@code {
+    private List<SolicitudIngresoDTO> listaSolicitudes = new();
+
+    // Variables de Filtro
+    private string searchString = "";
+    private string filtroEstado = "Todos";
+    private DateTime? fechaDesde;
+    private DateTime? fechaHasta;
+
+    private bool cargando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarDatos();
+    }
+
+    private async Task CargarDatos()
+    {
+        cargando = true;
+        try
+        {
+            listaSolicitudes = await InscripcionService.GetHistorialSolicitudes();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Error al cargar historial: " + ex.Message, Severity.Error);
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private void LimpiarFiltros()
+    {
+        searchString = "";
+        filtroEstado = "Todos";
+        fechaDesde = null;
+        fechaHasta = null;
+    }
+
+    // --- FILTRADO AVANZADO (Texto + Estado + Rango Fechas) ---
+    private bool FiltrarSolicitudes(SolicitudIngresoDTO element)
+    {
+        // 1. Filtro por Estado
+        if (filtroEstado != "Todos" && element.Estado != filtroEstado)
+            return false;
+
+        // 2. Filtro por Fechas (Comparar solo fecha, ignorando hora)
+        if (fechaDesde.HasValue)
+        {
+            if (!element.FechaProcesado.HasValue || element.FechaProcesado.Value.Date < fechaDesde.Value.Date)
+                return false;
+        }
+
+        if (fechaHasta.HasValue)
+        {
+            if (!element.FechaProcesado.HasValue || element.FechaProcesado.Value.Date > fechaHasta.Value.Date)
+                return false;
+        }
+
+        // 3. Filtro por Buscador (Texto)
+        if (string.IsNullOrWhiteSpace(searchString))
+            return true;
+
+        if (element.Dni.Contains(searchString, StringComparison.OrdinalIgnoreCase)) return true;
+        if (element.Nombre.Contains(searchString, StringComparison.OrdinalIgnoreCase)) return true;
+        if (element.Apellido.Contains(searchString, StringComparison.OrdinalIgnoreCase)) return true;
+        if (element.NombreCarrera.Contains(searchString, StringComparison.OrdinalIgnoreCase)) return true;
+
+        return false;
+    }
+
+    private void RowClickEvent(TableRowClickEventArgs<SolicitudIngresoDTO> args)
+    {
+        VerDetalle(args.Item.Id);
+    }
+
+    private void VerDetalle(int id)
+    {
+        Navigation.NavigateTo($"/admin/solicitudes/{id}");
+    }
+}

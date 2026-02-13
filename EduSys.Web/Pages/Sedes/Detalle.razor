@@ -1,0 +1,377 @@
+﻿@page "/sedes/{id:int}/aulas"
+@using EduSys.Shared.DTOs
+@using EduSys.Web.Services.Interfaces
+@inject ISedeService SedeService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<style>
+    /* --- 1. HEADER INSTITUCIONAL --- */
+    .doc-header {
+        background-color: #002147;
+        color: white;
+        padding: 1.5rem 2rem;
+        border-radius: 4px 4px 0 0;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .doc-subheader {
+        background-color: white;
+        border: 1px solid #E2E8F0;
+        border-top: none;
+        padding: 1.2rem;
+        text-align: center;
+        font-weight: 700;
+        color: #334155;
+        font-size: 1.1rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* --- 2. TABLA OFICIAL --- */
+    .official-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        font-size: 0.85rem;
+        border: 1px solid #E2E8F0;
+    }
+
+        .official-table thead th {
+            background-color: #F8FAFC;
+            color: #1E293B;
+            font-weight: 700;
+            text-align: center;
+            padding: 12px 16px;
+            border-bottom: 2px solid #E2E8F0;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            vertical-align: middle;
+        }
+
+        .official-table tbody tr {
+            border-bottom: 1px solid #E2E8F0;
+        }
+
+            .official-table tbody tr:hover {
+                background-color: #F8FAFC;
+            }
+
+        .official-table td {
+            padding: 10px 16px;
+            color: #334155;
+            vertical-align: middle;
+        }
+
+    /* --- 3. ESTILOS MODAL UNIFICADO --- */
+    .unified-dialog-card {
+        background-color: white !important;
+        border-radius: 12px !important;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.2) !important;
+    }
+
+    .modal-title {
+        color: var(--mud-palette-primary);
+        font-weight: 800;
+        font-size: 1.5rem;
+    }
+
+    .modal-title-warning {
+        color: #d97706;
+        font-weight: 800;
+        font-size: 1.5rem;
+    }
+
+    /* --- ESTILO DE INPUTS MODAL --- */
+    .mud-dialog .mud-input-outlined-border {
+        border-color: #456990 !important;
+        border-width: 1px !important;
+    }
+
+    .mud-dialog .mud-input-control {
+        background-color: #FAFAFA;
+        border-radius: 4px;
+    }
+
+    .mud-dialog .mud-input-label {
+        color: #456990 !important;
+        background-color: #FAFAFA !important;
+        padding: 0 4px;
+        font-weight: 600;
+        z-index: 2;
+    }
+
+    .mud-dialog .mud-input-control input {
+        color: #0F172A !important;
+        font-weight: 500;
+    }
+
+    /* Iconos grises */
+    .mud-input-adornment-start .mud-icon-root {
+        color: #6B7280 !important;
+    }
+
+    /* Texto Negro Forzado */
+    .force-black-text,
+    .force-black-text input {
+        color: #1F2937 !important;
+        -webkit-text-fill-color: #1F2937 !important;
+        font-weight: 500;
+    }
+</style>
+
+@if (loading)
+{
+    <div style="height: 80vh; display: flex; justify-content: center; align-items: center;">
+        <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
+    </div>
+}
+else
+{
+    <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-0 px-0" Style="background-color: #F1F5F9; min-height: 100vh;">
+
+        <div class="doc-header">
+            <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Color="Color.Inherit" OnClick="@(() => Navigation.NavigateTo("/sedes"))" />
+            <MudText Typo="Typo.h5" Style="font-weight: 700; letter-spacing: 1px;">
+                @(sede.Nombre?.ToUpper() ?? "SEDE")
+            </MudText>
+        </div>
+
+        <div class="doc-subheader">
+            Dirección: @(sede.Direccion ?? "S/D") - CP: @(sede.CodigoPostal ?? "-")
+        </div>
+
+        <MudContainer MaxWidth="MaxWidth.Large" Class="pb-10 pt-6">
+
+            <div class="d-flex justify-end mb-4">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="AbrirModalCrear" Class="rounded-lg px-4">Nueva Aula</MudButton>
+            </div>
+
+            @if (!aulas.Any())
+            {
+                <div class="d-flex flex-column align-center justify-center py-16" style="background: white; border-radius: 8px; border: 1px solid #E2E8F0;">
+                    <MudIcon Icon="@Icons.Material.Filled.MeetingRoom" Color="Color.Default" Size="Size.Large" Class="mb-4" Style="opacity: 0.5;" />
+                    <MudText Typo="Typo.h6" Style="color: #64748B;">No hay aulas cargadas en esta sede</MudText>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Class="mt-4" OnClick="AbrirModalCrear">Crear la primera</MudButton>
+                </div>
+            }
+            else
+            {
+                <table class="official-table">
+                    <thead>
+                        <tr>
+                            <th style="text-align: left;">Nombre / Identificación</th>
+                            <th>Capacidad</th>
+                            <th style="width: 150px;">Estado</th>
+                            <th style="text-align: center;">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var aula in aulas)
+                        {
+                            <tr>
+                                <td style="font-weight: 700; text-align: left;">
+                                    <div class="d-flex align-center">
+                                        <MudIcon Icon="@Icons.Material.Filled.MeetingRoom" Size="Size.Small" Class="mr-2" Color="Color.Default" />
+                                        @aula.Nombre
+                                    </div>
+                                </td>
+
+                                @* CAMBIO AQUÍ: NÚMERO GRIS SERIO *@
+                                <td style="text-align: center;">
+                                    <MudChip T="string" Color="Color.Default" Variant="Variant.Text" Size="Size.Small" Style="font-weight: 700; color: #475569; border: 1px solid #CBD5E1;">
+                                        @aula.Capacidad personas
+                                    </MudChip>
+                                </td>
+
+                                <td style="text-align: center;">
+                                    <MudChip T="string" Color="@(aula.Activo? Color.Success: Color.Warning)" Size="Size.Small" Variant="Variant.Filled" Class="rounded">
+                                        @(aula.Activo ? "Habilitada" : "Baja")
+                                    </MudChip>
+                                </td>
+
+                                <td style="text-align: center;">
+                                    <div class="d-flex justify-center">
+
+                                        @* CAMBIO AQUÍ: BOTÓN BAJA *@
+                                        @if (aula.Activo)
+                                        {
+                                            <MudTooltip Text="Dar de Baja">
+                                                <MudIconButton Icon="@Icons.Material.Filled.Block" Color="Color.Warning" Size="Size.Small" OnClick="@(() => AbrirModalBaja(aula))" Class="mr-1" />
+                                            </MudTooltip>
+                                        }
+                                        else
+                                        {
+                                            <MudIconButton Icon="@Icons.Material.Filled.Circle" Size="Size.Small" Color="Color.Default" Style="opacity: 0.3;" Class="mr-1" />
+                                        }
+
+                                        <MudTooltip Text="Editar">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => AbrirModalEditar(aula))" Color="Color.Primary" />
+                                        </MudTooltip>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </MudContainer>
+    </MudContainer>
+}
+
+<MudDialog @bind-Visible="mostrarModal" Options="dialogOptions" Class="unified-dialog-card">
+    <TitleContent>
+        <div class="pa-6 pb-2 d-flex justify-space-between align-center">
+            <div>
+                <MudText Class="modal-title">@(esEdicion ? "Editar Aula" : "Nueva Aula")</MudText>
+                <MudText Typo="Typo.body2" Style="color: #6B7280;">Define el espacio físico para la sede.</MudText>
+            </div>
+            <MudIconButton Icon="@Icons.Material.Filled.Close" OnClick="CerrarModales" Color="Color.Default" />
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <div class="px-6 pb-6">
+            <EditForm Model="@modeloAula" OnValidSubmit="Guardar">
+                <DataAnnotationsValidator />
+                <MudGrid Spacing="2">
+                    <MudItem xs="8">
+                        <MudTextField Label="Nombre / Número"
+                                      Placeholder="Ej: Aula 101 / Laboratorio A"
+                                      @bind-Value="modeloAula.Nombre"
+                                      For="@(() => modeloAula.Nombre)"
+                                      Variant="Variant.Outlined"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.MeetingRoom"
+                                      Class="force-black-text"
+                                      Required="true" />
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudNumericField Label="Capacidad"
+                                         @bind-Value="modeloAula.Capacidad"
+                                         For="@(() => modeloAula.Capacidad)"
+                                         Variant="Variant.Outlined"
+                                         Adornment="Adornment.Start"
+                                         AdornmentIcon="@Icons.Material.Filled.Groups"
+                                         Class="force-black-text"
+                                         Min="1" />
+                    </MudItem>
+                </MudGrid>
+                <div class="d-flex justify-end mt-6 pt-4" style="border-top: 1px solid #E5E7EB;">
+                    <MudButton OnClick="CerrarModales" Variant="Variant.Text" Class="mr-2" Color="Color.Default">Cancelar</MudButton>
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="rounded-lg px-6">Guardar</MudButton>
+                </div>
+            </EditForm>
+        </div>
+    </DialogContent>
+</MudDialog>
+
+@* --- MODAL 2: CONFIRMAR BAJA (ESTILO AMARILLO UNIFICADO) --- *@
+<MudDialog @bind-Visible="mostrarDialogoBaja" Options="optionsBaja" Class="unified-dialog-card">
+    <DialogContent>
+        <div class="pa-4 d-flex flex-column align-center text-center">
+            <MudIcon Icon="@Icons.Material.Filled.Block" Color="Color.Warning" Style="font-size: 4rem;" Class="mb-4" />
+            <MudText Class="modal-title-warning mb-2">Confirmar Baja</MudText>
+            <MudText Typo="Typo.body1" Class="force-black-text mb-4">El aula <b>@aulaParaBaja?.Nombre</b> pasará a estado inactivo.</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Default">Podrás reactivarla editando su estado desde la lista.</MudText>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <div class="px-6 pb-6 d-flex justify-center gap-4" style="width: 100%;">
+            <MudButton OnClick="CerrarModales" Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg">Cancelar</MudButton>
+            <MudButton OnClick="ConfirmarBaja" Variant="Variant.Filled" Color="Color.Warning" Class="rounded-lg px-6" Elevation="0">Confirmar</MudButton>
+        </div>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private SedeDTO sede = new();
+    private List<AulaDTO> aulas = new();
+    private AulaDTO modeloAula = new();
+    private AulaDTO aulaParaBaja;
+
+    private bool loading = true;
+    private bool mostrarModal = false;
+    private bool mostrarDialogoBaja = false;
+    private bool esEdicion = false;
+
+    private DialogOptions dialogOptions = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true };
+    private DialogOptions optionsBaja = new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true, CloseButton = false };
+
+    protected override async Task OnInitializedAsync() => await CargarDatos();
+
+    private async Task CargarDatos()
+    {
+        loading = true;
+        var t1 = SedeService.GetByIdAsync(Id);
+        var t2 = SedeService.GetAulasBySedeAsync(Id);
+        await Task.WhenAll(t1, t2);
+        sede = await t1;
+        aulas = await t2;
+        loading = false;
+    }
+
+    private void AbrirModalCrear()
+    {
+        modeloAula = new AulaDTO { IdSede = Id, Capacidad = 30, Activo = true };
+        esEdicion = false;
+        mostrarModal = true;
+    }
+
+    private void AbrirModalEditar(AulaDTO a)
+    {
+        modeloAula = new AulaDTO { Id = a.Id, IdSede = a.IdSede, Nombre = a.Nombre, Capacidad = a.Capacidad, Activo = a.Activo };
+        esEdicion = true;
+        mostrarModal = true;
+    }
+
+    private void AbrirModalBaja(AulaDTO a)
+    {
+        aulaParaBaja = a;
+        mostrarDialogoBaja = true;
+    }
+
+    private async Task Guardar()
+    {
+        bool exito = esEdicion ? await SedeService.UpdateAulaAsync(modeloAula) : await SedeService.CreateAulaAsync(modeloAula);
+        if (exito)
+        {
+            Snackbar.Add("Guardado correctamente", Severity.Success);
+            CerrarModales();
+            await CargarDatos();
+        }
+        else
+        {
+            Snackbar.Add("Error al guardar", Severity.Error);
+        }
+    }
+
+    private async Task ConfirmarBaja()
+    {
+        if (aulaParaBaja == null) return;
+
+        var exito = await SedeService.DeleteAulaAsync(aulaParaBaja.Id);
+
+        if (exito)
+        {
+            Snackbar.Add("Aula dada de baja", Severity.Warning);
+            await CargarDatos();
+        }
+        else
+        {
+            Snackbar.Add("Error al dar de baja", Severity.Error);
+        }
+        mostrarDialogoBaja = false;
+    }
+
+    private void CerrarModales()
+    {
+        mostrarModal = false;
+        mostrarDialogoBaja = false;
+    }
+}

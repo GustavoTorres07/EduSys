@@ -1,0 +1,308 @@
+﻿@page "/alumno/perfil"
+@using EduSys.Shared.DTOs
+@using EduSys.Web.Services.Interfaces
+@using System.Security.Claims
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IAlumnoService AlumnoService
+@inject ISnackbar Snackbar
+@inject IJSRuntime JSRuntime
+
+<style>
+    /* --- CORRECCIÓN VISUAL: CAMPOS READONLY --- */
+    .readonly-field .mud-input-slot {
+        color: #1F2937 !important;
+        -webkit-text-fill-color: #1F2937 !important;
+        font-weight: 600 !important;
+        opacity: 1 !important;
+        cursor: default !important;
+    }
+
+    .readonly-field .mud-input-control-input-container {
+        background-color: #f8fafc !important;
+        border-radius: 6px;
+    }
+
+    .readonly-field .mud-input-outlined-border {
+        border-color: #cbd5e1 !important;
+    }
+
+    .readonly-field .mud-input-label {
+        color: #456990 !important;
+        font-weight: 700 !important;
+        background-color: transparent !important;
+    }
+
+    /* --- ESTILOS GENERALES --- */
+    .profile-card {
+        background-color: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+
+    .profile-header {
+        background: #456990;
+        color: white;
+        padding: 24px;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+    }
+
+    .section-label {
+        color: #456990;
+        font-size: 0.8rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-top: 20px;
+        margin-bottom: 10px;
+        border-bottom: 2px solid #e2e8f0;
+        padding-bottom: 4px;
+    }
+
+    .profile-avatar {
+        border: 4px solid white;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+
+    /* Estilo para los items de documentos */
+    .doc-item {
+        padding: 16px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        background-color: #f9fafb;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+</style>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-6 mb-8">
+
+    @if (cargando)
+    {
+        <div class="d-flex justify-center mt-10">
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+        </div>
+    }
+    else if (alumno != null)
+    {
+        <div class="profile-card">
+
+            @* --- CABECERA --- *@
+            <div class="profile-header">
+                <MudAvatar Style="height:100px; width:100px;" Class="profile-avatar">
+                    @if (!string.IsNullOrEmpty(alumno.FotoPerfilUrl))
+                    {
+                        <MudImage Src="@alumno.FotoPerfilUrl" ObjectFit="ObjectFit.Cover" />
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.h4">@alumno.Nombre?.Substring(0, 1)</MudText>
+                    }
+                </MudAvatar>
+
+                <div>
+                    <MudText Typo="Typo.h5" Style="font-weight: 700;">@alumno.Apellido, @alumno.Nombre</MudText>
+                    <MudText Typo="Typo.body1" Style="opacity: 0.9;">Legajo: <b>@alumno.Legajo</b></MudText>
+                    <div class="d-flex gap-2 mt-2">
+                        @if (alumno.EstaBloqueado == true)
+                        {
+                            <MudChip T="string" Color="Color.Error" Size="Size.Small" Variant="Variant.Filled" Icon="@Icons.Material.Filled.Lock" Class="ma-0">
+                                BLOQUEADO
+                            </MudChip>
+                        }
+                        else
+                        {
+                            <MudChip T="string" Color="@(alumno.Activo? Color.Success: Color.Error)" Size="Size.Small" Variant="Variant.Filled" Class="ma-0">
+                                @(alumno.Activo ? "ALUMNO ACTIVO" : "INACTIVO")
+                            </MudChip>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            @* --- PESTAÑAS --- *@
+            <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-6">
+
+                @* 1. DATOS PERSONALES *@
+                <MudTabPanel Text="Información Personal" Icon="@Icons.Material.Filled.Person">
+                    <MudGrid Spacing="2">
+                        <MudItem xs="12"><div class="section-label">Identidad</div></MudItem>
+                        <MudItem xs="12" sm="4"><MudTextField Label="DNI" Value="@alumno.Dni" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="readonly-field" /></MudItem>
+                        <MudItem xs="12" sm="4"><MudTextField Label="Fecha de Nacimiento" Value="@(alumno.FechaNacimiento?.ToString("dd/MM/yyyy") ?? "-")" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="readonly-field" /></MudItem>
+                        <MudItem xs="12" sm="4"><MudTextField Label="Sexo" Value="@alumno.Sexo" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="readonly-field" /></MudItem>
+                        <MudItem xs="12" sm="4"><MudTextField Label="Estado Civil" Value="@alumno.EstadoCivil" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="readonly-field" /></MudItem>
+                        <MudItem xs="12" sm="4"><MudTextField Label="Nacionalidad" Value="@(alumno.IdNacionalidad == 1 ? "Argentina" : "Extranjera")" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="readonly-field" /></MudItem>
+                        <MudItem xs="12" sm="4"><MudTextField Label="Lugar de Nacimiento" Value="@alumno.LugarNacimiento" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="readonly-field" /></MudItem>
+
+                        <MudItem xs="12"><div class="section-label">Contacto</div></MudItem>
+                        <MudItem xs="12" sm="6"><MudTextField Label="Email Institucional" Value="@alumno.Email" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="readonly-field" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Email" /></MudItem>
+                        <MudItem xs="12" sm="6"><MudTextField Label="Teléfono" Value="@alumno.Telefono" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="readonly-field" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Phone" /></MudItem>
+                        <MudItem xs="12" sm="8"><MudTextField Label="Dirección" Value="@alumno.Direccion" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="readonly-field" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Home" /></MudItem>
+                        <MudItem xs="12" sm="4"><MudTextField Label="Localidad" Value="@alumno.Localidad" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="readonly-field" /></MudItem>
+
+                        <MudItem xs="12"><div class="section-label">Situación Laboral</div></MudItem>
+                        <MudItem xs="12" sm="4"><MudTextField Label="Ocupación" Value="@alumno.Ocupacion" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="readonly-field" /></MudItem>
+                        <MudItem xs="12" sm="4"><MudTextField Label="Lugar de Trabajo" Value="@alumno.LugarTrabajo" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="readonly-field" /></MudItem>
+                        <MudItem xs="12" sm="4"><MudTextField Label="Horario Laboral" Value="@alumno.HorarioLaboral" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="readonly-field" /></MudItem>
+
+                        <MudItem xs="12"><div class="section-label">Contacto de Emergencia</div></MudItem>
+                        <MudItem xs="12" sm="6"><MudTextField Label="Nombre Contacto" Value="@alumno.NombreContactoEmergencia" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="readonly-field" /></MudItem>
+                        <MudItem xs="12" sm="6"><MudTextField Label="Teléfono Contacto" Value="@alumno.TelefonoContactoEmergencia" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="readonly-field" /></MudItem>
+                    </MudGrid>
+                </MudTabPanel>
+
+                @* 2. DATOS ACADÉMICOS *@
+                <MudTabPanel Text="Situación Académica" Icon="@Icons.Material.Filled.School">
+                    <MudGrid Spacing="2">
+                        <MudItem xs="12"><div class="section-label">Carrera en Curso</div></MudItem>
+
+                        <MudItem xs="12" sm="6"><MudTextField Label="Carrera" Value="@nombreCarrera" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="readonly-field" /></MudItem>
+                        <MudItem xs="12" sm="6"><MudTextField Label="Plan de Estudios" Value="@nombrePlan" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="readonly-field" /></MudItem>
+
+                        <MudItem xs="12" sm="6"><MudTextField Label="Fecha de Ingreso" Value="@(alumno.FechaIngreso?.ToString("dd/MM/yyyy") ?? "-")" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="readonly-field" /></MudItem>
+
+                        @* ✅ FECHA EGRESO *@
+                        <MudItem xs="12" sm="6"><MudTextField Label="Fecha de Egreso" Value="@(alumno.FechaEgreso?.ToString("dd/MM/yyyy") ?? "En curso")" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="readonly-field" /></MudItem>
+
+                        <MudItem xs="12" sm="6"><MudTextField Label="Título Secundario Presentado" Value="@(alumno.TituloSecundarioEntregado ? "SÍ" : "NO")" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="readonly-field" /></MudItem>
+
+                        @* ✅ OBSERVACIONES *@
+                        <MudItem xs="12">
+                            <MudTextField Label="Observaciones" Value="@alumno.Observaciones" ReadOnly="true" Variant="Variant.Outlined" Lines="3" Class="readonly-field" />
+                        </MudItem>
+
+                        @* ✅ ALERTA DE BLOQUEO *@
+                        @if (alumno.EstaBloqueado == true)
+                        {
+                            <MudItem xs="12">
+                                <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mt-2" Icon="@Icons.Material.Filled.Lock">
+                                    <MudText Typo="Typo.subtitle2"><b>ATENCIÓN: CUENTA BLOQUEADA</b></MudText>
+                                    <MudText Typo="Typo.body2">@alumno.MotivoBloqueo</MudText>
+                                </MudAlert>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                </MudTabPanel>
+
+                @* 3. LEGAJO DIGITAL *@
+                <MudTabPanel Text="Legajo Digital" Icon="@Icons.Material.Filled.FolderShared">
+                    <MudText Typo="Typo.body2" Class="mb-4 text-secondary">Documentación digitalizada presentada.</MudText>
+
+                    <div class="d-flex flex-column gap-3">
+                        @foreach (var doc in documentosLegajo)
+                        {
+                            bool tieneArchivo = !string.IsNullOrEmpty(doc.Url);
+                            <div class="doc-item">
+                                <div class="d-flex align-center">
+                                    <MudAvatar Color="@(tieneArchivo? Color.Primary: Color.Default)" Variant="Variant.Filled" Class="mr-4">
+                                        <MudIcon Icon="@doc.Icono" />
+                                    </MudAvatar>
+                                    <div>
+                                        <MudText Typo="Typo.subtitle2" Style="font-weight: 700; color: #1e293b;">@doc.Titulo</MudText>
+                                        <MudText Typo="Typo.caption" Color="@(tieneArchivo? Color.Success: Color.Error)">
+                                            @(tieneArchivo ? "Disponible" : "Pendiente")
+                                        </MudText>
+                                    </div>
+                                </div>
+                                @if (tieneArchivo)
+                                {
+                                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" EndIcon="@Icons.Material.Filled.OpenInNew"
+                                               OnClick="@(() => OpenLink(doc.Url!))">
+                                        Ver Documento
+                                    </MudButton>
+                                }
+                            </div>
+                        }
+                    </div>
+                </MudTabPanel>
+            </MudTabs>
+        </div>
+    }
+    else
+    {
+        <MudAlert Severity="Severity.Error">No se pudo cargar el perfil del alumno.</MudAlert>
+    }
+</MudContainer>
+
+@code {
+    private AlumnoRequestDTO? alumno;
+    private string nombreCarrera = "";
+    private string nombrePlan = "";
+    private bool cargando = true;
+
+    // Clase auxiliar para la lista de documentos
+    private class DocumentoItem
+    {
+        public string Titulo { get; set; } = "";
+        public string? Url { get; set; }
+        public string Icono { get; set; } = "";
+    }
+
+    private List<DocumentoItem> documentosLegajo = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarPerfil();
+    }
+
+    private async Task CargarPerfil()
+    {
+        cargando = true;
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+
+            if (user.Identity != null && user.Identity.IsAuthenticated)
+            {
+                var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                                  ?? user.FindFirst("sub")?.Value;
+
+                if (int.TryParse(userIdClaim, out int idUsuario))
+                {
+                    // Obtener datos básicos
+                    var alumnoLigero = await AlumnoService.GetByUsuarioIdAsync(idUsuario);
+
+                    if (alumnoLigero != null)
+                    {
+                        nombreCarrera = alumnoLigero.NombreCarrera;
+                        nombrePlan = alumnoLigero.NombrePlan;
+
+                        // Obtener datos completos
+                        alumno = await AlumnoService.GetAlumnoByIdAsync(alumnoLigero.Id);
+
+                        // Cargar lista para el bucle
+                        documentosLegajo = new List<DocumentoItem>
+                        {
+                            new() { Titulo = "DNI (Frente)", Url = alumno.UrlDniFrente, Icono = Icons.Material.Filled.Badge },
+                            new() { Titulo = "DNI (Dorso)", Url = alumno.UrlDniDorso, Icono = Icons.Material.Filled.Badge },
+                            new() { Titulo = "Prueba de Identidad", Url = alumno.UrlValidacionIdentidad, Icono = Icons.Material.Filled.Face },
+                            new() { Titulo = "Título Secundario", Url = alumno.UrlTituloSecundario, Icono = Icons.Material.Filled.School },
+                            new() { Titulo = "Antecedentes Penales", Url = alumno.UrlAntecedentesPenales, Icono = Icons.Material.Filled.Gavel },
+                        };
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Error al cargar perfil: " + ex.Message, Severity.Error);
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private async Task OpenLink(string url)
+    {
+        if (!string.IsNullOrEmpty(url))
+        {
+            await JSRuntime.InvokeVoidAsync("open", url, "_blank");
+        }
+    }
+}

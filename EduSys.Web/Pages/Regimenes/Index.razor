@@ -1,0 +1,263 @@
+﻿@page "/regimenes"
+@using EduSys.Shared.DTOs
+@using EduSys.Web.Services.Interfaces
+@inject IRegimenService RegimenService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<style>
+    /* 1. TEXTO NEGRO Y PAGINADOR */
+    .force-black-text,
+    .force-black-text input,
+    .force-black-text .mud-input-slot,
+    .force-black-text .mud-table-pagination-caption,
+    .force-black-text .mud-table-pagination-select .mud-input-slot,
+    .force-black-text .mud-select-input {
+        color: #1F2937 !important;
+        -webkit-text-fill-color: #1F2937 !important;
+        font-weight: 500;
+    }
+
+        .force-black-text .mud-input-label {
+            color: #456990 !important; /* Azul Corporativo */
+            background-color: white !important;
+            padding: 0 4px;
+            z-index: 2;
+            font-weight: 600;
+        }
+
+    /* 2. ESTILO DE MODALES UNIFICADO */
+    .unified-dialog-card {
+        background-color: white !important;
+        border-radius: 12px !important;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.2) !important;
+    }
+
+    .modal-title {
+        color: var(--mud-palette-primary);
+        font-weight: 800;
+        font-size: 1.5rem;
+    }
+
+    /* --- ESTILO DE INPUTS (Borde Azul por defecto) --- */
+    .mud-dialog .mud-input-outlined-border {
+        border-color: #456990 !important;
+        border-width: 1px !important;
+    }
+
+    /* Si hay error, MudBlazor lo pone rojo automáticamente,
+           pero aseguramos que el fondo siga siendo sutil */
+    .mud-dialog .mud-input-control {
+        background-color: #FAFAFA;
+        border-radius: 4px;
+    }
+
+        .mud-dialog .mud-input-control input {
+            color: #0F172A !important;
+            font-weight: 500;
+        }
+
+    /* Iconos grises */
+    .mud-input-adornment-start .mud-icon-root,
+    .force-black-text .mud-icon-root {
+        color: #6B7280 !important;
+    }
+</style>
+
+<MudText Typo="Typo.h5" Color="Color.Primary" Align="Align.Center" Class="mb-4"><b>Gestión de Regímenes</b></MudText>
+
+<MudTable @ref="_table"
+          Items="@regimenes"
+          Hover="true"
+          Loading="@loading"
+          RowsPerPage="10"
+          Elevation="3"
+          Class="rounded-xl"
+          ReadOnly="false"
+          CanCancelEdit="true"
+          RowEditCommit="ItemHasBeenCommitted"
+          EditTrigger="TableEditTrigger.EditButton"
+          ApplyButtonPosition="TableApplyButtonPosition.End">
+
+    <ToolBarContent>
+        <MudText Typo="Typo.h6" Color="Color.Primary" Class="d-none d-md-flex font-weight-bold">Catálogo</MudText>
+        <MudSpacer />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="AbrirModalCrear" Class="rounded-lg px-4">Nuevo</MudButton>
+    </ToolBarContent>
+
+    <EditButtonContent><span style="display:none;"></span></EditButtonContent>
+
+    <HeaderContent>
+        <MudTh Style="text-align: center;">Nombre</MudTh>
+        <MudTh Style="text-align: center;">Estado</MudTh>
+        <MudTh Style="width: 120px; text-align: center;">Acciones</MudTh>
+    </HeaderContent>
+
+    <RowTemplate>
+        <MudTd DataLabel="Nombre" Style="text-align: center;">
+            <MudText Typo="Typo.body2" Style="font-weight: 600;">@context.Nombre</MudText>
+        </MudTd>
+
+        <MudTd DataLabel="Estado" Style="text-align: center;">
+            <MudChip T="string" Color="@(context.Activo? Color.Success: Color.Default)" Size="Size.Small" Variant="Variant.Filled" Class="rounded">
+                @(context.Activo ? "Activo" : "Inactivo")
+            </MudChip>
+        </MudTd>
+
+        <MudTd DataLabel="Acciones" Style="text-align: center;">
+            <div class="d-flex justify-center">
+                <MudTooltip Text="Editar">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                   Color="Color.Primary"
+                                   Size="Size.Small"
+                                   OnClick="@(() => EditarFila(context))" />
+                </MudTooltip>
+            </div>
+        </MudTd>
+    </RowTemplate>
+
+    <RowEditingTemplate>
+        <MudTd DataLabel="Nombre">
+            <MudTextField @bind-Value="@context.Nombre" Label="Nombre" Variant="Variant.Text" Class="force-black-text" />
+        </MudTd>
+        <MudTd DataLabel="Estado" Style="text-align: center;">
+            <MudSwitch @bind-Value="@context.Activo" Color="Color.Success" Label="@(context.Activo ? "Act" : "Inac")" />
+        </MudTd>
+    </RowEditingTemplate>
+
+    <PagerContent>
+        <MudTablePager RowsPerPageString="Filas:"
+                       PageSizeOptions="new int[] { 5, 10, 20 }"
+                       InfoFormat="{first_item}-{last_item} de {all_items}"
+                       Class="force-black-text" />
+    </PagerContent>
+</MudTable>
+
+@* --- MODAL CREAR --- *@
+<MudDialog @bind-Visible="mostrarDialogoCrear" Options="dialogOptions" Class="unified-dialog-card">
+    <TitleContent>
+        <div class="pa-6 pb-2 d-flex justify-space-between align-center">
+            <div>
+                <MudText Class="modal-title">Nuevo Régimen</MudText>
+                <MudText Typo="Typo.body2" Style="color: #6B7280;">Define una modalidad de cursada.</MudText>
+            </div>
+            <MudIconButton Icon="@Icons.Material.Filled.Close" OnClick="CerrarModal" Color="Color.Default" />
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <div class="px-6 pb-4">
+            <EditForm Model="@regimenModel" OnValidSubmit="Guardar">
+                <DataAnnotationsValidator />
+                <MudGrid>
+                    <MudItem xs="12">
+                        @* VALIDACIÓN EN ROJO ACTIVADA *@
+                        <MudTextField Label="Nombre"
+                                      @bind-Value="regimenModel.Nombre"
+                                      For="@(() => regimenModel.Nombre)"
+                                      Variant="Variant.Outlined"
+                                      Class="force-black-text"
+                                      Placeholder="Ej: Cuatrimestral"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Label"
+                                      Error="@nombreError"
+                                      ErrorText="El nombre es obligatorio" />
+                    </MudItem>
+                    <MudItem xs="12" Class="d-flex justify-end gap-2 mt-4 pt-4" style="border-top: 1px solid #E5E7EB;">
+                        <MudButton OnClick="CerrarModal" Variant="Variant.Text" Color="Color.Default">Cancelar</MudButton>
+                        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="rounded-lg px-6">Guardar</MudButton>
+                    </MudItem>
+                </MudGrid>
+            </EditForm>
+        </div>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    private MudTable<RegimenDTO> _table;
+
+    // Inicializamos la lista para evitar NullReferenceException al cargar
+    private List<RegimenDTO> regimenes = new List<RegimenDTO>();
+    private RegimenDTO regimenModel = new RegimenDTO();
+
+    private bool loading = true;
+    private bool mostrarDialogoCrear = false;
+    private bool nombreError = false;
+
+    private DialogOptions dialogOptions = new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true, CloseButton = false };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarDatos();
+    }
+
+    private async Task CargarDatos()
+    {
+        loading = true;
+        try
+        {
+            // Usamos una variable temporal para asegurar que si falla, la lista no quede nula
+            var lista = await RegimenService.GetAllAsync();
+            regimenes = lista ?? new List<RegimenDTO>();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Error cargando datos", Severity.Error);
+            regimenes = new List<RegimenDTO>(); // Fallback seguro
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private void AbrirModalCrear()
+    {
+        regimenModel = new RegimenDTO { Activo = true };
+        nombreError = false;
+        mostrarDialogoCrear = true;
+    }
+
+    // Método para activar la edición en línea
+    private void EditarFila(RegimenDTO item)
+    {
+        _table.SetEditingItem(item);
+    }
+
+    private async Task Guardar()
+    {
+        // Validación manual que activa el rojo
+        if (string.IsNullOrWhiteSpace(regimenModel.Nombre))
+        {
+            nombreError = true;
+            return; // Detenemos el guardado
+        }
+        nombreError = false;
+
+        if (await RegimenService.CreateAsync(regimenModel))
+        {
+            Snackbar.Add("Régimen creado", Severity.Success);
+            mostrarDialogoCrear = false;
+            await CargarDatos();
+        }
+        else
+        {
+            Snackbar.Add("Error al crear", Severity.Error);
+        }
+    }
+
+    private async void ItemHasBeenCommitted(object element)
+    {
+        var item = (RegimenDTO)element;
+        if (await RegimenService.UpdateAsync(item))
+        {
+            Snackbar.Add("Actualizado correctamente", Severity.Success);
+        }
+        else
+        {
+            Snackbar.Add("Error al actualizar", Severity.Error);
+            await CargarDatos(); // Revertimos cambios
+        }
+    }
+
+    private void CerrarModal() => mostrarDialogoCrear = false;
+}

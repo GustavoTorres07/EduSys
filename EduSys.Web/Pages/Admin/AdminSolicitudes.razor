@@ -1,0 +1,120 @@
+﻿@page "/admin/solicitudes"
+@using EduSys.Shared.DTOs
+@using EduSys.Web.Services.Interfaces
+@inject ISolicitudService InscripcionService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
+    <div class="d-flex justify-space-between align-center mb-4">
+        <div>
+            <MudText Typo="Typo.h4" Color="Color.Primary" Style="font-weight: 700;">Gestión de Admisiones</MudText>
+            <MudText Typo="Typo.subtitle1" Class="mud-text-secondary">Listado de aspirantes pendientes de revisión.</MudText>
+        </div>
+        <MudButton Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Refresh" Color="Color.Primary" OnClick="CargarDatos">
+            Actualizar
+        </MudButton>
+    </div>
+
+    <MudTable Items="@listaSolicitudes" Hover="true" Striped="true" Loading="@cargando" Filter="new Func<SolicitudIngresoDTO, bool>(Filtrar)" Elevation="3">
+        <ToolBarContent>
+            <MudText Typo="Typo.h6">Pendientes</MudText>
+            <MudSpacer />
+            <MudTextField @bind-Value="textoBusqueda" Placeholder="Buscar por DNI o Apellido..." Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Class="mt-0"></MudTextField>
+        </ToolBarContent>
+
+        <HeaderContent>
+            <MudTh>Perfil</MudTh>
+            <MudTh>Aspirante</MudTh>
+            <MudTh>DNI</MudTh>
+            <MudTh>Carrera</MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<SolicitudIngresoDTO, object>(x => x.FechaSolicitud)">Fecha de Solicitud</MudTableSortLabel></MudTh>
+            <MudTh>Fecha de Procesamiento</MudTh>
+            <MudTh Style="text-align:center">Acciones</MudTh>
+        </HeaderContent>
+
+        <RowTemplate>
+            <MudTd DataLabel="Perfil">
+                @if (!string.IsNullOrEmpty(context.RutaFotoPerfil))
+                {
+                    <MudImage Src="@context.RutaFotoPerfil"
+                              ObjectFit="ObjectFit.Cover"
+                              Style="width:40px; height:40px; border-radius:50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2);" />
+                }
+                else
+                {
+                    <MudAvatar Color="Color.Secondary" Size="Size.Medium">
+                        @(string.IsNullOrEmpty(context.Nombre) ? "?" : context.Nombre.Substring(0, 1))
+                    </MudAvatar>
+                }
+            </MudTd>
+            <MudTd DataLabel="Aspirante">
+                <MudText Typo="Typo.body2" Style="font-weight:bold">@context.Apellido, @context.Nombre</MudText>
+                <MudText Typo="Typo.caption">@context.Email</MudText>
+            </MudTd>
+            <MudTd DataLabel="DNI">
+                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text">@context.Dni</MudChip>
+            </MudTd>
+            <MudTd DataLabel="Carrera">@context.NombreCarrera</MudTd>
+
+            <MudTd DataLabel="Fecha de Solicitud">@context.FechaSolicitud.ToString("dd/MM/yyyy HH:mm")</MudTd>
+
+            <MudTd DataLabel="Fecha de Procesamiento">
+                @(context.FechaProcesado.HasValue? context.FechaProcesado.Value.ToString("dd/MM/yyyy HH:mm") : "-")
+            </MudTd>
+
+            <MudTd Style="text-align:center">
+                <MudButton Variant="Variant.Outlined" Color="Color.Info" Size="Size.Small" OnClick="@(() => IrADetalle(context.Id))">
+                    Revisar
+                </MudButton>
+            </MudTd>
+        </RowTemplate>
+
+        <PagerContent>
+            <MudTablePager />
+        </PagerContent>
+
+        <NoRecordsContent>
+            <MudText>No hay solicitudes pendientes.</MudText>
+        </NoRecordsContent>
+    </MudTable>
+</MudContainer>
+
+@code {
+    private List<SolicitudIngresoDTO> listaSolicitudes = new();
+    private bool cargando = true;
+    private string textoBusqueda = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarDatos();
+    }
+
+    private async Task CargarDatos()
+    {
+        cargando = true;
+        try
+        {
+            listaSolicitudes = await InscripcionService.GetPendientesAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private void IrADetalle(int id)
+    {
+        Navigation.NavigateTo($"/admin/solicitudes/{id}");
+    }
+
+    private bool Filtrar(SolicitudIngresoDTO element) =>
+        string.IsNullOrWhiteSpace(textoBusqueda) ||
+        element.Nombre.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase) ||
+        element.Apellido.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase) ||
+        element.Dni.Contains(textoBusqueda);
+}

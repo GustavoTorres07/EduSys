@@ -1,0 +1,88 @@
+﻿@inject ISnackbar Snackbar
+
+<style>
+    /* Ocultar elementos por defecto */
+    .mud-dialog-close-icon {
+        display: none !important;
+    }
+
+    .mud-dialog-content {
+        padding: 0 !important;
+    }
+
+    .dialog-container {
+        display: flex;
+        flex-direction: column;
+        background-color: white;
+    }
+
+    /* Cabecera Roja para indicar Alerta/Baja */
+    .dialog-header-danger {
+        background: #D32F2F; /* Rojo Material Design */
+        color: white;
+        padding: 12px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .dialog-body {
+        padding: 24px;
+    }
+
+    .actions-footer {
+        padding: 16px 24px;
+        border-top: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        background-color: white;
+    }
+</style>
+
+<MudDialog DisableSidePadding="true" Class="rounded-lg overflow-hidden">
+    <DialogContent>
+        <div class="dialog-container">
+
+            @* CABECERA DE ALERTA *@
+            <div class="dialog-header-danger">
+                <div class="d-flex align-center">
+                    <MudIcon Icon="@Icons.Material.Filled.PersonOff" Class="mr-3" />
+                    <MudText Typo="Typo.h6" Style="font-weight: 700; letter-spacing: 0.5px;">Confirmar Baja</MudText>
+                </div>
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" OnClick="Cancel" Size="Size.Small" />
+            </div>
+
+            @* CUERPO DEL MENSAJE *@
+            <div class="dialog-body">
+                <MudText Typo="Typo.body1" Class="mb-2">¿Está seguro que desea dar de baja al docente?</MudText>
+
+                <div class="d-flex align-center mt-4 pa-3 rounded" style="background-color: #FEF2F2; border: 1px solid #FECACA;">
+                    <MudAvatar Color="Color.Error" Size="Size.Medium" Variant="Variant.Outlined" Class="mr-3">
+                        @(string.IsNullOrEmpty(NombreEntidad) ? "?" : NombreEntidad.Substring(0, 1))
+                    </MudAvatar>
+                    <div>
+                        <MudText Typo="Typo.subtitle2" Color="Color.Error" Style="font-weight: 700;">@NombreEntidad</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Default">El usuario perderá el acceso al sistema.</MudText>
+                    </div>
+                </div>
+            </div>
+
+            @* FOOTER *@
+            <div class="actions-footer">
+                <MudButton OnClick="Cancel" Variant="Variant.Outlined" Color="Color.Default">Cancelar</MudButton>
+                <MudButton OnClick="Submit" Variant="Variant.Filled" Color="Color.Error" StartIcon="@Icons.Material.Filled.PersonOff">Confirmar Baja</MudButton>
+            </div>
+
+        </div>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+
+    [Parameter] public string NombreEntidad { get; set; } = "";
+
+    private void Submit() => MudDialog.Close(DialogResult.Ok(true));
+    private void Cancel() => MudDialog.Cancel();
+}

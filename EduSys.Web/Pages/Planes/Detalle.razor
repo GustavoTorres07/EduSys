@@ -1,0 +1,736 @@
+﻿@page "/planes/{id:int}/detalle"
+@using EduSys.Shared.DTOs
+@using EduSys.Web.Services.Interfaces
+@inject IPlanService PlanService
+@inject IMateriaService MateriaService
+@inject IRegimenService RegimenService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<style>
+    /* --- 1. HEADER INSTITUCIONAL --- */
+    .doc-header {
+        background-color: #002147;
+        color: white;
+        padding: 1.5rem 2rem;
+        border-radius: 4px 4px 0 0;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .doc-subheader {
+        background-color: white;
+        border: 1px solid #E2E8F0;
+        border-top: none;
+        padding: 1.2rem;
+        text-align: center;
+        font-weight: 700;
+        color: #334155;
+        font-size: 1.1rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* --- 2. TABLA OFICIAL --- */
+    .year-separator {
+        text-align: center;
+        margin: 2.5rem 0 1rem 0;
+        font-weight: 800;
+        color: #0F172A;
+        font-size: 0.95rem;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+    }
+
+    .official-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        font-size: 0.85rem;
+        border: 1px solid #E2E8F0;
+    }
+
+        .official-table thead th {
+            background-color: #F8FAFC;
+            color: #1E293B;
+            font-weight: 700;
+            text-align: center;
+            padding: 12px 16px;
+            border-bottom: 2px solid #E2E8F0;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            vertical-align: middle;
+        }
+
+        .official-table tbody tr {
+            border-bottom: 1px solid #E2E8F0;
+        }
+
+            .official-table tbody tr:hover {
+                background-color: #F8FAFC;
+            }
+
+        .official-table td {
+            padding: 10px 16px;
+            color: #334155;
+            vertical-align: top;
+        }
+
+    /* Columnas */
+    .col-codigo {
+        font-weight: 700;
+        color: #475569;
+        width: 80px;
+        white-space: nowrap;
+        text-align: left;
+    }
+
+    .col-materia {
+        font-weight: 700;
+        color: #0F172A;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        text-align: left;
+    }
+
+    .col-center {
+        text-align: center;
+    }
+
+    .col-actions {
+        text-align: right;
+        width: 140px;
+    }
+
+    .col-libre {
+        text-align: center;
+        font-weight: 700;
+        font-size: 0.8rem;
+        width: 100px;
+    }
+
+    .btn-add-year {
+        width: 100%;
+        padding: 8px;
+        background: #F8FAFC;
+        border: 1px dashed #CBD5E1;
+        color: #64748B;
+        text-align: center;
+        cursor: pointer;
+        font-size: 0.8rem;
+        font-weight: 600;
+        transition: all 0.2s;
+    }
+
+        .btn-add-year:hover {
+            background: #EEF2FF;
+            color: #002147;
+            border-color: #002147;
+        }
+
+    /* --- 3. ESTILOS MODAL UNIFICADO --- */
+    .unified-dialog-card {
+        background-color: white !important;
+        border-radius: 12px !important;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.2) !important;
+    }
+
+    .modal-title {
+        color: var(--mud-palette-primary);
+        font-weight: 800;
+        font-size: 1.5rem;
+    }
+
+    .mud-dialog .mud-input-outlined-border {
+        border-color: #456990 !important;
+        border-width: 1px !important;
+    }
+
+    .mud-dialog .mud-input-control {
+        background-color: #FAFAFA;
+        border-radius: 4px;
+    }
+
+    .mud-dialog .mud-input-label {
+        color: #456990 !important;
+        background-color: #FAFAFA !important;
+        padding: 0 4px;
+        font-weight: 600;
+        z-index: 2;
+    }
+
+    .mud-dialog .mud-input-adornment-start .mud-icon-root,
+    .mud-dialog .mud-input-adornment-end .mud-icon-root,
+    .mud-dialog .mud-select-adornment .mud-icon-root {
+        color: #64748B !important;
+    }
+
+    .force-black-text,
+    .force-black-text input,
+    .force-black-text textarea,
+    .force-black-text .mud-input-slot,
+    .force-black-text .mud-select-input,
+    .mud-dialog .mud-input-control input,
+    .mud-dialog .mud-input-control textarea {
+        color: #1F2937 !important;
+        -webkit-text-fill-color: #1F2937 !important;
+        font-weight: 500;
+    }
+
+    .mud-tabs-tabbar {
+        background-color: transparent !important;
+        border-bottom: 1px solid #E5E7EB;
+    }
+
+    .mud-tab {
+        font-weight: 600;
+        text-transform: none;
+        letter-spacing: 0.5px;
+        color: #6B7280;
+    }
+
+    .mud-tab-active {
+        color: var(--mud-palette-primary) !important;
+        font-weight: 700;
+    }
+
+    .correlativas-list-year {
+        background-color: #F1F5F9;
+        padding: 8px 12px;
+        font-weight: 700;
+        color: #475569;
+        font-size: 0.8rem;
+        border-radius: 4px;
+        margin-top: 10px;
+        margin-bottom: 5px;
+    }
+</style>
+
+@if (loading)
+{
+    <div style="height: 80vh; display: flex; justify-content: center; align-items: center;">
+        <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
+    </div>
+}
+else
+{
+    <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-0 px-0" Style="background-color: #F1F5F9; min-height: 100vh;">
+
+        <div class="doc-header">
+            <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Color="Color.Inherit" OnClick="@(() => Navigation.NavigateTo("/planes"))" />
+            <MudText Typo="Typo.h5" Style="font-weight: 700; letter-spacing: 1px;">
+                @(plan.NombreCarrera?.ToUpper() ?? "CARRERA NO DEFINIDA")
+            </MudText>
+        </div>
+
+        <div class="doc-subheader">
+            Plan de Estudios: (@(plan.ResolucionMinisterial ?? "S/R")) – @plan.Nombre - Cohorte @plan.AnioInicio
+        </div>
+
+        <MudContainer MaxWidth="MaxWidth.Large" Class="pb-10">
+            @if (!materiasDelPlan.Any())
+            {
+                <div class="d-flex flex-column align-center justify-center py-16 mt-4" style="background: white; border-radius: 8px; border: 1px solid #E2E8F0;">
+                    <MudText Typo="Typo.h6" Style="color: #64748B;">El plan no tiene materias cargadas</MudText>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-4" OnClick="AbrirModalAgregar">Agregar Primera Materia</MudButton>
+                </div>
+            }
+            else
+            {
+                @for (int i = 1; i <= ObtenerMaximoAnio(); i++)
+                {
+                    var anioActual = i;
+                    var materiasAnio = materiasDelPlan.Where(m => m.AnioCursada == anioActual).OrderBy(m => ObtenerNumeroCodigo(m.CodigoMateria)).ToList();
+
+                    <div class="year-separator">- @ObtenerNombreAnio(anioActual) -</div>
+
+                    <table class="official-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 80px;">Código</th>
+                                <th style="width: 250px;">Correlativas</th>
+                                <th>Materia</th>
+                                <th class="col-center" style="width: 120px;">Régimen</th>
+                                <th class="col-center" style="width: 80px;">H.C.</th>
+                                <th class="col-center" style="width: 100px;">Promoción</th>
+                                <th class="col-center col-libre">Libre</th>
+                                <th class="col-actions">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (materiasAnio.Any())
+                            {
+                                @foreach (var item in materiasAnio)
+                                {
+                                    <tr>
+                                        <td class="col-codigo">@item.CodigoMateria</td>
+
+                                        <td style="color: #64748B; font-size: 0.8rem; line-height: 1.2;">
+                                            @if (!string.IsNullOrEmpty(item.CorrelativasTexto))
+                                            {
+                                                @item.CorrelativasTexto
+                                            }
+                                            else
+                                            {
+                                                <span style="opacity: 0.5;">-</span>
+                                            }
+                                        </td>
+
+                                        <td class="col-materia">@item.NombreMateria</td>
+                                        <td class="col-center" style="font-weight: 600; font-size: 0.75rem; text-transform: uppercase;">@item.NombreRegimen</td>
+                                        <td class="col-center" style="font-weight: 700;">@item.CargaHorariaTotal</td>
+                                        <td class="col-center" style="font-weight: 700; font-size: 0.8rem; color: @(item.EsPromocionable ? "#166534" : "#64748B");">
+                                            @(item.EsPromocionable ? "SÍ" : "NO")
+                                        </td>
+
+                                        <!-- COLUMNA LIBRE -->
+                                        <td class="col-libre" style="color: @(item.EsLibre ? "#9c27b0" : "#64748B"); font-weight: 700;">
+                                            @(item.EsLibre ? "SÍ" : "NO")
+                                        </td>
+
+                                        <td class="col-actions">
+                                            <MudTooltip Text="Gestionar Correlativas">
+                                                <MudIconButton Icon="@Icons.Material.Filled.Link" Size="Size.Small" Style="color: #0288D1;" OnClick="@(() => AbrirModalCorrelativas(item))" />
+                                            </MudTooltip>
+
+                                            <MudTooltip Text="Editar">
+                                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Style="color: #475569;" OnClick="@(() => AbrirModalDetalle(item))" />
+                                            </MudTooltip>
+                                            <MudTooltip Text="Eliminar">
+                                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Style="color: #EF4444;" OnClick="@(() => AbrirModalEliminar(item))" />
+                                            </MudTooltip>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr><td colspan="8" style="text-align:center; padding: 20px; color:#94A3B8; font-style:italic;">No hay materias en este año.</td></tr>
+                            }
+                        </tbody>
+                    </table>
+
+                    <div class="btn-add-year" @onclick="@(() => AbrirModalAgregarRapido(anioActual))">+ Agregar Asignatura a @ObtenerNombreAnio(anioActual, true)</div>
+                }
+            }
+        </MudContainer>
+    </MudContainer>
+}
+
+<!-- MODAL AGREGAR/EDITAR -->
+<MudDialog @bind-Visible="mostrarModal" Options="dialogOptions" Class="unified-dialog-card">
+    <TitleContent>
+        <div class="pa-6 pb-2 d-flex justify-space-between align-center">
+            <div>
+                <MudText Class="modal-title">@(esEdicion ? "Editar Asignatura" : "Nueva Asignatura")</MudText>
+                <MudText Typo="Typo.body2" Style="color: #6B7280;">@(esEdicion ? "Modifique los detalles académicos." : "Complete la información para agregar al plan.")</MudText>
+            </div>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <div class="px-6 pb-6">
+            <EditForm Model="@materiaModel" OnValidSubmit="GuardarMateria">
+                <DataAnnotationsValidator />
+
+                <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pt-4" MinimumHeight="400px">
+
+                    <MudTabPanel Text="General" Icon="@Icons.Material.Filled.ListAlt">
+                        <MudGrid Spacing="2">
+                            <MudItem xs="12">
+                                <MudSelect T="int" Label="Materia (Catálogo)" @bind-Value="materiaModel.IdMateria" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter" Class="force-black-text" Required="true" Disabled="@esEdicion" AdornmentIcon="@Icons.Material.Filled.Search">
+                                    <MudSelectItem T="int" Value="0">Seleccione una materia...</MudSelectItem>
+                                    @foreach (var mat in catalogoMaterias.OrderBy(m => m.Nombre))
+                                    {
+                                        <MudSelectItem T="int" Value="@mat.Id">@mat.Codigo - @mat.Nombre</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            </MudItem>
+
+                            <MudItem xs="6">
+                                <MudNumericField Label="Año de Cursada" @bind-Value="materiaModel.AnioCursada" Min="1" Max="6" Variant="Variant.Outlined" Class="force-black-text" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.CalendarToday" />
+                            </MudItem>
+
+                            <MudItem xs="6">
+                                <MudSelect T="int" Label="Período/Cuatrimestre" @bind-Value="materiaModel.Cuatrimestre" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter" Class="force-black-text">
+                                    <MudSelectItem Value="0">Anual / Único</MudSelectItem>
+                                    <MudSelectItem Value="1">1º Cuatrimestre</MudSelectItem>
+                                    <MudSelectItem Value="2">2º Cuatrimestre</MudSelectItem>
+                                </MudSelect>
+                            </MudItem>
+
+                            <MudItem xs="6">
+                                <MudSelect T="int?" Label="Régimen" @bind-Value="materiaModel.IdRegimen" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter" Class="force-black-text" AdornmentIcon="@Icons.Material.Filled.Schedule">
+                                    @foreach (var reg in listaRegimenes)
+                                    {
+                                        <MudSelectItem T="int?" Value="@reg.Id">@reg.Nombre</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudNumericField Label="Carga Horaria" @bind-Value="materiaModel.CargaHorariaTotal" Min="1" Variant="Variant.Outlined" Class="force-black-text" Adornment="Adornment.End" AdornmentText="Hs" />
+                            </MudItem>
+                        </MudGrid>
+                    </MudTabPanel>
+
+                    <MudTabPanel Text="Reglas" Icon="@Icons.Material.Filled.Gavel">
+                        <MudGrid Spacing="2">
+                            <MudItem xs="12" Class="pb-0">
+                                <MudText Typo="Typo.subtitle2" Color="Color.Primary"><b>Sistema de Calificación</b></MudText>
+                            </MudItem>
+                            <MudItem xs="12">
+                                <MudRadioGroup @bind-Value="materiaModel.TipoCalificacion">
+                                    <MudRadio Value="0" Color="Color.Primary" Dense="true" Class="force-black-text">Numérica (1-10)</MudRadio>
+                                    <MudRadio Value="1" Color="Color.Secondary" Dense="true" Class="force-black-text">Conceptual (Aprobado/Desaprobado)</MudRadio>
+                                </MudRadioGroup>
+                            </MudItem>
+
+                            @if (materiaModel.TipoCalificacion == 0)
+                            {
+                                <MudItem xs="12" Class="mt-2"><MudDivider /><MudText Typo="Typo.caption" Style="color:#64748B;">CURSADA</MudText></MudItem>
+
+                                <MudItem xs="4">
+                                    <MudNumericField Label="Cant. Parciales" @bind-Value="materiaModel.CantidadParciales" Min="0" Max="10" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" />
+                                </MudItem>
+
+                                <MudItem xs="4">
+                                    <MudNumericField Label="Nota Regularizar" @bind-Value="materiaModel.NotaMinimaRegularizar" Min="1" Max="10" Step="0.5M" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" HelperText="Mínimo (Ej: 4)" />
+                                </MudItem>
+
+                                <MudItem xs="4">
+                                    <MudNumericField Label="% Asistencia" @bind-Value="materiaModel.PorcentajeAsistenciaRegularizar" Min="0" Max="100" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" Adornment="Adornment.End" AdornmentText="%" />
+                                </MudItem>
+
+                                <MudItem xs="12" Class="mt-3">
+                                    <MudSwitch @bind-Value="materiaModel.EsPromocionable" Color="Color.Success" Label="Permite Promoción" Class="force-black-text" />
+                                </MudItem>
+                                @if (materiaModel.EsPromocionable)
+                                {
+                                    <MudItem xs="6">
+                                        <MudNumericField Label="Asistencia Promoción" @bind-Value="materiaModel.PorcentajeAsistenciaPromocion" Min="0" Max="100" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" Adornment="Adornment.End" AdornmentText="%" />
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudNumericField Label="Nota Promoción" @bind-Value="materiaModel.NotaMinimaPromocion" Min="1" Max="10" Step="0.5M" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" HelperText="Mínimo (Ej: 7)" />
+                                    </MudItem>
+                                }
+                            }
+
+                            <MudItem xs="12" Class="mt-3"><MudDivider /><MudText Typo="Typo.caption" Style="color:#64748B;">FINAL</MudText></MudItem>
+                            <MudItem xs="6">
+                                <MudNumericField Label="Nota Aprob. Final" @bind-Value="materiaModel.NotaMinimaAprobacion" Min="1" Max="10" Step="0.5M" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" />
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudNumericField Label="Vigencia Cursada" @bind-Value="materiaModel.VigenciaCursadaAnios" Min="1" Max="10" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" Adornment="Adornment.End" AdornmentText="Años" />
+                            </MudItem>
+
+                            <!-- SWITCH MATERIA LIBRE -->
+                            <MudItem xs="12" Class="mt-4">
+                                <MudSwitch @bind-Value="materiaModel.EsLibre"
+                                           Color="Color.Secondary"
+                                           Label="Materia Libre (sin correlativas obligatorias)"
+                                           Class="force-black-text" />
+                                <MudText Typo="Typo.caption" Style="color: #64748B; display: block; margin-top: 4px; margin-left: 44px;">
+                                    Si está activado, los alumnos podrán inscribirse sin cumplir correlativas previas.
+                                </MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" Class="mt-3">
+                                <MudTextField Label="Reglas Especiales / Observaciones" @bind-Value="materiaModel.CondicionesCursada" Variant="Variant.Outlined" Lines="2" Class="force-black-text" Placeholder="Excepciones, entrega de TPs obligatorios, etc..." />
+                            </MudItem>
+                        </MudGrid>
+                    </MudTabPanel>
+
+                    <MudTabPanel Text="Contenidos" Icon="@Icons.Material.Filled.MenuBook">
+                        <MudGrid Spacing="2">
+                            <MudItem xs="12"><MudTextField Label="Objetivos Pedagógicos" @bind-Value="materiaModel.Objetivos" Variant="Variant.Outlined" Lines="4" Class="force-black-text" Placeholder="Describa qué se espera que el alumno logre..." /></MudItem>
+                            <MudItem xs="12"><MudTextField Label="Contenidos Mínimos" @bind-Value="materiaModel.ContenidosMinimos" Variant="Variant.Outlined" Lines="4" Class="force-black-text" Placeholder="Listado de temas principales..." /></MudItem>
+                        </MudGrid>
+                    </MudTabPanel>
+
+                    <MudTabPanel Text="Proyecto" Icon="@Icons.Material.Filled.WorkOutline">
+                        <MudGrid Spacing="2">
+                            <MudItem xs="12"><MudSwitch @bind-Value="materiaModel.TieneProyecto" Color="Color.Primary" Label="Requiere Proyecto Integrador" Class="force-black-text" /></MudItem>
+                            @if (materiaModel.TieneProyecto)
+                            {
+                                <MudItem xs="12"><MudTextField Label="Descripción del Proyecto" @bind-Value="materiaModel.DescripcionProyecto" Variant="Variant.Outlined" Lines="6" Class="force-black-text" Placeholder="Detalles sobre el trabajo práctico final..." /></MudItem>
+                            }
+                            else
+                            {
+                                <MudItem xs="12">
+                                    <div class="d-flex align-center justify-center pa-8" style="border: 1px dashed #E5E7EB; border-radius: 8px; color: #9CA3AF;">
+                                        <MudText>No se requiere proyecto para esta asignatura.</MudText>
+                                    </div>
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    </MudTabPanel>
+                </MudTabs>
+
+                <div class="d-flex justify-end gap-2 mt-6 pt-4" style="border-top: 1px solid #E5E7EB;">
+                    <MudButton OnClick="CerrarModales" Variant="Variant.Text" Color="Color.Default">Cancelar</MudButton>
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="rounded-lg px-6">Guardar</MudButton>
+                </div>
+            </EditForm>
+        </div>
+    </DialogContent>
+</MudDialog>
+
+<!-- MODAL CORRELATIVAS -->
+<MudDialog @bind-Visible="mostrarModalCorrelativas" Options="dialogOptions" Class="unified-dialog-card">
+    <TitleContent>
+        <div class="pa-6 pb-2 d-flex justify-space-between align-center">
+            <div>
+                <MudText Class="modal-title">Correlativas</MudText>
+                <MudText Typo="Typo.body2" Style="color: #6B7280;">Seleccione las materias necesarias para cursar <b>@materiaEnEdicion?.NombreMateria</b>.</MudText>
+            </div>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <div class="px-6 pb-6" style="max-height: 400px; overflow-y: auto;">
+            @if (materiasCandidatas != null && materiasCandidatas.Any())
+            {
+                @foreach (var grupo in materiasCandidatas.GroupBy(m => m.AnioCursada).OrderBy(g => g.Key))
+                {
+                    <div class="correlativas-list-year">@ObtenerNombreAnio(grupo.Key)</div>
+                    <MudGrid Spacing="1">
+                        @foreach (var mat in grupo.OrderBy(m => m.CodigoMateria))
+                        {
+                            <MudItem xs="12" sm="6">
+                                <MudCheckBox T="bool" Value="@correlativasSeleccionadas.Contains(mat.Id)" ValueChanged="@((bool chk) => ToggleCorrelativa(mat.Id, chk))" Label="@($"{mat.CodigoMateria} - {mat.NombreMateria}")" Color="Color.Primary" Dense="true" Class="force-black-text" />
+                            </MudItem>
+                        }
+                    </MudGrid>
+                }
+            }
+            else
+            {
+                <div class="d-flex justify-center pa-8" style="color:#94A3B8;">No hay materias previas disponibles.</div>
+            }
+        </div>
+        <div class="d-flex justify-end gap-2 px-6 pb-6 pt-4" style="border-top: 1px solid #E5E7EB;">
+            <MudButton OnClick="CerrarModales" Variant="Variant.Text" Color="Color.Default">Cancelar</MudButton>
+            <MudButton OnClick="GuardarCorrelativas" Variant="Variant.Filled" Color="Color.Primary" Class="rounded-lg px-6">Guardar Correlativas</MudButton>
+        </div>
+    </DialogContent>
+</MudDialog>
+
+<!-- MODAL ELIMINAR -->
+<MudDialog @bind-Visible="mostrarDialogoEliminar" Options="dialogOptionsEliminar" Class="unified-dialog-card">
+    <DialogContent>
+        <div class="pa-4 text-center">
+            <MudIcon Icon="@Icons.Material.Filled.Warning" Color="Color.Warning" Size="Size.Large" Class="mb-2" />
+            <MudText Typo="Typo.h6">¿Eliminar Materia?</MudText>
+            <MudText Typo="Typo.body2" Class="mt-2">Se quitará <b>@materiaParaEliminar?.NombreMateria</b> del plan.</MudText>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <div class="d-flex justify-center w-100 pb-4 gap-2">
+            <MudButton OnClick="CerrarModales" Variant="Variant.Outlined">Cancelar</MudButton>
+            <MudButton OnClick="ConfirmarEliminar" Variant="Variant.Filled" Color="Color.Error">Eliminar</MudButton>
+        </div>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private PlanEstudioDTO plan = new PlanEstudioDTO { Nombre = "Cargando...", NombreCarrera = "" };
+    private List<PlanMateriaDTO> materiasDelPlan = new List<PlanMateriaDTO>();
+    private List<MateriaDTO> catalogoMaterias = new List<MateriaDTO>();
+    private List<RegimenDTO> listaRegimenes = new List<RegimenDTO>();
+
+    private PlanMateriaDTO materiaModel = new PlanMateriaDTO();
+    private PlanMateriaDTO materiaParaEliminar;
+    private PlanMateriaDTO materiaEnEdicion;
+    private List<PlanMateriaDTO> materiasCandidatas = new List<PlanMateriaDTO>();
+    private HashSet<int> correlativasSeleccionadas = new HashSet<int>();
+
+    private bool loading = true;
+    private bool mostrarModal = false;
+    private bool mostrarModalCorrelativas = false;
+    private bool mostrarDialogoEliminar = false;
+    private bool esEdicion = false;
+
+    private DialogOptions dialogOptions = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true };
+    private DialogOptions dialogOptionsEliminar = new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true, CloseButton = false };
+
+    protected override async Task OnInitializedAsync() { await CargarDatos(); }
+
+    private async Task CargarDatos()
+    {
+        loading = true;
+        try
+        {
+            var t1 = PlanService.GetByIdAsync(Id);
+            var t2 = PlanService.GetMateriasByPlanAsync(Id);
+            var t3 = MateriaService.GetAllAsync();
+            var t4 = RegimenService.GetAllAsync();
+
+            await Task.WhenAll(t1, t2, t3, t4);
+
+            var p = await t1; if (p != null) plan = p;
+            materiasDelPlan = await t2 ?? new List<PlanMateriaDTO>();
+            catalogoMaterias = await t3 ?? new List<MateriaDTO>();
+            listaRegimenes = await t4 ?? new List<RegimenDTO>();
+        }
+        catch (Exception ex) { Snackbar.Add("Error al cargar datos: " + ex.Message, Severity.Error); }
+        finally { loading = false; }
+    }
+
+    private void AbrirModalCorrelativas(PlanMateriaDTO item)
+    {
+        materiaEnEdicion = item;
+        materiasCandidatas = materiasDelPlan.Where(m => m.Id != item.Id).ToList();
+        correlativasSeleccionadas = new HashSet<int>(item.IdsCorrelativas);
+        mostrarModalCorrelativas = true;
+    }
+
+    private void ToggleCorrelativa(int id, bool check)
+    {
+        if (check) correlativasSeleccionadas.Add(id); else correlativasSeleccionadas.Remove(id);
+    }
+
+    private async Task GuardarCorrelativas()
+    {
+        var exito = await PlanService.ActualizarCorrelativasAsync(materiaEnEdicion.Id, correlativasSeleccionadas.ToList());
+        if (exito) { Snackbar.Add("Correlativas actualizadas", Severity.Success); mostrarModalCorrelativas = false; await CargarDatos(); }
+        else { Snackbar.Add("Error al guardar correlativas", Severity.Error); }
+    }
+
+    private void AbrirModalAgregar()
+    {
+        materiaModel = new PlanMateriaDTO
+        {
+            IdPlan = Id,
+            AnioCursada = 1,
+            NotaMinimaAprobacion = 6,
+            CargaHorariaTotal = 64,
+            EsPromocionable = true,
+            NotaMinimaRegularizar = 4,
+            CantidadParciales = 2,
+            PorcentajeAsistenciaRegularizar = 60,
+            EsLibre = false  // Valor bool directo
+        };
+        esEdicion = false;
+        mostrarModal = true;
+    }
+
+    private void AbrirModalAgregarRapido(int anio)
+    {
+        materiaModel = new PlanMateriaDTO
+        {
+            IdPlan = Id,
+            AnioCursada = anio,
+            NotaMinimaAprobacion = 6,
+            CargaHorariaTotal = 64,
+            EsPromocionable = true,
+            NotaMinimaRegularizar = 4,
+            CantidadParciales = 2,
+            PorcentajeAsistenciaRegularizar = 60,
+            EsLibre = false  // Valor bool directo
+        };
+        esEdicion = false;
+        mostrarModal = true;
+    }
+
+    private void AbrirModalDetalle(PlanMateriaDTO item)
+    {
+        materiaModel = new PlanMateriaDTO
+        {
+            Id = item.Id,
+            IdPlan = item.IdPlan,
+            IdMateria = item.IdMateria,
+            AnioCursada = item.AnioCursada,
+            IdRegimen = item.IdRegimen,
+            Cuatrimestre = item.Cuatrimestre,
+            CargaHorariaTotal = item.CargaHorariaTotal,
+            NotaMinimaAprobacion = item.NotaMinimaAprobacion,
+            EsPromocionable = item.EsPromocionable,
+            Objetivos = item.Objetivos,
+            ContenidosMinimos = item.ContenidosMinimos,
+            TieneProyecto = item.TieneProyecto,
+            DescripcionProyecto = item.DescripcionProyecto,
+            CondicionesCursada = item.CondicionesCursada,
+            CondicionesAprobacion = item.CondicionesAprobacion,
+
+            TipoCalificacion = item.TipoCalificacion,
+            NotaMinimaRegularizar = item.NotaMinimaRegularizar,
+            NotaMinimaPromocion = item.NotaMinimaPromocion,
+            PorcentajeAsistenciaRegularizar = item.PorcentajeAsistenciaRegularizar,
+            PorcentajeAsistenciaPromocion = item.PorcentajeAsistenciaPromocion,
+            VigenciaCursadaAnios = item.VigenciaCursadaAnios,
+            CantidadParciales = item.CantidadParciales,
+
+            EsLibre = item.EsLibre  // Asignación directa (bool → bool)
+        };
+        esEdicion = true;
+        mostrarModal = true;
+    }
+
+    private async Task GuardarMateria()
+    {
+        if (materiaModel.IdMateria == 0 || materiaModel.IdRegimen == null)
+        {
+            Snackbar.Add("Complete campos obligatorios", Severity.Warning);
+            return;
+        }
+
+        bool exito;
+        if (esEdicion) exito = await PlanService.EditarMateriaAsync(materiaModel);
+        else exito = await PlanService.AgregarMateriaAsync(materiaModel);
+
+        if (exito)
+        {
+            Snackbar.Add("Guardado correctamente", Severity.Success);
+            mostrarModal = false;
+            await CargarDatos();
+        }
+        else Snackbar.Add("Error al guardar.", Severity.Error);
+    }
+
+    private void AbrirModalEliminar(PlanMateriaDTO item)
+    {
+        materiaParaEliminar = item;
+        mostrarDialogoEliminar = true;
+    }
+
+    private async Task ConfirmarEliminar()
+    {
+        if (await PlanService.QuitarMateriaAsync(materiaParaEliminar.Id))
+        {
+            Snackbar.Add("Eliminado", Severity.Success);
+            await CargarDatos();
+        }
+        else Snackbar.Add("Error", Severity.Error);
+        mostrarDialogoEliminar = false;
+    }
+
+    private void CerrarModales()
+    {
+        mostrarModal = false;
+        mostrarDialogoEliminar = false;
+        mostrarModalCorrelativas = false;
+    }
+
+    private int ObtenerNumeroCodigo(string codigo)
+    {
+        if (string.IsNullOrEmpty(codigo)) return 999;
+        if (codigo.Contains("-") && codigo.Split('-').Length > 1 && int.TryParse(codigo.Split('-')[1], out int num)) return num;
+        if (int.TryParse(codigo, out int n)) return n;
+        return 999;
+    }
+
+    private int ObtenerMaximoAnio() => materiasDelPlan.Any() ? materiasDelPlan.Max(m => m.AnioCursada) : 3;
+
+    private string ObtenerNombreAnio(int anio, bool corto = false) => anio switch
+    {
+        1 => corto ? "1º Año" : "PRIMER AÑO",
+        2 => corto ? "2º Año" : "SEGUNDO AÑO",
+        3 => corto ? "3º Año" : "TERCER AÑO",
+        4 => corto ? "4º Año" : "CUARTO AÑO",
+        5 => corto ? "5º Año" : "QUINTO AÑO",
+        _ => $"{anio}º AÑO"
+    };
+}

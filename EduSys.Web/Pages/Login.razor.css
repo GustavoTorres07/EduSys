@@ -1,0 +1,132 @@
+﻿/* --- FONDO ANIMADO (Igual que antes) --- */
+.login-container {
+    height: 100vh;
+    width: 100vw;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    /* Tu paleta en degradado */
+    background: linear-gradient(-45deg, #456990, #2a405b, #49beaa, #456990);
+    background-size: 400% 400%;
+    animation: gradientBG 15s ease infinite;
+    position: fixed;
+    top: 0;
+    left: 0;
+    padding: 1rem;
+}
+
+@keyframes gradientBG {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+/* --- TARJETA DE CRISTAL (TRANSPARENTE) --- */
+.glass-panel {
+    /* Magia de transparencia */
+    background: rgba(0, 0, 0, 0.25); /* Fondo negro muy transparente */
+    backdrop-filter: blur(20px); /* Efecto borroso fuerte */
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1); /* Borde sutil */
+    border-radius: 24px;
+    padding: 3rem 2rem;
+    width: 100%;
+    max-width: 450px; /* Ancho contenido, como una app móvil */
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); /* Sombra profunda */
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* --- FORZAR INPUTS A BLANCO --- */
+/* Esto es necesario para sobreescribir los colores oscuros de MudBlazor */
+::deep .mud-input-control {
+    margin-bottom: 1.5rem;
+}
+
+/* El texto que escribes */
+::deep .mud-input-slot {
+    color: white !important;
+    font-weight: 500;
+}
+
+/* La etiqueta (Label) */
+::deep .mud-input-label {
+    color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* El borde del input */
+::deep .mud-input-outlined-border {
+    border-color: rgba(255, 255, 255, 0.2) !important;
+    background-color: rgba(255, 255, 255, 0.05); /* Ligeramente iluminado */
+}
+
+/* Al hacer click en el input */
+::deep .mud-input-control.mud-input-focused .mud-input-outlined-border {
+    border-color: #49beaa !important; /* Tu color verde menta al enfocar */
+    background-color: rgba(0, 0, 0, 0.2); /* Se oscurece un poco para leer mejor */
+}
+
+/* Iconos dentro del input */
+::deep .mud-input-adornment-icon {
+    color: white !important;
+}
+
+/* --- BOTÓN DE ACCIÓN --- */
+.btn-accent {
+    background-color: #ef767a !important; /* Tu color rosa/rojo */
+    color: white !important;
+    font-weight: 800 !important;
+    letter-spacing: 1px;
+    box-shadow: 0 4px 15px rgba(239, 118, 122, 0.4); /* Resplandor rojizo */
+    transition: transform 0.2s;
+}
+
+    .btn-accent:hover {
+        background-color: #ff8a8e !important;
+        transform: scale(1.02);
+    }
+
+/* Animación de entrada */
+.fade-in {
+    animation: fadeIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(40px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Animación suave al cambiar de contenido */
+.animate-content {
+    animation: fadeInScale 0.4s ease-out;
+    width: 100%;
+}
+
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}

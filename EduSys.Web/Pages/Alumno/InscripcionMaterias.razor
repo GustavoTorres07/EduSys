@@ -1,0 +1,602 @@
+﻿@page "/inscripcion-materias"
+@using EduSys.Shared.DTOs
+@using EduSys.Web.Services.Interfaces
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@inject IComisionService ComisionService
+@inject IInscripcionService InscripcionService
+@inject IPeriodoService PeriodoService
+@inject IAlumnoService AlumnoService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<style>
+    /* ... (Tus estilos se mantienen igual) ... */
+    :root {
+        --edusys-coral: #EF767A;
+        --edusys-blue: #456990;
+        --edusys-teal: #49BEAA;
+        --edusys-gray: #f8fafc;
+        --edusys-purple: #9c27b0;
+    }
+
+    .inscripcion-container {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .header-institucional {
+        background: linear-gradient(135deg, var(--edusys-blue) 0%, #2c4a6e 100%);
+        color: white;
+        padding: 1.5rem 2rem;
+        border-radius: 12px;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 12px rgba(69, 105, 144, 0.15);
+    }
+
+    /* Resto de estilos igual... */
+    .materia-card {
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+        transition: all 0.2s ease;
+        display: flex;
+        flex-direction: column;
+    }
+
+        .materia-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            border-color: var(--edusys-blue);
+        }
+
+    .materia-header {
+        padding: 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background-color: white;
+        cursor: pointer;
+        min-height: 70px;
+        gap: 1rem;
+    }
+
+        .materia-header:hover {
+            background-color: #f8fafc;
+        }
+
+        .materia-header.inscripto {
+            border-left: 5px solid var(--edusys-teal);
+        }
+
+        .materia-header.disponible {
+            border-left: 5px solid var(--edusys-blue);
+        }
+
+        .materia-header.bloqueado {
+            border-left: 5px solid #cbd5e1;
+        }
+
+        .materia-header.libre {
+            border-left: 5px solid var(--edusys-purple) !important;
+        }
+
+    .materia-nombre {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #334155;
+        line-height: 1.4;
+        flex: 1;
+    }
+
+    .estado-badge {
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        line-height: 1;
+        min-width: 110px;
+    }
+
+        .estado-badge.inscripto {
+            background-color: var(--edusys-teal);
+            color: white;
+            border: 1px solid var(--edusys-teal);
+        }
+
+        .estado-badge.disponible {
+            background-color: #e0f2fe;
+            color: #0369a1;
+            border: 1px solid #bae6fd;
+        }
+
+        .estado-badge.bloqueado {
+            background-color: #f1f5f9;
+            color: #94a3b8;
+            border: 1px solid #e2e8f0;
+        }
+
+        .estado-badge.libre {
+            background-color: var(--edusys-purple);
+            color: white;
+            border: 1px solid var(--edusys-purple);
+        }
+
+    .comisiones-container {
+        overflow: hidden;
+        transition: max-height 0.3s ease-out;
+        background-color: white;
+    }
+
+        .comisiones-container.collapsed {
+            max-height: 0 !important;
+        }
+
+    .comisiones-inner {
+        padding: 1rem;
+        border-top: 1px solid #f1f5f9;
+    }
+
+    .comision-item {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 10px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+    }
+
+        .comision-item.mi-comision {
+            background: #f0fdfa;
+            border-color: var(--edusys-teal);
+            border-width: 1px;
+            position: relative;
+        }
+
+            .comision-item.mi-comision::after {
+                content: "CURSANDO";
+                position: absolute;
+                top: 0;
+                right: 0;
+                background: var(--edusys-teal);
+                color: white;
+                font-size: 0.6rem;
+                font-weight: 800;
+                padding: 2px 8px;
+                border-bottom-left-radius: 6px;
+                border-top-right-radius: 6px;
+            }
+
+    .info-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.85rem;
+        color: #475569;
+        margin-bottom: 6px;
+    }
+
+        .info-row .mud-icon-root {
+            font-size: 1.1rem;
+            color: #94a3b8;
+            flex-shrink: 0;
+        }
+
+        .info-row strong {
+            color: #334155;
+            font-weight: 600;
+        }
+
+    .text-nowrap-custom {
+        display: block;
+        width: 100%;
+        line-height: 1.2;
+    }
+
+    .btn-inscribir {
+        background-color: var(--edusys-blue);
+        color: white;
+        border: none;
+        padding: 10px;
+        border-radius: 6px;
+        font-weight: 600;
+        width: 100%;
+        cursor: pointer;
+        font-size: 0.85rem;
+        transition: background 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+    }
+
+        .btn-inscribir:hover {
+            background-color: #355270;
+        }
+
+    .btn-desinscribir {
+        background-color: white;
+        color: var(--edusys-coral);
+        border: 2px solid var(--edusys-coral);
+        padding: 8px;
+        border-radius: 6px;
+        font-weight: 700;
+        width: 100%;
+        cursor: pointer;
+        font-size: 0.85rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        text-transform: uppercase;
+        transition: all 0.2s;
+    }
+
+        .btn-desinscribir:hover {
+            background-color: var(--edusys-coral);
+            color: white;
+        }
+
+    .btn-bloqueado {
+        background: #f8fafc;
+        color: #94a3b8;
+        border: 1px solid #e2e8f0;
+        width: 100%;
+        cursor: not-allowed;
+        padding: 10px;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .loading-overlay {
+        text-align: center;
+        padding: 3rem;
+        color: var(--edusys-blue);
+    }
+
+    .dialog-header-danger {
+        background: #D32F2F;
+        color: white;
+        padding: 12px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .dialog-body {
+        padding: 24px;
+    }
+
+    .actions-footer {
+        padding: 16px 24px;
+        border-top: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        background-color: white;
+    }
+</style>
+
+<div class="inscripcion-container pa-4">
+    <div class="header-institucional">
+        <div class="d-flex justify-space-between align-center">
+            <div>
+                <MudText Typo="Typo.h4" Style="font-weight: 700; margin-bottom: 0.25rem;">Inscripción Académica</MudText>
+                @if (periodoActual != null && alumnoActual != null)
+                {
+                    <div class="d-flex flex-column">
+                        <MudText Typo="Typo.body1" Style="opacity: 0.95;">
+                            Ciclo Lectivo: <strong>@periodoActual.Nombre</strong>
+                        </MudText>
+
+                        @* ✅ AQUI MOSTRAMOS LA FECHA DE VIGENCIA *@
+                        @* ✅ CORRECCIÓN: Usamos interpolación de strings $"" que maneja el formato automáticamente *@
+                        <div class="d-flex align-center mt-1 gap-2">
+                            <MudIcon Icon="@Icons.Material.Filled.DateRange" Size="Size.Small" Style="color: #FFD54F;" />
+                            <MudText Typo="Typo.body2" Style="opacity: 0.9;">
+                                Inscripciones abiertas del <b>@($"{periodoActual.FechaInicio:dd/MM/yyyy}")</b> al <b>@($"{periodoActual.FechaFin:dd/MM/yyyy}")</b>
+                            </MudText>
+                        </div>
+
+                        <MudText Typo="Typo.body2" Class="mt-1" Style="opacity: 0.9;">
+                            <MudIcon Icon="@Icons.Material.Filled.Place" Size="Size.Small" style="vertical-align:text-bottom; color: #49DCB1;" />
+                            Sede Asignada: <strong>@alumnoActual.NombreSede</strong>
+                        </MudText>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    @if (loading)
+    {
+        <div class="loading-overlay">
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+            <MudText Typo="Typo.body1" Class="mt-3">Cargando oferta académica...</MudText>
+        </div>
+    }
+    else if (periodoActual == null)
+    {
+        <MudAlert Severity="Severity.Warning" Variant="Variant.Filled">No hay un periodo de inscripción activo actualmente.</MudAlert>
+    }
+    else if (alumnoActual != null && alumnoActual.IdSede == 0)
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Filled">No tienes una sede asignada en tu legajo. Por favor, contacta a Bedelía.</MudAlert>
+    }
+    else
+    {
+        <MudTabs Elevation="0" Color="Color.Transparent" SliderColor="Color.Primary" ApplyEffectsToContainer="true" Class="mt-4">
+            @foreach (var grupoAnio in comisionesFiltradas.GroupBy(c => c.AnioCursada).OrderBy(g => g.Key))
+            {
+                <MudTabPanel Text="@($"{grupoAnio.Key}° AÑO")">
+                    <ChildContent>
+                        <div class="d-flex justify-end mb-3 mt-4">
+                            <MudButton Variant="Variant.Text" Size="Size.Small" Color="Color.Primary"
+                                       OnClick="ToggleTodasLasMaterias" StartIcon="@(TodasExpandidas() ? Icons.Material.Filled.UnfoldLess : Icons.Material.Filled.UnfoldMore)">
+                                @(TodasExpandidas() ? "Contraer todo" : "Expandir todo")
+                            </MudButton>
+                        </div>
+
+                        <MudGrid Class="mt-2" Spacing="3">
+                            @foreach (var grupoMateria in grupoAnio.GroupBy(c => c.MateriaNombre))
+                            {
+                                var primera = grupoMateria.First();
+                                var miInscripcion = misInscripciones.FirstOrDefault(i => i.Materia == primera.MateriaNombre);
+                                bool inscripto = miInscripcion != null;
+
+                                bool esMateriaLibre = primera.EsMateriaLibre;
+                                bool disponible = inscripto || esMateriaLibre || primera.CumpleCorrelativas;
+
+                                string estadoClass = inscripto ? "inscripto" : (disponible ? "disponible" : "bloqueado");
+                                if (esMateriaLibre) estadoClass += " libre";
+
+                                string estadoTexto = inscripto ? "INSCRIPTO" : (esMateriaLibre ? "LIBRE" : (primera.CumpleCorrelativas ? "DISPONIBLE" : "BLOQUEADO"));
+                                bool expandida = EstaExpandida(primera.MateriaNombre);
+
+                                <MudItem xs="12" md="6" lg="4">
+                                    <div class="materia-card">
+                                        <div class="materia-header @estadoClass" @onclick="() => ToggleMateria(primera.MateriaNombre)">
+                                            <div class="materia-nombre">@primera.MateriaNombre</div>
+
+                                            <div class="d-flex align-center gap-2">
+                                                <div class="estado-badge @estadoClass">
+                                                    @if (inscripto)
+                                                    {
+                                                        <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" Style="font-size: 1rem;" />
+                                                    }
+                                                    else if (esMateriaLibre)
+                                                    {
+                                                        <MudIcon Icon="@Icons.Material.Filled.LockOpen" Size="Size.Small" Style="font-size: 1rem;" />
+                                                    }
+                                                    else if (!primera.CumpleCorrelativas)
+                                                    {
+                                                        <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" Style="font-size: 1rem;" />
+                                                    }
+                                                    <span>@estadoTexto</span>
+                                                </div>
+
+                                                <MudIcon Icon="@Icons.Material.Filled.ExpandMore" Color="Color.Default"
+                                                         Style="@($"transform: {(expandida ? "rotate(180deg)" : "rotate(0deg)")}; transition: 0.3s;")" />
+                                            </div>
+                                        </div>
+
+                                        <div class="comisiones-container @(!expandida ? "collapsed" : "")" style="@(expandida ? "max-height: 1000px;" : "")">
+                                            <div class="comisiones-inner">
+                                                @if (!disponible && !inscripto && !esMateriaLibre)
+                                                {
+                                                    <div style="background: #fff7ed; color: #c2410c; padding: 10px; border-radius: 6px; font-size: 0.85rem; border: 1px solid #ffedd5;">
+                                                        <div class="d-flex align-center gap-2 mb-1">
+                                                            <MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Small" />
+                                                            <b>Requisitos faltantes:</b>
+                                                        </div>
+                                                        @primera.MensajeError
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    @foreach (var comision in grupoMateria)
+                                                    {
+                                                        bool esMiComision = inscripto && miInscripcion!.Comision == comision.Codigo;
+
+                                                        <div class="comision-item @(esMiComision ? "mi-comision" : "")">
+                                                            <div class="d-flex justify-space-between mb-3 align-center">
+                                                                <div style="font-weight:800; color:var(--edusys-blue); font-size: 0.9rem;">Comisión @comision.Codigo</div>
+                                                                <div style="font-size:0.75rem; background:#f1f5f9; padding:4px 10px; border-radius:4px; font-weight:600; color:#64748b; @(esMiComision ? "margin-right: 85px;" : "")">
+                                                                    Cupo: @comision.CupoDisponible / @comision.CupoMaximo
+                                                                </div>
+                                                            </div>
+
+                                                            <div class="info-row">
+                                                                <MudIcon Icon="@Icons.Material.Filled.Person" Title="Docente" />
+                                                                <span>Docente: <strong>@(string.IsNullOrEmpty(comision.Profesor) ? "A designar" : comision.Profesor)</strong></span>
+                                                            </div>
+
+                                                            <div class="info-row mb-3">
+                                                                <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Title="Horarios" />
+                                                                <span class="text-nowrap-custom">
+                                                                    Horario: <strong>@(string.IsNullOrEmpty(comision.Horarios) || comision.Horarios == "A confirmar" ? comision.Turno : comision.Horarios)</strong>
+                                                                </span>
+                                                            </div>
+
+                                                            @if (esMiComision)
+                                                            {
+                                                                <button class="btn-desinscribir" disabled="@procesando" @onclick="@(() => AbrirModalBaja(miInscripcion!.Id, comision.MateriaNombre))">
+                                                                    <MudIcon Icon="@Icons.Material.Filled.Close" Size="Size.Small" /> DAR DE BAJA
+                                                                </button>
+                                                            }
+                                                            else if (inscripto)
+                                                            {
+                                                                <button class="btn-bloqueado" disabled>YA ESTÁS INSCRIPTO</button>
+                                                            }
+                                                            else if (comision.CupoDisponible <= 0)
+                                                            {
+                                                                <button class="btn-bloqueado" disabled>SIN CUPO</button>
+                                                            }
+                                                            else
+                                                            {
+                                                                <button class="btn-inscribir" disabled="@procesando" @onclick="@(() => Inscribirse(comision))">
+                                                                    <MudIcon Icon="@Icons.Material.Filled.AddCircleOutline" Size="Size.Small" /> INSCRIBIRSE
+                                                                </button>
+                                                            }
+                                                        </div>
+                                                    }
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    </ChildContent>
+                </MudTabPanel>
+            }
+        </MudTabs>
+    }
+</div>
+
+<MudDialog @bind-Visible="mostrarDialogoBaja" Options="optionsBaja" Class="rounded-lg overflow-hidden">
+    <DialogContent>
+        <div class="d-flex flex-column" style="background-color: white;">
+            <div class="dialog-header-danger">
+                <div class="d-flex align-center">
+                    <MudIcon Icon="@Icons.Material.Filled.PersonOff" Class="mr-3" />
+                    <MudText Typo="Typo.h6" Style="font-weight: 700; letter-spacing: 0.5px;">Confirmar Baja</MudText>
+                </div>
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" OnClick="CerrarModalBaja" Size="Size.Small" />
+            </div>
+
+            <div class="dialog-body">
+                <MudText Typo="Typo.body1" Class="mb-2">¿Estás seguro que deseas darte de baja de esta materia?</MudText>
+
+                <div class="d-flex align-center mt-4 pa-3 rounded" style="background-color: #FEF2F2; border: 1px solid #FECACA;">
+                    <MudAvatar Color="Color.Error" Size="Size.Medium" Variant="Variant.Outlined" Class="mr-3">
+                        <MudIcon Icon="@Icons.Material.Filled.Book" />
+                    </MudAvatar>
+                    <div>
+                        <MudText Typo="Typo.subtitle2" Color="Color.Error" Style="font-weight: 700;">@nombreMateriaParaBaja</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Default">Perderás tu cupo en esta comisión.</MudText>
+                    </div>
+                </div>
+            </div>
+
+            <div class="actions-footer">
+                <MudButton OnClick="CerrarModalBaja" Variant="Variant.Outlined" Color="Color.Default">Cancelar</MudButton>
+                <MudButton OnClick="ConfirmarBaja" Variant="Variant.Filled" Color="Color.Error" StartIcon="@Icons.Material.Filled.DeleteForever">Confirmar Baja</MudButton>
+            </div>
+        </div>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    private bool loading = true;
+    private bool procesando = false;
+    private AlumnoDTO? alumnoActual;
+    private PeriodoAcademicoDTO? periodoActual;
+    private List<ComisionDTO> comisionesFiltradas = new();
+    private List<InscripcionCursadaListadoDTO> misInscripciones = new();
+    private Dictionary<string, bool> materiasExpandidas = new();
+
+    private bool mostrarDialogoBaja = false;
+    private int idInscripcionParaBaja = 0;
+    private string nombreMateriaParaBaja = "";
+
+    private DialogOptions optionsBaja = new() { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true, NoHeader = true, CloseButton = false };
+
+    protected override async Task OnInitializedAsync() => await CargarDatos();
+
+    private async Task CargarDatos()
+    {
+        loading = true;
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var idUsuarioStr = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (int.TryParse(idUsuarioStr, out int idUsuario))
+            {
+                alumnoActual = await AlumnoService.GetByUsuarioIdAsync(idUsuario);
+                if (alumnoActual != null && alumnoActual.IdSede > 0)
+                {
+                    var periodos = await PeriodoService.GetAllAsync();
+                    periodoActual = periodos.FirstOrDefault(p => p.Activo && p.Estado == "Abierto" && p.FechaInicio <= DateTime.Now && p.FechaFin >= DateTime.Now);
+                    if (periodoActual != null)
+                    {
+                        comisionesFiltradas = await InscripcionService.GetOfertaInscripcionAsync(alumnoActual.Id, periodoActual.Id);
+                        misInscripciones = await InscripcionService.GetInscripcionesAlumnoAsync(alumnoActual.Id, periodoActual.Id);
+                        foreach (var m in comisionesFiltradas.Select(c => c.MateriaNombre).Distinct())
+                            if (!materiasExpandidas.ContainsKey(m)) materiasExpandidas[m] = false;
+                    }
+                }
+            }
+        }
+        catch (Exception ex) { Snackbar.Add("Error: " + ex.Message, Severity.Error); }
+        finally { loading = false; }
+    }
+
+    private void ToggleMateria(string m)
+    {
+        if (materiasExpandidas.ContainsKey(m))
+            materiasExpandidas[m] = !materiasExpandidas[m];
+        else
+            materiasExpandidas[m] = true;
+    }
+
+    private bool EstaExpandida(string m) => materiasExpandidas.TryGetValue(m, out var v) && v;
+
+    private bool TodasExpandidas() => materiasExpandidas.Values.All(v => v);
+
+    private void ToggleTodasLasMaterias()
+    {
+        bool target = !TodasExpandidas();
+        foreach (var k in materiasExpandidas.Keys.ToList())
+            materiasExpandidas[k] = target;
+    }
+
+    private async Task Inscribirse(ComisionDTO comision)
+    {
+        procesando = true;
+        // Se asume que el backend ya recibe el DTO completo
+        var req = new InscripcionCursadaRequestDTO { IdAlumno = alumnoActual!.Id, IdComision = comision.Id };
+        var res = await InscripcionService.InscribirAsync(req);
+        if (res.Exito)
+        {
+            Snackbar.Add("¡Inscripto!", Severity.Success);
+            await CargarDatos();
+        }
+        else
+        {
+            await DialogService.ShowMessageBox("Atención", res.Mensaje);
+        }
+        procesando = false;
+    }
+
+    private void AbrirModalBaja(int id, string materia)
+    {
+        idInscripcionParaBaja = id;
+        nombreMateriaParaBaja = materia;
+        mostrarDialogoBaja = true;
+    }
+
+    private void CerrarModalBaja()
+    {
+        mostrarDialogoBaja = false;
+        idInscripcionParaBaja = 0;
+        nombreMateriaParaBaja = "";
+    }
+
+    private async Task ConfirmarBaja()
+    {
+        if (await InscripcionService.CancelarInscripcionAsync(idInscripcionParaBaja))
+        {
+            Snackbar.Add("Baja procesada", Severity.Info);
+            await CargarDatos();
+        }
+        CerrarModalBaja();
+    }
+}

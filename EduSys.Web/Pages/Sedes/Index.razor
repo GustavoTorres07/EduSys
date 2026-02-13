@@ -1,0 +1,384 @@
+﻿@page "/sedes"
+@using EduSys.Shared.DTOs
+@using EduSys.Web.Services.Interfaces
+@inject ISedeService SedeService
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<style>
+    /* 1. TEXTO NEGRO FORZADO Y PAGINADOR */
+    .force-black-text,
+    .force-black-text input,
+    .force-black-text textarea,
+    .force-black-text .mud-input-slot,
+    .force-black-text .mud-input-root,
+    .force-black-text .mud-table-pagination-caption,
+    .force-black-text .mud-table-pagination-select .mud-input-slot,
+    .force-black-text .mud-select-input {
+        color: #1F2937 !important;
+        -webkit-text-fill-color: #1F2937 !important;
+        font-weight: 500;
+    }
+
+        .force-black-text .mud-input-label {
+            color: #456990 !important;
+            background-color: white !important;
+            padding: 0 4px;
+            z-index: 2;
+            font-weight: 600;
+        }
+
+    /* 2. ESTILO DE MODALES UNIFICADO */
+    .unified-dialog-card {
+        background-color: white !important;
+        border-radius: 12px !important;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.2) !important;
+    }
+
+    .modal-title {
+        color: var(--mud-palette-primary);
+        font-weight: 800;
+        font-size: 1.5rem;
+    }
+
+    .modal-title-warning {
+        color: #d97706;
+        font-weight: 800;
+        font-size: 1.5rem;
+    }
+
+    /* ESTILOS INPUTS MODAL */
+    .mud-dialog .mud-input-outlined-border {
+        border-color: #456990 !important;
+        border-width: 1px !important;
+    }
+
+    .mud-dialog .mud-input-control {
+        background-color: #FAFAFA;
+        border-radius: 4px;
+    }
+
+        .mud-dialog .mud-input-control input {
+            color: #0F172A !important;
+            font-weight: 500;
+        }
+
+    /* Iconos grises */
+    .mud-input-adornment-start .mud-icon-root,
+    .force-black-text .mud-icon-root {
+        color: #6B7280 !important;
+    }
+
+    /* 3. CONTROLES */
+    .search-modern {
+        background-color: white !important;
+        border: 1px solid #E5E7EB !important;
+        border-radius: 8px !important;
+    }
+
+    .filter-btn {
+        transition: all 0.2s ease-in-out;
+        border-radius: 20px !important;
+        text-transform: none !important;
+        font-weight: 600 !important;
+    }
+</style>
+
+<MudText Typo="Typo.h5" Color="Color.Primary" Align="Align.Center" Class="mb-4"><b>Gestión de Sedes</b></MudText>
+
+<MudTable @ref="_table" Items="@sedes" Hover="true" Loading="@loading" RowsPerPage="5" Filter="new Func<SedeDTO, bool>(FilterFunc)" Elevation="3" Class="rounded-xl" ReadOnly="false" CanCancelEdit="true" RowEditCommit="ItemHasBeenCommitted" EditTrigger="TableEditTrigger.EditButton" ApplyButtonPosition="TableApplyButtonPosition.End">
+
+    <ToolBarContent>
+        <MudText Typo="Typo.h6" Color="Color.Primary" Class="d-none d-md-flex font-weight-bold mr-4">Sedes Institucionales</MudText>
+        <MudSpacer />
+
+        <div class="d-flex align-center gap-2 px-4 border-r mr-4" style="border-color: #e5e7eb;">
+            <MudText Typo="Typo.body2" Style="color: #6B7280; font-weight: 500;">Mostrar:</MudText>
+            <MudButton OnClick="@(() => CambiarFiltro("Todos"))" Variant="@(filtroEstado == "Todos" ? Variant.Filled : Variant.Outlined)" Color="@(filtroEstado == "Todos" ? Color.Primary : Color.Default)" Size="Size.Small" Class="filter-btn">Todas</MudButton>
+            <MudButton OnClick="@(() => CambiarFiltro("Activas"))" Variant="@(filtroEstado == "Activas" ? Variant.Filled : Variant.Outlined)" Color="@(filtroEstado == "Activas" ? Color.Success : Color.Default)" Size="Size.Small" Class="filter-btn">Activas</MudButton>
+            <MudButton OnClick="@(() => CambiarFiltro("Bajas"))" Variant="@(filtroEstado == "Bajas" ? Variant.Filled : Variant.Outlined)" Color="@(filtroEstado == "Bajas" ? Color.Warning : Color.Default)" Size="Size.Small" Class="filter-btn">Bajas</MudButton>
+        </div>
+
+        <MudTextField @bind-Value="searchString" Placeholder="Buscar sede..." Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Variant="Variant.Text" Margin="Margin.Dense" Class="mt-0 search-modern force-black-text px-2" Style="min-width: 250px;" Immediate="true" Clearable="true" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="AbrirModalCrear" Class="ml-4 rounded-lg px-4" Elevation="0">Nueva</MudButton>
+    </ToolBarContent>
+
+    <EditButtonContent><span style="display:none;"></span></EditButtonContent>
+
+    <HeaderContent>
+        <MudTh Style="text-align: center;">Nombre</MudTh>
+        <MudTh Style="text-align: center;">Dirección</MudTh>
+        <MudTh Style="text-align: center;">Código Postal</MudTh>
+        <MudTh Style="text-align: center;">Aulas</MudTh>
+        <MudTh Style="text-align: center;">Estado</MudTh>
+        <MudTh Style="width: 140px; text-align: center;">Acciones</MudTh>
+    </HeaderContent>
+
+    <RowTemplate>
+        <MudTd DataLabel="Nombre" Style="text-align: center;">
+            <MudText Typo="Typo.body2" Style="font-weight: 600;">@context.Nombre</MudText>
+        </MudTd>
+
+        <MudTd DataLabel="Dirección" Style="text-align: center;">
+            <div style="width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0 auto;">
+                <MudTooltip Text="@context.Direccion" Arrow="true" Placement="Placement.Top">
+                    <span style="cursor: help;">@context.Direccion</span>
+                </MudTooltip>
+            </div>
+        </MudTd>
+
+        <MudTd DataLabel="Código Postal" Style="text-align: center;">
+            <MudText Typo="Typo.caption">@context.CodigoPostal</MudText>
+        </MudTd>
+
+        <MudTd DataLabel="Aulas" Style="text-align: center;">
+            @* CAMBIO A GRIS INSTITUCIONAL *@
+            <MudChip T="string" Color="Color.Default" Variant="Variant.Text" Size="Size.Small" Style="font-weight: 700; color: #475569; border: 1px solid #CBD5E1;">
+                @context.CantidadAulas
+            </MudChip>
+        </MudTd>
+
+        <MudTd DataLabel="Estado" Style="text-align: center;">
+            <MudChip T="string" Color="@(context.Activo? Color.Success: Color.Warning)" Size="Size.Small" Variant="Variant.Filled" Class="rounded">
+                @(context.Activo ? "Activa" : "Baja")
+            </MudChip>
+        </MudTd>
+
+        <MudTd DataLabel="Acciones" Style="text-align: center;">
+            <div class="d-flex justify-center">
+                @if (context.Activo)
+                {
+                    <MudTooltip Text="Dar de Baja">
+                        <MudIconButton Icon="@Icons.Material.Filled.Block" Color="Color.Warning" Size="Size.Small" OnClick="@(() => AbrirModalBaja(context))" Class="mr-1" />
+                    </MudTooltip>
+                }
+                else
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.Circle" Size="Size.Small" Color="Color.Default" Style="opacity: 0.3;" Class="mr-1" />
+                }
+
+                <MudTooltip Text="Gestionar Aulas">
+                    <MudIconButton Icon="@Icons.Material.Filled.MeetingRoom" Color="Color.Info" Size="Size.Small" OnClick="@(() => IrADetalle(context.Id))" Class="mr-1" />
+                </MudTooltip>
+
+                <MudTooltip Text="Editar">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" OnClick="@(() => _table.SetEditingItem(context))" />
+                </MudTooltip>
+            </div>
+        </MudTd>
+    </RowTemplate>
+
+    <RowEditingTemplate>
+        <MudTd DataLabel="Nombre"><MudTextField @bind-Value="@context.Nombre" Label="Nombre" Variant="Variant.Text" Class="force-black-text" /></MudTd>
+        <MudTd DataLabel="Dirección"><MudTextField @bind-Value="@context.Direccion" Label="Dirección" Variant="Variant.Text" Class="force-black-text" /></MudTd>
+        <MudTd DataLabel="CP"><MudTextField @bind-Value="@context.CodigoPostal" Label="C.P." Variant="Variant.Text" Class="force-black-text" /></MudTd>
+        <MudTd DataLabel="Aulas"><MudText Typo="Typo.caption">@context.CantidadAulas</MudText></MudTd>
+        <MudTd DataLabel="Estado"><MudSwitch @bind-Value="@context.Activo" Color="Color.Success" Label="@(context.Activo ? "Act" : "Baj")" /></MudTd>
+    </RowEditingTemplate>
+
+    <PagerContent>
+        <MudTablePager RowsPerPageString="Filas:"
+                       PageSizeOptions="new int[] { 5, 10, 25, 50 }"
+                       InfoFormat="{first_item}-{last_item} de {all_items}"
+                       Class="force-black-text" />
+    </PagerContent>
+</MudTable>
+
+@* --- MODAL 1: CREAR NUEVA SEDE --- *@
+<MudDialog @bind-Visible="mostrarDialogoCrear" Options="optionsCrear" Class="unified-dialog-card">
+    <TitleContent>
+        <div class="pa-6 pb-2 d-flex justify-space-between align-center">
+            <div>
+                <MudText Class="modal-title">Nueva Sede</MudText>
+                <MudText Typo="Typo.body2" Style="color: #6B7280;">Ingresa los detalles de la ubicación.</MudText>
+            </div>
+            <MudIconButton Icon="@Icons.Material.Filled.Close" OnClick="CerrarModales" Color="Color.Default" />
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <div class="px-6 pb-4">
+            <EditForm Model="@sedeModel" OnValidSubmit="GuardarNuevaSede">
+                <DataAnnotationsValidator />
+                <MudGrid Spacing="2">
+                    <MudItem xs="12">
+                        <MudTextField Label="Nombre de la Sede"
+                                      Placeholder="Ej: Campus Central"
+                                      @bind-Value="sedeModel.Nombre"
+                                      For="@(() => sedeModel.Nombre)"
+                                      Variant="Variant.Outlined"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Business"
+                                      Class="force-black-text"
+                                      Error="@nombreError"
+                                      ErrorText="El nombre de la sede es obligatorio" />
+                    </MudItem>
+                    <MudItem xs="8">
+                        <MudTextField Label="Dirección"
+                                      Placeholder="Ej: Av. Principal 123"
+                                      @bind-Value="sedeModel.Direccion"
+                                      For="@(() => sedeModel.Direccion)"
+                                      Variant="Variant.Outlined"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Place"
+                                      Class="force-black-text" />
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudTextField Label="C.P."
+                                      Placeholder="6300"
+                                      @bind-Value="sedeModel.CodigoPostal"
+                                      Variant="Variant.Outlined"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.MarkunreadMailbox"
+                                      Class="force-black-text" />
+                    </MudItem>
+
+                    <MudItem xs="12" Class="d-flex justify-end gap-2 mt-4 pt-4" style="border-top: 1px solid #E5E7EB;">
+                        <MudButton OnClick="CerrarModales" Variant="Variant.Text" Color="Color.Default">Cancelar</MudButton>
+                        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="rounded-lg px-6" Elevation="0">Guardar Sede</MudButton>
+                    </MudItem>
+                </MudGrid>
+            </EditForm>
+        </div>
+    </DialogContent>
+</MudDialog>
+
+@* --- MODAL 2: CONFIRMAR BAJA --- *@
+<MudDialog @bind-Visible="mostrarDialogoBaja" Options="optionsBaja" Class="unified-dialog-card">
+    <DialogContent>
+        <div class="pa-4 d-flex flex-column align-center text-center">
+            <MudIcon Icon="@Icons.Material.Filled.Block" Color="Color.Warning" Style="font-size: 4rem;" Class="mb-4" />
+            <MudText Class="modal-title-warning mb-2">Confirmar Baja</MudText>
+            <MudText Typo="Typo.body1" Class="force-black-text mb-4">La sede <b>@sedeParaBaja?.Nombre</b> pasará a estado inactivo.</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Default">Podrás reactivarla editando su estado en la tabla.</MudText>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <div class="px-6 pb-6 d-flex justify-center gap-4" style="width: 100%;">
+            <MudButton OnClick="CerrarModales" Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg">Cancelar</MudButton>
+            <MudButton OnClick="ConfirmarBaja" Variant="Variant.Filled" Color="Color.Warning" Class="rounded-lg px-6" Elevation="0">Confirmar</MudButton>
+        </div>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private MudTable<SedeDTO> _table;
+
+    private List<SedeDTO> sedes = new List<SedeDTO>();
+    private string searchString = "";
+    private string filtroEstado = "Activas";
+
+    private SedeDTO sedeModel = new SedeDTO();
+    private SedeDTO sedeParaBaja;
+
+    private bool mostrarDialogoCrear = false;
+    private bool mostrarDialogoBaja = false;
+
+    private bool loading = true;
+    private bool nombreError = false;
+
+    private DialogOptions optionsCrear = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true };
+    private DialogOptions optionsBaja = new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true, CloseButton = false };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarSedes();
+    }
+
+    private async Task CargarSedes()
+    {
+        loading = true;
+        sedes = await SedeService.GetAllAsync();
+        loading = false;
+    }
+
+    private void CambiarFiltro(string nuevoEstado) { filtroEstado = nuevoEstado; }
+
+    private bool FilterFunc(SedeDTO sede)
+    {
+        bool matchTexto = true;
+        if (!string.IsNullOrWhiteSpace(searchString))
+        {
+            matchTexto = (sede.Nombre?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                         (sede.Direccion?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                         (sede.CodigoPostal?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false);
+        }
+
+        bool matchEstado = true;
+        switch (filtroEstado)
+        {
+            case "Activas": matchEstado = sede.Activo; break;
+            case "Bajas": matchEstado = !sede.Activo; break;
+            case "Todos": default: matchEstado = true; break;
+        }
+
+        return matchTexto && matchEstado;
+    }
+
+    private void AbrirModalCrear()
+    {
+        sedeModel = new SedeDTO { Activo = true };
+        nombreError = false;
+        mostrarDialogoCrear = true;
+    }
+
+    private async Task GuardarNuevaSede()
+    {
+        if (string.IsNullOrWhiteSpace(sedeModel.Nombre))
+        {
+            nombreError = true;
+            return;
+        }
+        nombreError = false;
+
+        var exito = await SedeService.CreateAsync(sedeModel);
+        if (exito)
+        {
+            Snackbar.Add("Sede registrada exitosamente", Severity.Success);
+            mostrarDialogoCrear = false;
+            await CargarSedes();
+        }
+        else
+        {
+            Snackbar.Add("Error al registrar", Severity.Error);
+        }
+    }
+
+    private void AbrirModalBaja(SedeDTO sede)
+    {
+        sedeParaBaja = sede;
+        mostrarDialogoBaja = true;
+    }
+
+    private async Task ConfirmarBaja()
+    {
+        if (sedeParaBaja == null) return;
+        var exito = await SedeService.DeleteAsync(sedeParaBaja.Id);
+        if (exito)
+        {
+            Snackbar.Add("Sede dada de baja", Severity.Warning);
+            await CargarSedes();
+        }
+        else
+        {
+            Snackbar.Add("Error al dar de baja", Severity.Error);
+        }
+        mostrarDialogoBaja = false;
+    }
+
+    private void CerrarModales()
+    {
+        mostrarDialogoCrear = false;
+        mostrarDialogoBaja = false;
+    }
+
+    private async void ItemHasBeenCommitted(object element)
+    {
+        var sedeEditada = (SedeDTO)element;
+        var exito = await SedeService.UpdateAsync(sedeEditada);
+        if (exito) Snackbar.Add("Actualizado correctamente", Severity.Success);
+        else { Snackbar.Add("Error al actualizar", Severity.Error); await CargarSedes(); }
+    }
+
+    private void IrADetalle(int id) => Navigation.NavigateTo($"/sedes/{id}/aulas");
+}

@@ -1,0 +1,540 @@
+﻿@page "/inscripcion"
+@layout Layout.EmptyLayout
+
+@using EduSys.Shared.DTOs
+@using EduSys.Web.Services.Interfaces
+@inject ICarreraService CarreraService
+@inject ISedeService SedeService
+@inject ISolicitudService InscripcionService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<style>
+    /* --- ESTILOS EDUSYS --- */
+    :root {
+        --color-steel-blue: #456990;
+        --color-salmon: #EF767A;
+        --color-teal: #49BEAA;
+        --color-mint: #49DCB1;
+        --color-mustard: #EEB868;
+    }
+
+    body, html {
+        height: 100%;
+        overflow: hidden;
+        margin: 0;
+    }
+
+    .split-wrapper {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        display: flex;
+        background-color: white;
+    }
+
+    /* COLUMNA IZQUIERDA (BRANDING) */
+    .brand-section {
+        flex: 0.8;
+        background: linear-gradient(135deg, var(--color-teal) 0%, #2A8A7A 100%);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        color: white;
+        padding: 3rem;
+        position: relative;
+    }
+
+        .brand-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: radial-gradient(circle at 10% 90%, rgba(255,255,255,0.1) 0%, transparent 40%);
+            pointer-events: none;
+        }
+
+    /* COLUMNA DERECHA */
+    .form-section {
+        flex: 1.2;
+        padding: 3rem;
+        background-color: white;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .form-container {
+        width: 100%;
+        max-width: 800px;
+    }
+
+    /* --- INPUTS PERSONALIZADOS --- */
+    .custom-input {
+        margin-bottom: 1rem;
+        position: relative;
+    }
+
+        /* 1. Fondo del input */
+        .custom-input .mud-input-slot,
+        .custom-input .mud-input-outlined,
+        .custom-input .mud-input-control {
+            background-color: #f0f4f8 !important;
+            border-radius: 8px !important;
+        }
+
+        /* 2. BORDE AZUL */
+        .custom-input .mud-input-outlined-border {
+            border-color: var(--color-steel-blue) !important;
+            opacity: 0.6;
+        }
+
+        .custom-input .mud-input-control.mud-input-focused .mud-input-outlined-border {
+            border-color: var(--color-steel-blue) !important;
+            opacity: 1;
+            border-width: 2px !important;
+        }
+
+        /* 3. TEXTO NEGRO */
+        .custom-input input,
+        .custom-input .mud-input-slot {
+            color: #1a1a1a !important;
+            -webkit-text-fill-color: #1a1a1a !important;
+            font-weight: 600;
+        }
+
+        /* Color del Label e Iconos */
+        .custom-input .mud-input-label {
+            color: #546e7a !important;
+            font-weight: 500;
+        }
+
+        .custom-input .mud-icon-root {
+            color: var(--color-steel-blue) !important;
+        }
+
+    /* SUBIDA DE ARCHIVOS */
+    .file-btn-wrapper {
+        border: 2px dashed #b0bec5;
+        border-radius: 10px;
+        padding: 10px;
+        text-align: center;
+        transition: all 0.2s;
+        background-color: #fafafa;
+    }
+
+        .file-btn-wrapper:hover {
+            border-color: var(--color-teal);
+            background-color: #f0fdfa;
+        }
+
+    .file-uploaded {
+        border-color: var(--color-mint);
+        background-color: #e6fffa;
+    }
+
+    /* BOTONES */
+    .btn-primary-custom {
+        background-color: var(--color-steel-blue) !important;
+        color: white !important;
+        font-weight: 700;
+        letter-spacing: 1px;
+        box-shadow: 0 4px 10px rgba(69, 105, 144, 0.3);
+    }
+
+        .btn-primary-custom:hover {
+            background-color: #355270 !important;
+            transform: translateY(-2px);
+        }
+
+    @@media (max-width: 960px) {
+        .brand-section {
+            display: none;
+        }
+
+        .form-section {
+            padding: 1.5rem;
+        }
+    }
+</style>
+
+<div class="split-wrapper">
+
+    @* --- IZQUIERDA: BRANDING --- *@
+    <div class="brand-section">
+        <MudIcon Icon="@Icons.Material.Filled.AppRegistration" Style="font-size: 4rem; color: white; margin-bottom: 1rem;" />
+        <MudText Typo="Typo.h3" Style="font-weight: 800; letter-spacing: -1px;">Súmate a EduSys</MudText>
+        <MudText Typo="Typo.h6" Style="font-weight: 300; opacity: 0.9; text-align: center; margin-top: 10px;">
+            El primer paso hacia tu futuro profesional.
+        </MudText>
+        <div style="margin-top: 3rem;">
+            <MudButton Variant="Variant.Outlined"
+                       Style="color: white; border-color: white; font-weight: 600;"
+                       OnClick='() => Navigation.NavigateTo("/")'
+                       StartIcon="@Icons.Material.Filled.ArrowBack">
+                Volver al Login
+            </MudButton>
+        </div>
+    </div>
+
+    @* --- DERECHA: FORMULARIO --- *@
+    <div class="form-section">
+        <div class="form-container">
+
+            @if (enviadoExitosamente)
+            {
+                <div style="text-align: center; padding: 40px;">
+                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Style="font-size: 5rem; color: var(--color-mint); margin-bottom: 20px;" />
+                    <MudText Typo="Typo.h4" Style="font-weight: 800; color: var(--color-steel-blue);">¡Solicitud Recibida!</MudText>
+                    <MudText Typo="Typo.body1" Class="mt-4">
+                        Hemos registrado tus datos correctamente. <br />
+                        Te hemos enviado un correo a <b>@solicitud.Email</b> con los próximos pasos.
+                    </MudText>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-8 btn-primary-custom" OnClick='() => Navigation.NavigateTo("/")'>
+                        Volver al Inicio
+                    </MudButton>
+                </div>
+            }
+            else
+            {
+                <div class="mb-6">
+                    <MudText Typo="Typo.h4" Style="font-weight: 800; color: var(--color-steel-blue);">Inscripción 2026</MudText>
+                    <MudText Typo="Typo.body1" Style="color: #6c757d;">Completa tus datos con atención.</MudText>
+                </div>
+
+                <EditForm Model="@solicitud" OnValidSubmit="EnviarFormulario" Context="formContext">
+                    <DataAnnotationsValidator />
+
+                    <MudGrid Spacing="2">
+
+                        @* 1. DATOS PERSONALES *@
+                        <MudItem xs="12"><MudText Color="Color.Primary" Typo="Typo.h6" Style="font-weight: 700; font-size: 1rem; margin-top: 10px;">1. Datos Personales</MudText></MudItem>
+
+                        <MudItem xs="12" sm="6">
+                            <div class="custom-input">
+                                <MudTextField @bind-Value="solicitud.Nombre" Label="Nombre" Variant="Variant.Outlined" For="@(() => solicitud.Nombre)" />
+                            </div>
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <div class="custom-input">
+                                <MudTextField @bind-Value="solicitud.Apellido" Label="Apellido" Variant="Variant.Outlined" For="@(() => solicitud.Apellido)" />
+                            </div>
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+                            <div class="custom-input">
+                                <MudTextField @bind-Value="solicitud.Dni" Label="DNI" Variant="Variant.Outlined" For="@(() => solicitud.Dni)" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Badge" />
+                            </div>
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+                            <div class="custom-input">
+                                <MudDatePicker Label="Fecha de Nacimiento"
+                                               @bind-Date="solicitud.FechaNacimiento"
+                                               Variant="Variant.Outlined"
+                                               Editable="true"
+                                               Mask="@(new DateMask("dd/MM/yyyy"))"
+                                               DateFormat="dd/MM/yyyy"
+                                               Placeholder="dd/mm/aaaa"
+                                               For="@(() => solicitud.FechaNacimiento)"
+                                               Adornment="Adornment.Start"
+                                               AdornmentIcon="@Icons.Material.Filled.CalendarToday" />
+                            </div>
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+                            <div class="custom-input">
+                                <MudTextField @bind-Value="solicitud.Telefono" Label="Teléfono" Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Phone" />
+                            </div>
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <div class="custom-input">
+                                <MudTextField @bind-Value="solicitud.Direccion" Label="Domicilio" Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Home" />
+                            </div>
+                        </MudItem>
+
+                        <MudItem xs="12">
+                            <div class="custom-input">
+                                <MudTextField @bind-Value="solicitud.Email" Label="Correo Personal" Variant="Variant.Outlined" HelperText="Te contactaremos aquí." For="@(() => solicitud.Email)" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Email" />
+                            </div>
+                        </MudItem>
+
+                        @* --- 2. CARRERA DE INTERÉS (CON FILTRO DE SEDE) --- *@
+                        <MudItem xs="12" Class="mt-2"><MudText Color="Color.Primary" Typo="Typo.h6" Style="font-weight: 700; font-size: 1rem;">2. Carrera de Interés</MudText></MudItem>
+
+                        @* A. SELECTOR DE SEDE *@
+                        <MudItem xs="12">
+                            <div class="custom-input">
+                                <MudSelect T="int" Label="Selecciona la Sede" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter"
+                                           Value="idSedeSeleccionada" ValueChanged="CargarCarrerasPorSede"
+                                           AdornmentIcon="@Icons.Material.Filled.Place">
+                                    <MudSelectItem Value="0">-- Seleccione Sede --</MudSelectItem>
+                                    @foreach (var s in listaSedes)
+                                    {
+                                        <MudSelectItem Value="@s.Id">@s.Nombre</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            </div>
+                        </MudItem>
+
+                        @* B. SELECTOR DE CARRERA *@
+                        <MudItem xs="12">
+                            <div class="custom-input">
+                                <MudSelect T="int" Label="Selecciona la Carrera" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter"
+                                           @bind-Value="solicitud.IdCarreraInteres" For="@(() => solicitud.IdCarreraInteres)"
+                                           AdornmentIcon="@Icons.Material.Filled.School"
+                                           Disabled="@(idSedeSeleccionada == 0)">
+                                    <MudSelectItem Value="0">-- Seleccione Carrera --</MudSelectItem>
+                                    @foreach (var c in listaCarreras)
+                                    {
+                                        <MudSelectItem Value="@c.Id">@c.Nombre</MudSelectItem>
+                                    }
+                                </MudSelect>
+                                @if (idSedeSeleccionada == 0)
+                                {
+                                    <MudText Typo="Typo.caption" Color="Color.Warning" Class="ml-2">Debes seleccionar una sede primero.</MudText>
+                                }
+                                else if (listaCarreras.Count == 0 && idSedeSeleccionada > 0)
+                                {
+                                    <MudText Typo="Typo.caption" Color="Color.Error" Class="ml-2">No hay carreras disponibles en esta sede.</MudText>
+                                }
+                            </div>
+                        </MudItem>
+
+                        @* --- 3. DOCUMENTACIÓN --- *@
+                        <MudItem xs="12" Class="mt-2">
+                            <MudText Color="Color.Primary" Typo="Typo.h6" Style="font-weight: 700; font-size: 1rem;">3. Documentación Digital</MudText>
+                            <MudText Typo="Typo.caption" Style="color: #6c757d;">Formatos: JPG, PNG, PDF (Max 5MB)</MudText>
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+                            <div class="@ObtenerClaseArchivo("perfil")">
+                                <MudFileUpload T="IBrowserFile" FilesChanged="@(async (IBrowserFile file) => await CargarArchivo(file, "perfil"))" Accept=".jpg, .jpeg, .png">
+                                    <ActivatorContent>
+                                        <MudButton Variant="Variant.Text" FullWidth="true" StartIcon="@ObtenerIcono("perfil", Icons.Material.Filled.PhotoCamera)" Color="@ObtenerColor("perfil")">
+                                            @ObtenerTexto("perfil", "Foto Perfil")
+                                        </MudButton>
+                                    </ActivatorContent>
+                                </MudFileUpload>
+                            </div>
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+                            <div class="@ObtenerClaseArchivo("selfie_dni")">
+                                <MudFileUpload T="IBrowserFile" FilesChanged="@(async (IBrowserFile file) => await CargarArchivo(file, "selfie_dni"))" Accept=".jpg, .jpeg, .png">
+                                    <ActivatorContent>
+                                        <MudButton Variant="Variant.Text" FullWidth="true" StartIcon="@ObtenerIcono("selfie_dni", Icons.Material.Filled.Face)" Color="@ObtenerColor("selfie_dni")">
+                                            @ObtenerTexto("selfie_dni", "Selfie con DNI")
+                                        </MudButton>
+                                    </ActivatorContent>
+                                </MudFileUpload>
+                            </div>
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+                            <div class="@ObtenerClaseArchivo("dnifrente")">
+                                <MudFileUpload T="IBrowserFile" FilesChanged="@(async (IBrowserFile file) => await CargarArchivo(file, "dnifrente"))" Accept=".jpg, .jpeg, .png">
+                                    <ActivatorContent>
+                                        <MudButton Variant="Variant.Text" FullWidth="true" StartIcon="@ObtenerIcono("dnifrente", Icons.Material.Filled.CreditCard)" Color="@ObtenerColor("dnifrente")">
+                                            @ObtenerTexto("dnifrente", "DNI Frente")
+                                        </MudButton>
+                                    </ActivatorContent>
+                                </MudFileUpload>
+                            </div>
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+                            <div class="@ObtenerClaseArchivo("dnidorso")">
+                                <MudFileUpload T="IBrowserFile" FilesChanged="@(async (IBrowserFile file) => await CargarArchivo(file, "dnidorso"))" Accept=".jpg, .jpeg, .png">
+                                    <ActivatorContent>
+                                        <MudButton Variant="Variant.Text" FullWidth="true" StartIcon="@ObtenerIcono("dnidorso", Icons.Material.Filled.CreditCard)" Color="@ObtenerColor("dnidorso")">
+                                            @ObtenerTexto("dnidorso", "DNI Dorso")
+                                        </MudButton>
+                                    </ActivatorContent>
+                                </MudFileUpload>
+                            </div>
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+                            <div class="@ObtenerClaseArchivo("titulo")">
+                                <MudFileUpload T="IBrowserFile" FilesChanged="@(async (IBrowserFile file) => await CargarArchivo(file, "titulo"))" Accept=".pdf, .jpg, .jpeg, .png">
+                                    <ActivatorContent>
+                                        <MudButton Variant="Variant.Text" FullWidth="true" StartIcon="@ObtenerIcono("titulo", Icons.Material.Filled.School)" Color="@ObtenerColor("titulo")">
+                                            @ObtenerTexto("titulo", "Título Secundario")
+                                        </MudButton>
+                                    </ActivatorContent>
+                                </MudFileUpload>
+                            </div>
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+                            <div class="@ObtenerClaseArchivo("penales")">
+                                <MudFileUpload T="IBrowserFile" FilesChanged="@(async (IBrowserFile file) => await CargarArchivo(file, "penales"))" Accept=".pdf, .jpg, .jpeg, .png">
+                                    <ActivatorContent>
+                                        <MudButton Variant="Variant.Text" FullWidth="true" StartIcon="@ObtenerIcono("penales", Icons.Material.Filled.Security)" Color="@ObtenerColor("penales")">
+                                            @ObtenerTexto("penales", "Ant. Penales")
+                                        </MudButton>
+                                    </ActivatorContent>
+                                </MudFileUpload>
+                            </div>
+                        </MudItem>
+
+                        <MudItem xs="12" Class="mt-6">
+                            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" FullWidth="true" Size="Size.Large"
+                                       Class="btn-primary-custom py-3 rounded-lg" Disabled="@procesando">
+                                @if (procesando)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Surface" />
+                                }
+                                else
+                                {
+                                    <MudText>ENVIAR SOLICITUD DE INGRESO</MudText>
+                                }
+                            </MudButton>
+                        </MudItem>
+
+                    </MudGrid>
+                </EditForm>
+            }
+        </div>
+
+        <div style="margin-top: 2rem; color: #dee2e6; font-size: 0.75rem;">
+            EduSys v2.0 &bull; Gestión Académica
+        </div>
+    </div>
+</div>
+
+@code {
+    private SolicitudIngresoRequestDTO solicitud = new();
+
+    // Listas para los combos
+    private List<SedeDTO> listaSedes = new();
+    private List<CarreraDTO> listaCarreras = new();
+
+    // Variable auxiliar para el filtro de sede
+    private int idSedeSeleccionada = 0;
+
+    private bool procesando = false;
+    private bool enviadoExitosamente = false;
+
+    // Control de archivos (UI)
+    private Dictionary<string, bool> estadoArchivos = new()
+    {
+        { "perfil", false }, { "selfie_dni", false },
+        { "titulo", false }, { "dnifrente", false },
+        { "dnidorso", false }, { "penales", false }
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // 1. CARGAMOS LAS SEDES AL INICIAR
+            listaSedes = await SedeService.GetAllAsync();
+            // Filtramos solo las activas
+            listaSedes = listaSedes.Where(s => s.Activo).ToList();
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Error de conexión al cargar las sedes.", Severity.Error);
+        }
+    }
+
+    // 2. MÉTODO QUE SE EJECUTA AL CAMBIAR LA SEDE EN EL DROPDOWN
+    private async Task CargarCarrerasPorSede(int idSede)
+    {
+        idSedeSeleccionada = idSede;
+        solicitud.IdCarreraInteres = 0; // Reseteamos la carrera anterior para evitar inconsistencias
+        listaCarreras.Clear();
+
+        if (idSede > 0)
+        {
+            try
+            {
+                // Llamamos al servicio que implementamos para buscar carreras por sede
+                listaCarreras = await CarreraService.GetCarrerasPorSedeAsync(idSede);
+            }
+            catch (Exception)
+            {
+                Snackbar.Add("Error al cargar carreras para la sede seleccionada.", Severity.Error);
+            }
+        }
+    }
+
+    // --- Helpers Visuales para archivos ---
+    private string ObtenerClaseArchivo(string key) => estadoArchivos[key] ? "file-btn-wrapper file-uploaded" : "file-btn-wrapper";
+    private Color ObtenerColor(string key) => estadoArchivos[key] ? Color.Success : Color.Default;
+    private string ObtenerIcono(string key, string def) => estadoArchivos[key] ? Icons.Material.Filled.CheckCircle : def;
+    private string ObtenerTexto(string key, string def) => estadoArchivos[key] ? "Cargado" : def;
+
+    private async Task CargarArchivo(IBrowserFile archivo, string tipo)
+    {
+        if (archivo == null) return;
+        long maxFileSize = 5120000; // 5MB
+
+        if (archivo.Size > maxFileSize)
+        {
+            Snackbar.Add("El archivo supera los 5MB.", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            var buffer = new byte[archivo.Size];
+            using var stream = archivo.OpenReadStream(maxFileSize);
+            await stream.ReadAsync(buffer);
+            var formato = archivo.ContentType;
+            var base64 = Convert.ToBase64String(buffer);
+            var dataUrl = $"data:{formato};base64,{base64}";
+
+            switch (tipo)
+            {
+                case "perfil": solicitud.FotoPerfilBase64 = dataUrl; break;
+                case "selfie_dni": solicitud.FotoSosteniendoDniBase64 = dataUrl; break;
+                case "titulo": solicitud.TituloSecundarioBase64 = dataUrl; break;
+                case "dnifrente": solicitud.FotoDniFrenteBase64 = dataUrl; break;
+                case "dnidorso": solicitud.FotoDniDorsoBase64 = dataUrl; break;
+                case "penales": solicitud.AntecedentesPenalesBase64 = dataUrl; break;
+            }
+
+            estadoArchivos[tipo] = true;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al procesar archivo: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task EnviarFormulario()
+    {
+        // Validación extra de archivos (opcional, si son obligatorios)
+        if (!estadoArchivos.Values.All(v => v))
+        {
+            Snackbar.Add("Debes cargar los 6 documentos requeridos.", Severity.Warning);
+            return;
+        }
+
+        procesando = true;
+        try
+        {
+            await InscripcionService.EnviarSolicitudAsync(solicitud);
+            enviadoExitosamente = true;
+            Snackbar.Add("Solicitud enviada con éxito.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            procesando = false;
+        }
+    }
+}

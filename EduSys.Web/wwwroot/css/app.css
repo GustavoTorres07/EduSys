@@ -1,0 +1,383 @@
+/* =============================================================
+   1. ESTILOS ESTÁNDAR DE BLAZOR (Validación y Errores)
+   ============================================================= */
+html, body {
+    font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f5f5f5; /* Fondo base por si falla la carga */
+    height: 100%;
+    overflow-x: hidden;
+}
+
+/* Validaciones de formularios */
+.valid.modified:not([type=checkbox]) {
+    outline: 1px solid #49beaa; /* Tu verde */
+}
+
+.invalid {
+    outline: 1px solid #ef767a; /* Tu rojo */
+}
+
+.validation-message {
+    color: #ef767a;
+    font-size: 0.8rem;
+    margin-top: 4px;
+}
+
+/* UI de Errores no controlados (Blazor default) */
+#blazor-error-ui {
+    background: #fff3cd;
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    display: none;
+    left: 0;
+    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 2000;
+}
+
+    #blazor-error-ui .dismiss {
+        cursor: pointer;
+        position: absolute;
+        right: 0.75rem;
+        top: 0.5rem;
+    }
+
+/* =============================================================
+   2. PANTALLA DE CARGA (SPLASH SCREEN) - Personalizada EduSys
+   ============================================================= */
+.loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    /* Degradado corporativo: Azul Profundo -> Azul Grisáceo */
+    background: linear-gradient(135deg, #456990 0%, #2a405b 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    font-family: 'Roboto', sans-serif;
+    color: white;
+}
+
+.loading-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 300px;
+    animation: fadeUp 0.8s ease-out;
+}
+
+/* Icono flotante */
+.loading-icon-container {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 50%;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.loading-icon {
+    width: 60px;
+    height: 60px;
+    color: #49beaa; /* Verde Menta */
+    animation: float 3s ease-in-out infinite;
+}
+
+.loading-title {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: 1px;
+}
+
+.loading-subtitle {
+    font-size: 0.9rem;
+    opacity: 0.7;
+    margin-top: 5px;
+    margin-bottom: 30px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+/* Barra de progreso real */
+.loading-bar-container {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+}
+
+.loading-bar-fill {
+    height: 100%;
+    background-color: #ef767a; /* Rosa/Rojo de acento */
+    width: var(--blazor-load-percentage, 10%); /* Blazor llena esto auto */
+    transition: width 0.3s ease;
+    box-shadow: 0 0 10px rgba(239, 118, 122, 0.7);
+}
+
+.loading-text {
+    margin-top: 10px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    opacity: 0.8;
+}
+
+    .loading-text:after {
+        content: var(--blazor-load-percentage-text, "Iniciando sistema...");
+    }
+
+/* Animaciones de carga */
+@keyframes float {
+    0% {
+        transform: translateY(0px);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
+
+    100% {
+        transform: translateY(0px);
+    }
+}
+
+@keyframes fadeUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+
+/* =============================================================
+   3. ESTILOS DE LOGIN (Glassmorphism & Transparencias)
+   ============================================================= */
+
+/* Fondo animado global para Login */
+.login-container {
+    height: 100vh;
+    width: 100vw;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(-45deg, #456990, #2a405b, #49beaa, #456990);
+    background-size: 400% 400%;
+    animation: gradientBG 15s ease infinite;
+    position: fixed;
+    top: 0;
+    left: 0;
+    padding: 1rem;
+}
+
+@keyframes gradientBG {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+/* Panel de Cristal (Tarjeta Principal) */
+.glass-panel {
+    background: rgba(0, 0, 0, 0.25); /* Oscuro translúcido */
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 24px;
+    padding: 3rem 2rem;
+    width: 100%;
+    max-width: 450px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+/* Inputs Forzados a Blanco/Transparente (Sobreescribe MudBlazor Default) */
+.mud-input-control .mud-input-slot {
+    color: white !important;
+    font-weight: 500;
+}
+
+.mud-input-control .mud-input-label {
+    color: rgba(255, 255, 255, 0.7) !important;
+}
+
+.mud-input-control .mud-input-outlined-border {
+    border-color: rgba(255, 255, 255, 0.2) !important;
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.mud-input-control.mud-input-focused .mud-input-outlined-border {
+    border-color: #49beaa !important; /* Verde al enfocar */
+    background-color: rgba(0, 0, 0, 0.2);
+}
+
+.mud-input-adornment-icon {
+    color: white !important;
+}
+
+/* Botón de Acento (Rosa) */
+.btn-accent {
+    background-color: #ef767a !important;
+    color: white !important;
+    font-weight: 800 !important;
+    letter-spacing: 1px;
+    box-shadow: 0 4px 15px rgba(239, 118, 122, 0.4);
+    transition: transform 0.2s;
+}
+
+    .btn-accent:hover {
+        background-color: #ff8a8e !important;
+        transform: scale(1.02);
+    }
+
+/* Animación de cambio de vista (Login <-> Recuperar) */
+.animate-content {
+    animation: fadeInScale 0.4s ease-out;
+    width: 100%;
+}
+
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(40px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+
+/* =============================================================
+   4. ESTILOS DEL DASHBOARD (Home.razor)
+   ============================================================= */
+
+/* Contenedor del Dashboard */
+.dashboard-container {
+    min-height: 85vh;
+    padding: 2rem;
+    border-radius: 24px;
+    /* Degradado sutil para el fondo del panel */
+    background: linear-gradient(135deg, rgba(69, 105, 144, 0.05) 0%, rgba(73, 190, 170, 0.1) 100%);
+    margin-bottom: 2rem;
+}
+
+/* Tarjetas de Módulo */
+.module-card {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-radius: 20px;
+    padding: 2rem;
+    height: 100%;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+    .module-card:hover {
+        transform: translateY(-8px);
+        background: rgba(255, 255, 255, 0.95);
+        box-shadow: 0 15px 30px rgba(69, 105, 144, 0.15);
+        border-color: #fff;
+    }
+
+/* Acento inferior de la tarjeta */
+.card-accent {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 6px;
+    transition: height 0.3s ease;
+}
+
+.module-card:hover .card-accent {
+    height: 10px;
+}
+
+/* Iconos del dashboard */
+.icon-container {
+    padding: 20px;
+    border-radius: 50%;
+    margin-bottom: 20px;
+    transition: transform 0.3s ease;
+}
+
+.module-card:hover .icon-container {
+    transform: scale(1.1) rotate(5deg);
+}
+
+/* Utilidades de texto */
+.text-muted {
+    color: #8898aa;
+    font-size: 0.9rem;
+}
+
+/* =============================================================
+   5. ESTILOS DE DIÁLOGOS (Popups de Cristal)
+   ============================================================= */
+/* Quita el fondo blanco por defecto de los diálogos de MudBlazor */
+.mud-dialog {
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
+
+/* Clase para usar dentro del contenido del diálogo */
+.glass-dialog-card {
+    background: rgba(30, 40, 50, 0.85);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 20px;
+    padding: 20px;
+    color: white;
+}

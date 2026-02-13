@@ -1,0 +1,312 @@
+﻿@using EduSys.Shared.DTOs
+@using EduSys.Web.Services.Interfaces
+@inject IPeriodoService PeriodoService
+@inject ICarreraService CarreraService
+@inject ISedeService SedeService
+@inject ISnackbar Snackbar
+
+<style>
+    /* --- ESTILOS CORPORATIVOS (Igual que Comisiones) --- */
+    .mud-dialog-close-icon {
+        display: none !important;
+    }
+
+    .mud-dialog-content {
+        padding: 0 !important;
+    }
+
+    .dialog-container {
+        display: flex;
+        flex-direction: column;
+        background-color: white;
+        max-height: 85vh;
+        min-width: 600px;
+    }
+
+    /* HEADER AZUL (Para que se lea el título blanco) */
+    .dialog-header-integrated {
+        background: #456990;
+        color: white;
+        padding: 16px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-shrink: 0;
+    }
+
+    .dialog-body {
+        padding: 24px;
+        overflow-y: auto;
+        flex-grow: 1;
+    }
+
+    .actions-footer {
+        padding: 16px 24px;
+        border-top: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        background-color: white;
+        flex-shrink: 0;
+    }
+
+    /* Inputs y Labels */
+    .force-black-text input, .force-black-text .mud-input-slot, .force-black-text .mud-select-input {
+        color: #1F2937 !important;
+        font-weight: 500;
+    }
+
+    .force-black-text .mud-input-label {
+        color: #456990 !important;
+        background-color: white !important;
+        padding: 0 5px;
+        font-weight: 600;
+    }
+
+    .custom-input-borde .mud-input-outlined-border {
+        border-color: #456990 !important;
+    }
+
+    .custom-input-borde .mud-icon-root {
+        color: #456990 !important;
+    }
+
+    .section-title {
+        color: #456990;
+        font-weight: 700;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        border-bottom: 2px solid #e2e8f0;
+        padding-bottom: 4px;
+        margin-bottom: 12px;
+        margin-top: 8px;
+    }
+
+    .info-alert {
+        background-color: #F1F5F9;
+        border-left: 4px solid #456990;
+        padding: 10px;
+        border-radius: 4px;
+        margin-bottom: 10px;
+    }
+</style>
+
+<MudDialog DisableSidePadding="true" Class="rounded-lg overflow-hidden">
+    <DialogContent>
+        <div class="dialog-container">
+
+            @* --- CABECERA (Ahora se ve el texto blanco) --- *@
+            <div class="dialog-header-integrated">
+                <div class="d-flex align-center">
+                    <MudIcon Icon="@(Ventana.Id == 0 ? Icons.Material.Filled.EventNote : Icons.Material.Filled.EditCalendar)" Class="mr-3" />
+                    <div>
+                        <MudText Typo="Typo.h6" Style="font-weight: 700; line-height: 1.2;">
+                            @(Ventana.Id == 0 ? "Nueva Fecha Académica" : "Editar Regla")
+                        </MudText>
+                        <MudText Typo="Typo.caption" Style="opacity: 0.9;">Configuración de inscripciones</MudText>
+                    </div>
+                </div>
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" OnClick="Cancel" Size="Size.Small" />
+            </div>
+
+            @* --- CUERPO --- *@
+            <div class="dialog-body">
+                @if (loading)
+                {
+                    <div class="d-flex justify-center my-4"><MudProgressCircular Color="Color.Primary" Indeterminate="true" /></div>
+                }
+                else
+                {
+                    <MudForm @ref="form" Model="@modelo">
+                        <MudGrid Spacing="2">
+
+                            @* 1. CONFIGURACIÓN *@
+                            <MudItem xs="12"><div class="section-title">Configuración General</div></MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudSelect T="int" Label="Ciclo Lectivo" @bind-Value="modelo.IdPeriodo"
+                                           Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter"
+                                           Class="force-black-text custom-input-borde" Required="true">
+                                    @foreach (var p in periodos)
+                                    {
+                                        @* ✅ CORRECCIÓN YEAR: Usamos interpolación o acceso seguro a null *@
+                                        <MudSelectItem Value="@p.Id">@p.Nombre (@(p.FechaInicio?.Year.ToString() ?? "S/F"))</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudSelect T="string" Label="Tipo de Acción" @bind-Value="modelo.TipoAccion"
+                                           Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter"
+                                           Class="force-black-text custom-input-borde" Required="true">
+                                    <MudSelectItem Value="@("INSCRIPCION_CURSADA")">Inscripción a Cursadas</MudSelectItem>
+                                    <MudSelectItem Value="@("INSCRIPCION_FINAL")">Inscripción a Finales</MudSelectItem>
+                                    <MudSelectItem Value="@("INSCRIPCION_INGRESO")">Solicitud de Ingreso</MudSelectItem>
+                                </MudSelect>
+                            </MudItem>
+
+                            @* 2. VIGENCIA *@
+                            <MudItem xs="12" Class="mt-2"><div class="section-title">Vigencia de la Regla</div></MudItem>
+
+                            <MudItem xs="6">
+                                <MudDatePicker Label="Fecha Inicio" @bind-Date="fechaInicioTemp"
+                                               Variant="Variant.Outlined" DateFormat="dd/MM/yyyy"
+                                               Class="force-black-text custom-input-borde" Required="true" />
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudDatePicker Label="Fecha Fin" @bind-Date="fechaFinTemp"
+                                               Variant="Variant.Outlined" DateFormat="dd/MM/yyyy"
+                                               Class="force-black-text custom-input-borde" Required="true" />
+                            </MudItem>
+
+                            @* 3. ALCANCE *@
+                            <MudItem xs="12" Class="mt-2"><div class="section-title">Alcance (Opcional)</div></MudItem>
+
+                            <MudItem xs="12">
+                                <div class="info-alert">
+                                    <MudText Typo="Typo.caption" Color="Color.Default">
+                                        <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="mr-1" style="vertical-align:middle" />
+                                        Si dejas estos campos vacíos, la regla aplicará a <b>toda la universidad</b>.
+                                    </MudText>
+                                </div>
+                            </MudItem>
+
+                            <MudItem xs="6">
+                                <MudSelect T="int?" Label="Carrera Específica" @bind-Value="modelo.IdCarrera" Clearable="true"
+                                           Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter"
+                                           Class="force-black-text custom-input-borde">
+                                    <MudSelectItem T="int?" Value="null">-- Global (Todas) --</MudSelectItem>
+                                    @foreach (var c in carreras)
+                                    {
+                                        <MudSelectItem T="int?" Value="@c.Id">@c.Nombre</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            </MudItem>
+
+                            <MudItem xs="6">
+                                <MudSelect T="int?" Label="Sede Específica" @bind-Value="modelo.IdSede" Clearable="true"
+                                           Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter"
+                                           Class="force-black-text custom-input-borde">
+                                    <MudSelectItem T="int?" Value="null">-- Global (Todas) --</MudSelectItem>
+                                    @foreach (var s in sedes)
+                                    {
+                                        <MudSelectItem T="int?" Value="@s.Id">@s.Nombre</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            </MudItem>
+
+                        </MudGrid>
+                    </MudForm>
+                }
+            </div>
+
+            @* --- FOOTER --- *@
+            <div class="actions-footer">
+                <MudButton OnClick="Cancel" Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg">Cancelar</MudButton>
+                <MudButton OnClick="Submit" Variant="Variant.Filled" Color="Color.Primary" Class="rounded-lg" StartIcon="@Icons.Material.Filled.Save">Guardar</MudButton>
+            </div>
+        </div>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+    [Parameter] public VentanaOperativaDTO Ventana { get; set; } = new();
+
+    private VentanaOperativaDTO modelo = new();
+    private MudForm form;
+    private bool loading = true;
+
+    private List<PeriodoAcademicoDTO> periodos = new();
+    private List<CarreraDTO> carreras = new();
+    private List<SedeDTO> sedes = new();
+
+    private DateTime? fechaInicioTemp;
+    private DateTime? fechaFinTemp;
+
+    protected override async Task OnInitializedAsync()
+    {
+        loading = true;
+        try
+        {
+            var t1 = PeriodoService.GetAllAsync();
+            var t2 = CarreraService.GetAllAsync();
+            var t3 = SedeService.GetAllAsync();
+
+            await Task.WhenAll(t1, t2, t3);
+            periodos = await t1;
+            carreras = await t2;
+            sedes = await t3;
+
+            // Inicializar
+            if (Ventana != null)
+            {
+                modelo = new VentanaOperativaDTO
+                {
+                    Id = Ventana.Id,
+                    IdPeriodo = Ventana.IdPeriodo,
+                    TipoAccion = Ventana.TipoAccion ?? "INSCRIPCION_CURSADA",
+                    IdCarrera = Ventana.IdCarrera,
+                    IdSede = Ventana.IdSede,
+                    FechaInicio = Ventana.FechaInicio,
+                    FechaFin = Ventana.FechaFin
+                };
+                fechaInicioTemp = modelo.FechaInicio;
+                fechaFinTemp = modelo.FechaFin;
+
+                if (modelo.Id == 0 && modelo.IdPeriodo == 0)
+                {
+                    var periodoActivo = periodos.FirstOrDefault(p => p.Activo);
+                    modelo.IdPeriodo = periodoActivo?.Id ?? 0;
+                    fechaInicioTemp = DateTime.Today;
+                    fechaFinTemp = DateTime.Today.AddDays(7);
+                }
+            }
+        }
+        catch { Snackbar.Add("Error cargando listas", Severity.Error); }
+        finally { loading = false; }
+    }
+
+    private void Submit()
+    {
+        form.Validate();
+        if (!form.IsValid) return;
+
+        if (fechaInicioTemp == null || fechaFinTemp == null) { Snackbar.Add("Fechas requeridas.", Severity.Warning); return; }
+        if (fechaInicioTemp > fechaFinTemp) { Snackbar.Add("La fecha inicio no puede ser mayor a fin.", Severity.Warning); return; }
+
+        // ✅ VALIDACIÓN CONTRA EL PERIODO
+        var periodoSeleccionado = periodos.FirstOrDefault(p => p.Id == modelo.IdPeriodo);
+        if (periodoSeleccionado != null)
+        {
+            // Validar Inicio (Null-safe check)
+            if (periodoSeleccionado.FechaInicio != null && fechaInicioTemp < periodoSeleccionado.FechaInicio)
+            {
+                Snackbar.Add($"Error: La regla inicia el {fechaInicioTemp:dd/MM/yyyy} pero el Periodo comienza el {periodoSeleccionado.FechaInicio:dd/MM/yyyy}.", Severity.Error);
+                return;
+            }
+
+            // Validar Fin (Null-safe check)
+            if (periodoSeleccionado.FechaFin != null && fechaFinTemp > periodoSeleccionado.FechaFin)
+            {
+                Snackbar.Add($"Error: La regla termina el {fechaFinTemp:dd/MM/yyyy} pero el Periodo finaliza el {periodoSeleccionado.FechaFin:dd/MM/yyyy}.", Severity.Error);
+                return;
+            }
+        }
+        else
+        {
+            Snackbar.Add("Ciclo lectivo inválido.", Severity.Error);
+            return;
+        }
+
+        // Pasar valores finales
+        modelo.FechaInicio = fechaInicioTemp;
+        modelo.FechaFin = fechaFinTemp;
+        if (modelo.IdCarrera == 0) modelo.IdCarrera = null;
+        if (modelo.IdSede == 0) modelo.IdSede = null;
+
+        MudDialog.Close(DialogResult.Ok(modelo));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

@@ -1,0 +1,88 @@
+﻿@using EduSys.Shared.DTOs
+@using EduSys.Web.Services.Interfaces
+@inject IAlumnoPortalService AlumnoPortalService  
+@inject AuthenticationStateProvider AuthStateProvider  
+@inject NavigationManager NavManager
+
+<MudMenu Direction="Direction.Left" OffsetX="true" Dense="true" Class="mt-1">
+    <ActivatorContent>
+        <MudBadge Content="@cantNoLeidas" Color="Color.Error" Overlap="true" Visible="@(cantNoLeidas > 0)">
+            <MudIconButton Icon="@Icons.Material.Filled.Notifications" Color="Color.Inherit" />
+        </MudBadge>
+    </ActivatorContent>
+    <ChildContent>
+        <MudPaper Width="320px" MaxHeight="400px" Class="overflow-auto pa-2">
+            @if (notificaciones == null || !notificaciones.Any())
+            {
+                <div class="d-flex flex-column align-center pa-4">
+                    <MudIcon Icon="@Icons.Material.Filled.NotificationsNone" Size="Size.Large" Color="Color.Default" />
+                    <MudText Typo="Typo.body2" Class="mt-2 text-muted">Sin novedades.</MudText>
+                </div>
+            }
+            else
+            {
+                <MudList T="string" Clickable="true">
+                    @foreach (var noti in notificaciones)
+                    {
+                        <MudListItem OnClick="@(() => VerNotificacion(noti))" 
+                                     Style="@(noti.Leida ? "opacity: 0.6;" : "background-color: #f0f9ff;")">
+                            <div class="d-flex gap-2">
+                                <MudIcon Icon="@GetIcono(noti.Tipo)" Color="@GetColor(noti.Tipo)" Size="Size.Small" Class="mt-1"/>
+                                <div class="d-flex flex-column" style="width: 100%;">
+                                    <div class="d-flex justify-space-between">
+                                        <MudText Typo="Typo.subtitle2" Style="font-weight:bold; font-size: 0.85rem;">@noti.Titulo</MudText>
+                                        <MudText Typo="Typo.caption" Style="font-size: 0.7rem;">@noti.Fecha.ToString("dd/MM HH:mm")</MudText>
+                                    </div>
+                                    <MudText Typo="Typo.body2" Style="font-size: 0.8rem; line-height: 1.2;" Class="mt-1">@noti.Mensaje</MudText>
+                                </div>
+                            </div>
+                        </MudListItem>
+                        <MudDivider />
+                    }
+                </MudList>
+            }
+        </MudPaper>
+    </ChildContent>
+</MudMenu>
+
+@code {
+    private List<NotificacionDTO> notificaciones = new();
+    private int cantNoLeidas => notificaciones.Count(n => !n.Leida);
+
+    // Timer para polling (opcional, para que se actualice solo cada X tiempo)
+    private System.Threading.Timer? _timer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarNotificaciones();
+        // Opcional: Actualizar cada 60 segundos
+        // _timer = new System.Threading.Timer(async _ => await InvokeAsync(CargarNotificaciones), null, 60000, 60000);
+    }
+
+    private async Task CargarNotificaciones()
+    {
+        notificaciones = await AlumnoPortalService.GetNotificacionesAsync();
+        StateHasChanged();
+    }
+
+    private async Task VerNotificacion(NotificacionDTO noti)
+    {
+        if (!noti.Leida)
+        {
+            await AlumnoPortalService.MarcarLeidaAsync(noti.Id);
+            noti.Leida = true; // Feedback inmediato en UI
+        }
+    }
+
+    private string GetIcono(string tipo) => tipo switch {
+        "Examen" => Icons.Material.Filled.Assignment,
+        "Asistencia" => Icons.Material.Filled.FactCheck,
+        _ => Icons.Material.Filled.Info
+    };
+
+    private Color GetColor(string tipo) => tipo switch {
+        "Examen" => Color.Warning,
+        "Asistencia" => Color.Error,
+        _ => Color.Info
+    };
+}

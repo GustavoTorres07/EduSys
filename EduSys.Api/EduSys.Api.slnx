@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="../EduSys.Shared/EduSys.Shared.csproj" />
+  <Project Path="../EduSys.Web/EduSys.Web.csproj" />
+  <Project Path="EduSys.Api.csproj" />
+</Solution>

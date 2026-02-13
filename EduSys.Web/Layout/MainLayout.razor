@@ -1,0 +1,165 @@
+﻿@inherits LayoutComponentBase
+@using EduSys.Web.Services.Interfaces
+@using System.Security.Claims
+@using EduSys.Web.Auth
+@using Microsoft.AspNetCore.Components.Authorization
+@using EduSys.Web.Pages.Auth.Components
+
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider _authStateProvider
+@inject IDialogService DialogService
+
+<MudThemeProvider Theme="_currentTheme" />
+<MudPopoverProvider />
+<MudSnackbarProvider />
+<MudDialogProvider FullWidth="true" MaxWidth="MaxWidth.Small" CloseButton="true" BackdropClick="false" Position="DialogPosition.Center" />
+
+<MudLayout>
+    <MudAppBar Elevation="1" Fixed="true" Style="background: #1e3a58; border-bottom: 1px solid rgba(255,255,255,0.1); z-index: 1300;">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="ToggleDrawer" Class="mr-3" />
+        <MudText Typo="Typo.h6" Style="font-weight:700; letter-spacing:0.5px; color: white;">EduSys</MudText>
+        <MudSpacer />
+
+        <AuthorizeView>
+            <Authorized>
+                <div class="d-flex align-center gap-2">
+                    <MudTooltip Text="Mensajería"><MudIconButton Icon="@Icons.Material.Filled.Email" Color="Color.Inherit" /></MudTooltip>
+                    <NotificacionesMenu />
+                    <MudTooltip Text="Soporte"><MudIconButton Icon="@Icons.Material.Filled.SupportAgent" Color="Color.Inherit" /></MudTooltip>
+
+                    <MudMenu AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" LockScroll="true" Class="ml-3 mr-2">
+                        <ActivatorContent>
+                            <div class="d-flex align-center cursor-pointer" style="background-color:rgba(255,255,255,0.1); padding:4px 12px; border-radius:20px; border: 1px solid rgba(255,255,255,0.1);">
+                                <MudAvatar Size="Size.Small" Class="mr-2" Color="@GetAvatarColor(context.User)">
+                                    @if (!string.IsNullOrEmpty(ObtenerFotoPerfil(context.User)))
+                                    {
+                                        <MudImage Src="@ObtenerFotoPerfil(context.User)" Style="width:100%; height:100%; object-fit:cover;" />
+                                    }
+                                    else
+                                    {
+                                        @GetUserInitial(context.User)
+                                    }
+                                </MudAvatar>
+                                <MudText Typo="Typo.body2" Color="Color.Inherit" Style="font-weight:600; color: white;" Class="mr-1 d-none d-sm-block">
+                                    @GetFullUserName(context.User)
+                                </MudText>
+                                <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" Color="Color.Inherit" Size="Size.Small" />
+                            </div>
+                        </ActivatorContent>
+                        <ChildContent>
+                            <div class="pa-4 d-flex flex-column align-center border-b mb-2" style="min-width: 220px;">
+                                <MudAvatar Style="height:64px; width:64px; border: 2px solid #1e3a58;" Class="mb-2" Color="@GetAvatarColor(context.User)">
+                                    @if (!string.IsNullOrEmpty(ObtenerFotoPerfil(context.User)))
+                                    {
+                                        <MudImage Src="@ObtenerFotoPerfil(context.User)" Style="width:100%; height:100%; object-fit:cover;" />
+                                    }
+                                    else
+                                    {
+                                        @GetUserInitial(context.User)
+                                    }
+                                </MudAvatar>
+                                <MudText Typo="Typo.body1" Style="font-weight:700;">@GetFullUserName(context.User)</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-weight:700;">@GetRoleLabel(context.User)</MudText>
+                            </div>
+                            <MudMenuItem Icon="@Icons.Material.Filled.Person" OnClick="AbrirPerfil">Mi Perfil</MudMenuItem>
+                            <MudDivider Class="my-2" />
+                            <MudMenuItem Icon="@Icons.Material.Filled.Logout" IconColor="Color.Error" OnClick="CerrarSesion">Cerrar Sesión</MudMenuItem>
+                        </ChildContent>
+                    </MudMenu>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+    </MudAppBar>
+
+    <MudDrawer @bind-Open="_drawerOpen"
+               Variant="DrawerVariant.Responsive"
+               ClipMode="DrawerClipMode.Always"
+               Elevation="2"
+               Width="340px"
+               Style="z-index: 1200;">
+        <NavMenu />
+    </MudDrawer>
+
+    <MudMainContent Style="background-color: #F8FAFC; min-height: 100vh; padding-top: 80px;">
+        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pb-10 px-4">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+
+</MudLayout>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationStateTask { get; set; }
+
+    private bool _drawerOpen = true;
+    private bool _saliendo = false;
+
+    private MudTheme _currentTheme = new MudTheme()
+    {
+        PaletteLight = new PaletteLight()
+        {
+            Primary = "#1e3a58",
+            Secondary = "#EF767A",
+            Tertiary = "#49BEAA",
+            AppbarBackground = "#1e3a58",
+            Background = "#F8FAFC",
+            DrawerBackground = "#ffffff"
+        }
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        _drawerOpen = true;
+        var authState = await authenticationStateTask;
+    }
+
+    void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+
+    async Task CerrarSesion()
+    {
+        _saliendo = true;
+        Navigation.NavigateTo("/");
+        await AuthService.Logout();
+    }
+
+    private async Task AbrirPerfil()
+    {
+        var authState = await authenticationStateTask;
+        var user = authState.User;
+        var url = user.IsInRole("Docente") ? "/mi-perfil-docente" : "/alumno/perfil";
+        Navigation.NavigateTo(url);
+    }
+
+    private string GetFullUserName(ClaimsPrincipal user)
+    {
+        var nombre = user.FindFirst("Nombre")?.Value ?? user.FindFirst(ClaimTypes.GivenName)?.Value;
+        var apellido = user.FindFirst("Apellido")?.Value ?? user.FindFirst(ClaimTypes.Surname)?.Value;
+        return (!string.IsNullOrEmpty(nombre)) ? $"{nombre} {apellido}".Trim() : user.Identity?.Name ?? "Usuario";
+    }
+
+    private string GetUserInitial(ClaimsPrincipal user) => GetFullUserName(user).Substring(0, 1).ToUpper();
+
+    private string ObtenerFotoPerfil(ClaimsPrincipal user)
+    {
+        var foto = user.FindFirst("FotoPerfilUrl")?.Value;
+        if (string.IsNullOrWhiteSpace(foto) || foto == "null") return null;
+        return foto;
+    }
+
+    private Color GetAvatarColor(ClaimsPrincipal user)
+    {
+        if (user.IsInRole("Docente")) return Color.Tertiary;
+        if (user.IsInRole("Alumno")) return Color.Secondary;
+        return Color.Default;
+    }
+
+    private string GetRoleLabel(ClaimsPrincipal user)
+    {
+        if (user.IsInRole("Docente")) return "DOCENTE";
+        if (user.IsInRole("Alumno")) return "ALUMNO REGULAR";
+        if (user.IsInRole("Administrador")) return "ADMINISTRADOR";
+        return "USUARIO";
+    }
+}

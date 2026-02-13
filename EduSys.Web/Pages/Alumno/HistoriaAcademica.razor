@@ -1,0 +1,280 @@
+﻿@page "/historia-academica"
+@using EduSys.Shared.DTOs
+@using EduSys.Web.Services.Interfaces
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+
+@inject IHistorialService HistorialService
+@inject IAlumnoService AlumnoService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject ISnackbar Snackbar
+
+@attribute [Authorize(Roles = "Alumno")]
+
+<style>
+    /* Estilo para ocultar el botón de expandir/colapsar en grupos (si se desea fijo) */
+    .mud-table-cell-custom-group .mud-button-root {
+        display: none !important;
+    }
+
+    /* Ajuste de padding para grupos */
+    .mud-table-cell-custom-group {
+        padding: 0 !important;
+    }
+</style>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-8 mb-10">
+
+    <div class="d-flex align-center gap-3 mb-6">
+        <MudIcon Icon="@Icons.Material.Filled.School" Size="Size.Large" Color="Color.Primary" />
+        <div>
+            <MudText Typo="Typo.h4" Style="font-weight: 700; color: #1e3a58; letter-spacing: -0.5px;">Legajo Académico</MudText>
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">Historial completo de materias y promedios.</MudText>
+        </div>
+    </div>
+
+    @if (cargando)
+    {
+        <div class="d-flex flex-column align-center justify-center py-16">
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+            <MudText Class="mt-4 mud-text-secondary">Procesando historial...</MudText>
+        </div>
+    }
+    else if (historia == null)
+    {
+        <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Class="rounded-lg">
+            No se pudo cargar la información académica. Contacte a administración.
+        </MudAlert>
+    }
+    else
+    {
+        <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-6" Color="Color.Primary" KeepPanelsAlive="true" Class="rounded-lg">
+
+            @* === PESTAÑA 1: AVANCE (ANALÍTICO) === *@
+            <MudTabPanel Text="Avance de Carrera" Icon="@Icons.Material.Filled.PieChart">
+
+                <MudGrid Class="mb-8" Spacing="3">
+                    <MudItem xs="12" sm="4">
+                        <MudPaper Class="pa-4 d-flex flex-column align-center justify-center gap-1" Elevation="2" Style="border-top: 4px solid #49BEAA; height: 100%;">
+                            <MudText Typo="Typo.caption" Style="text-transform:uppercase; letter-spacing:1px; font-weight:700; color:#64748b;">Promedio General</MudText>
+                            <MudText Typo="Typo.h3" Style="font-weight: 800; color: #2c3e50;">@historia.PromedioGeneral</MudText>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <MudPaper Class="pa-4 d-flex flex-column align-center justify-center gap-2" Elevation="2" Style="border-top: 4px solid #1e3a58; height: 100%;">
+                            <MudText Typo="Typo.caption" Style="text-transform:uppercase; letter-spacing:1px; font-weight:700; color:#64748b;">Avance de Carrera</MudText>
+                            <div style="position: relative; display: inline-flex;">
+                                <MudProgressCircular Color="Color.Primary" Value="@((int)historia.PorcentajeAvance)" Size="Size.Large" StrokeWidth="8" />
+                                <div style="position: absolute; top: 0; left: 0; bottom: 0; right: 0; display: flex; align-items: center; justify-content: center;">
+                                    <MudText Typo="Typo.caption" Style="font-weight: 800;">@historia.PorcentajeAvance%</MudText>
+                                </div>
+                            </div>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <MudPaper Class="pa-4 d-flex flex-column align-center justify-center gap-1" Elevation="2" Style="border-top: 4px solid #EF767A; height: 100%;">
+                            <MudText Typo="Typo.caption" Style="text-transform:uppercase; letter-spacing:1px; font-weight:700; color:#64748b;">Materias Aprobadas</MudText>
+                            <MudText Typo="Typo.h3" Style="font-weight: 800; color: #2c3e50;">
+                                @historia.MateriasAprobadas <span style="font-size: 1.2rem; color: #95a5a6; font-weight: 400;">/ @historia.TotalMateriasPlan</span>
+                            </MudText>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+
+                <MudTable Items="@historia.Detalle" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="3" GroupBy="@grupoAnio" Dense="true" Class="rounded-lg">
+                    <HeaderContent>
+                        <MudTh Style="width: 100px; font-weight:700; color:#456990;">Código</MudTh>
+                        <MudTh Style="font-weight:700; color:#456990;">Materia</MudTh>
+                        <MudTh Style="font-weight:700; color:#456990;">Fecha</MudTh>
+                        <MudTh Style="text-align:center; font-weight:700; color:#456990;">Estado</MudTh>
+                        <MudTh Style="text-align:center; font-weight:700; color:#456990;">Nota</MudTh>
+                    </HeaderContent>
+
+                    <GroupHeaderTemplate>
+                        <MudTh Class="mud-table-cell-custom-group" colspan="5">
+                            <div style="background: linear-gradient(90deg, #1e3a58 0%, #49BEAA 100%); height: 3px;"></div>
+                            <div style="background-color: #f8fafc; padding: 10px 16px; font-weight: 800; color: #1e3a58; font-size: 0.9rem; letter-spacing: 0.5px; text-align: center; text-transform: uppercase;">
+                                @($"{context.Key}° AÑO")
+                            </div>
+                            <div style="background: linear-gradient(90deg, #49BEAA 0%, #1e3a58 100%); height: 3px;"></div>
+                        </MudTh>
+                    </GroupHeaderTemplate>
+
+                    <RowTemplate>
+                        <MudTd DataLabel="Código" Style="font-size: 0.85rem; color: #64748b;">@context.Codigo</MudTd>
+                        <MudTd DataLabel="Materia"><b>@context.Materia</b></MudTd>
+                        <MudTd DataLabel="Fecha">@(context.Fecha?.ToString("dd/MM/yyyy") ?? "-")</MudTd>
+                        <MudTd DataLabel="Estado" Style="text-align:center">
+                            @if (context.Estado == "Aprobada" || context.Estado == "Promocionada")
+                            {
+                                <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Filled" Style="font-weight:600;">APROBADA</MudChip>
+                            }
+                            else if (context.Estado == "Regular")
+                            {
+                                <MudChip T="string" Color="Color.Info" Size="Size.Small" Variant="Variant.Text" Style="font-weight:600;">REGULAR</MudChip>
+                            }
+                            else if (context.Estado == "Cursando")
+                            {
+                                <MudChip T="string" Color="Color.Primary" Size="Size.Small" Variant="Variant.Text" Style="font-weight:600;">CURSANDO</MudChip>
+                            }
+                            else if (context.Estado == "Libre")
+                            {
+                                <MudChip T="string" Color="Color.Error" Size="Size.Small" Variant="Variant.Text" Style="font-weight:600;">LIBRE</MudChip>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.caption" Style="color: #cbd5e1; font-style:italic;">PENDIENTE</MudText>
+                            }
+                        </MudTd>
+                        <MudTd DataLabel="Nota" Style="text-align:center;">
+                            @if (context.Nota.HasValue)
+                            {
+                                <MudText Typo="Typo.body2" Style="font-weight: 800; color: #1e3a58;">@context.Nota.Value.ToString("0.00")</MudText>
+                            }
+                            else
+                            {
+                                <span style="color:#cbd5e1;">-</span>
+                            }
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudTabPanel>
+
+            @* === PESTAÑA 2: CRONOLÓGICO === *@
+            <MudTabPanel Text="Historial Cronológico" Icon="@Icons.Material.Filled.HistoryEdu">
+                @if (historialPeriodos == null || !historialPeriodos.Any())
+                {
+                    <div class="d-flex flex-column align-center justify-center py-12 opacity-50">
+                        <MudIcon Icon="@Icons.Material.Filled.Inbox" Size="Size.Large" />
+                        <MudText Class="mt-2">No hay registros de cursadas anteriores.</MudText>
+                    </div>
+                }
+                else
+                {
+                    <MudExpansionPanels MultiExpansion="true" Elevation="2" Class="rounded-lg">
+                        @foreach (var periodo in historialPeriodos)
+                        {
+                            <MudExpansionPanel IsInitiallyExpanded="@(periodo.Anio == DateTime.Now.Year)">
+                                <TitleContent>
+                                    <div class="d-flex align-center gap-3">
+                                        <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Color="Color.Primary" />
+                                        <MudText Typo="Typo.subtitle1" Style="font-weight: 700;">@periodo.NombrePeriodo</MudText>
+                                        @if (periodo.Anio == DateTime.Now.Year)
+                                        {
+                                            <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Text" Class="ml-2">ACTUAL</MudChip>
+                                        }
+                                    </div>
+                                </TitleContent>
+                                <ChildContent>
+                                    <MudGrid Spacing="3" Class="pa-2">
+                                        @foreach (var materia in periodo.Materias)
+                                        {
+                                            <MudItem xs="12" sm="6" md="4" lg="3">
+                                                <MudCard Elevation="3" Class="rounded-lg h-100 d-flex flex-column" Style="@GetBorderColor(materia)">
+                                                    <MudCardHeader>
+                                                        <CardHeaderContent>
+                                                            <MudText Typo="Typo.subtitle2" Style="font-weight: 800; line-height: 1.3; min-height: 40px; display: flex; align-items: start;">
+                                                                @materia.Materia
+                                                            </MudText>
+                                                            <MudText Typo="Typo.caption" Class="mud-text-secondary mt-1 d-block">
+                                                                Condición: @materia.Condicion
+                                                            </MudText>
+                                                        </CardHeaderContent>
+                                                    </MudCardHeader>
+
+                                                    <MudCardContent Class="pt-0 flex-grow-1 d-flex flex-column justify-end">
+                                                        <div class="mt-2">
+                                                            <div class="d-flex justify-space-between align-center mb-1">
+                                                                <MudText Typo="Typo.caption">Asistencia</MudText>
+                                                                <MudText Typo="Typo.caption" Style="font-weight: 700;">@materia.PorcentajeAsistencia%</MudText>
+                                                            </div>
+                                                            <MudProgressLinear Color="@(materia.PorcentajeAsistencia >= 60 ? Color.Success : Color.Error)"
+                                                                               Value="@materia.PorcentajeAsistencia" Class="rounded-lg mb-3" Size="Size.Small" />
+
+                                                            @if (materia.NotasParciales != null && materia.NotasParciales.Any())
+                                                            {
+                                                                <div class="d-flex flex-wrap gap-1">
+                                                                    @foreach (var nota in materia.NotasParciales)
+                                                                    {
+                                                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default" Style="font-weight:700;">@nota</MudChip>
+                                                                    }
+                                                                </div>
+                                                            }
+                                                        </div>
+                                                    </MudCardContent>
+
+                                                    @if (materia.NotaFinal.HasValue)
+                                                    {
+                                                        <div class="pa-3 d-flex justify-space-between align-center" style="background-color: #f8fafc; border-top: 1px solid #e2e8f0;">
+                                                            <MudText Typo="Typo.caption" Style="font-weight: 600; text-transform: uppercase;">Nota Final</MudText>
+                                                            <MudText Typo="Typo.h6" Color="Color.Primary" Style="font-weight: 800;">@materia.NotaFinal</MudText>
+                                                        </div>
+                                                    }
+                                                </MudCard>
+                                            </MudItem>
+                                        }
+                                    </MudGrid>
+                                </ChildContent>
+                            </MudExpansionPanel>
+                        }
+                    </MudExpansionPanels>
+                }
+            </MudTabPanel>
+        </MudTabs>
+    }
+</MudContainer>
+
+@code {
+    private bool cargando = true;
+    private HistoriaAcademicaDTO? historia;
+    private List<PeriodoHistorialDTO> historialPeriodos = new();
+
+    // Configuración de agrupación
+    private TableGroupDefinition<DetalleMateriaAvanceDTO> grupoAnio = new()
+    {
+        GroupName = "Año",
+        Indentation = false,
+        Expandable = false,
+        Selector = (e) => e.AnioCursada
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var idUsuarioStr = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (int.TryParse(idUsuarioStr, out int idUsuario))
+            {
+                var alumno = await AlumnoService.GetByUsuarioIdAsync(idUsuario);
+                if (alumno != null)
+                {
+                    var t1 = HistorialService.GetAvanceAsync(alumno.Id);
+                    var t2 = HistorialService.GetCronologicoAsync(alumno.Id);
+
+                    await Task.WhenAll(t1, t2);
+
+                    historia = t1.Result;
+                    historialPeriodos = t2.Result;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Error al obtener datos: " + ex.Message, Severity.Error);
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private string GetBorderColor(DetalleCursadaDTO mat)
+    {
+        if (mat.EsCursando) return "border-left: 4px solid #2196F3;"; // Azul
+        if (mat.EsPositivo) return "border-left: 4px solid #4CAF50;"; // Verde
+        return "border-left: 4px solid #F44336;"; // Rojo
+    }
+}

@@ -1,0 +1,509 @@
+﻿@page "/carreras"
+@using EduSys.Shared.DTOs
+@using EduSys.Web.Services.Interfaces
+@inject ICarreraService CarreraService
+@inject ISedeService SedeService
+@inject IModalidadService ModalidadService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<style>
+    /* 1. TEXTO NEGRO FORZADO EN PAGINADOR Y TABLA */
+    .force-black-text,
+    .force-black-text input,
+    .force-black-text textarea,
+    .force-black-text .mud-input-slot,
+    .force-black-text .mud-table-pagination-caption,
+    .force-black-text .mud-table-pagination-select .mud-input-slot,
+    .force-black-text .mud-select-input {
+        color: #1F2937 !important;
+        -webkit-text-fill-color: #1F2937 !important;
+        font-weight: 500;
+    }
+
+        .force-black-text .mud-input-label {
+            color: #456990 !important; /* Label Azul Corporativo */
+            background-color: #FAFAFA !important;
+            padding: 0 4px;
+            z-index: 2;
+            font-weight: 600;
+        }
+
+    /* 2. ESTILO DE MODALES UNIFICADO (IGUAL A PLANES) */
+    .unified-dialog-card {
+        background-color: white !important;
+        border-radius: 12px !important;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.2) !important;
+    }
+
+    .modal-title {
+        color: var(--mud-palette-primary);
+        font-weight: 800;
+        font-size: 1.5rem;
+    }
+
+    .modal-title-warning {
+        color: #d97706;
+        font-weight: 800;
+        font-size: 1.5rem;
+    }
+
+    /* --- ESTILO DE INPUTS DENTRO DEL MODAL (CON BORDE AZUL) --- */
+    .mud-dialog .mud-input-outlined-border {
+        border-color: #456990 !important;
+        border-width: 1px !important;
+    }
+
+    .mud-dialog .mud-input-control {
+        background-color: #FAFAFA;
+        border-radius: 4px;
+    }
+
+        /* Texto dentro de los inputs del modal */
+        .mud-dialog .mud-input-control input,
+        .mud-dialog .mud-input-control textarea,
+        .mud-dialog .mud-select-input {
+            color: #0F172A !important;
+            font-weight: 500;
+        }
+
+    /* Iconos grises */
+    .mud-input-adornment-start .mud-icon-root,
+    .force-black-text .mud-icon-root {
+        color: #6B7280 !important;
+    }
+
+    /* 3. CONTROLES DE LA TABLA */
+    .search-modern {
+        background-color: white !important;
+        border: 1px solid #E5E7EB !important;
+        border-radius: 8px !important;
+    }
+
+    .filter-btn {
+        transition: all 0.2s ease-in-out;
+        border-radius: 20px !important;
+        text-transform: none !important;
+        font-weight: 600 !important;
+    }
+</style>
+
+<MudText Typo="Typo.h5" Color="Color.Primary" Align="Align.Center" Class="mb-4"><b>Gestión de Carreras</b></MudText>
+
+<MudTable @ref="_table" Items="@carreras" Hover="true" Loading="@loading" RowsPerPage="5" Filter="new Func<CarreraDTO, bool>(FilterFunc)" Elevation="3" Class="rounded-xl" ReadOnly="false" CanCancelEdit="true" RowEditCommit="ItemHasBeenCommitted" EditTrigger="TableEditTrigger.EditButton" ApplyButtonPosition="TableApplyButtonPosition.End">
+    <ToolBarContent>
+        <MudText Typo="Typo.h6" Color="Color.Primary" Class="d-none d-lg-flex font-weight-bold mr-4">Listado</MudText>
+
+        @* --- ZONA DE FILTROS --- *@
+        <div class="d-flex flex-wrap align-center gap-2" style="width: 100%;">
+
+            @* 1. Filtro Estado *@
+            <div class="d-flex align-center border-r pr-2 mr-2" style="border-color: #e5e7eb;">
+                <MudButton OnClick="@(() => CambiarFiltro("Todos"))" Variant="@(filtroEstado == "Todos" ? Variant.Filled : Variant.Outlined)" Color="@(filtroEstado == "Todos" ? Color.Primary : Color.Default)" Size="Size.Small" Class="filter-btn mr-1">Todos</MudButton>
+                <MudButton OnClick="@(() => CambiarFiltro("Activas"))" Variant="@(filtroEstado == "Activas" ? Variant.Filled : Variant.Outlined)" Color="@(filtroEstado == "Activas" ? Color.Success : Color.Default)" Size="Size.Small" Class="filter-btn mr-1">Activas</MudButton>
+                <MudButton OnClick="@(() => CambiarFiltro("Bajas"))" Variant="@(filtroEstado == "Bajas" ? Variant.Filled : Variant.Outlined)" Color="@(filtroEstado == "Bajas" ? Color.Warning : Color.Default)" Size="Size.Small" Class="filter-btn">Bajas</MudButton>
+            </div>
+
+            @* 2. Filtro Sede *@
+            <MudSelect T="string" @bind-Value="filtroSede" Placeholder="Sede..." Clearable="true"
+                       Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true"
+                       Class="search-modern force-black-text" Style="min-width: 150px; max-width: 200px;">
+                @foreach (var s in listasSedesFiltro)
+                {
+                    <MudSelectItem Value="@s.Nombre" />
+                }
+            </MudSelect>
+
+            @* 3. Filtro Modalidad *@
+            <MudSelect T="string" @bind-Value="filtroModalidad" Placeholder="Modalidad..." Clearable="true"
+                       Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true"
+                       Class="search-modern force-black-text" Style="min-width: 150px; max-width: 200px;">
+                @foreach (var m in listasModalidadesFiltro)
+                {
+                    <MudSelectItem Value="@m.Nombre" />
+                }
+            </MudSelect>
+
+            <MudSpacer />
+
+            @* 4. Buscador *@
+            <MudTextField @bind-Value="searchString" Placeholder="Buscar..." Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Variant="Variant.Text" Margin="Margin.Dense" Class="mt-0 search-modern force-black-text px-2" Style="min-width: 200px;" Immediate="true" Clearable="true" />
+
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="AbrirModalCrear" Class="ml-2 rounded-lg px-4" Style="height: 40px;">Nueva</MudButton>
+        </div>
+    </ToolBarContent>
+
+    <EditButtonContent><span style="display:none;"></span></EditButtonContent>
+
+    <HeaderContent>
+        <MudTh Style="text-align: center;">Nombre</MudTh>
+        <MudTh Style="text-align: center;">Título</MudTh>
+        <MudTh Style="text-align: center;">Resolución</MudTh>
+        <MudTh Style="text-align: center;">Modalidad</MudTh>
+        <MudTh Style="text-align: center;">Duración</MudTh>
+        <MudTh Style="text-align: center;">Estado</MudTh>
+        <MudTh Style="text-align: center;">Sedes</MudTh>
+        <MudTh Style="width: 150px; text-align: center;">Acciones</MudTh>
+    </HeaderContent>
+
+    <RowTemplate>
+        <MudTd DataLabel="Nombre" Style="text-align: center;"><MudText Typo="Typo.body2" Style="font-weight: 600;">@context.Nombre</MudText></MudTd>
+        <MudTd DataLabel="Título" Style="text-align: center;"><MudText Typo="Typo.body2">@context.Titulo</MudText></MudTd>
+        <MudTd DataLabel="Resolución" Style="text-align: center;"><MudText Typo="Typo.caption">@context.ResolucionMinisterial</MudText></MudTd>
+
+        <MudTd DataLabel="Modalidad" Style="text-align: center;">
+            @if (context.Modalidades != null && context.Modalidades.Any())
+            {
+                <div class="d-flex flex-wrap justify-center gap-1" style="max-width: 200px; margin: 0 auto;">
+                    @foreach (var mod in context.Modalidades)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Text" Class="ma-0 rounded" Style="font-size: 0.75rem;">@mod</MudChip>
+                    }
+                </div>
+            }
+            else
+            {
+
+                <MudText Typo="Typo.caption" Color="Color.Default">-</MudText>
+            }
+        </MudTd>
+
+        <MudTd DataLabel="Duración" Style="text-align: center;">@context.DuracionAnios años</MudTd>
+        <MudTd DataLabel="Estado" Style="text-align: center;">
+            <MudChip T="string" Color="@(context.Activo? Color.Success: Color.Warning)" Size="Size.Small" Variant="Variant.Filled" Class="rounded">@(context.Activo ? "Activa" : "Baja")</MudChip>
+        </MudTd>
+        <MudTd DataLabel="Sedes" Style="text-align: center;">
+            @if (context.NombresSedes != null && context.NombresSedes.Any())
+            {
+                <div class="d-flex flex-wrap justify-center gap-1" style="max-width: 200px; margin: 0 auto;">
+                    @foreach (var nombre in context.NombresSedes)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Text" Class="ma-0 rounded" Style="font-size: 0.75rem;">@nombre</MudChip>
+                    }
+                </div>
+            }
+            else
+            {
+
+                <MudText Typo="Typo.caption" Color="Color.Default" Style="opacity:0.5;">Sin asignar</MudText>
+            }
+        </MudTd>
+        <MudTd DataLabel="Acciones" Style="text-align: center;">
+            <div class="d-flex justify-center">
+                <MudTooltip Text="Gestionar Sedes">
+                    <MudIconButton Icon="@Icons.Material.Filled.EditLocationAlt" Color="Color.Secondary" Size="Size.Small" OnClick="@(() => AbrirModalSedes(context))" Class="mr-1" />
+                </MudTooltip>
+                @if (context.Activo)
+                {
+                    <MudTooltip Text="Dar de Baja">
+                        <MudIconButton Icon="@Icons.Material.Filled.Block" Color="Color.Warning" Size="Size.Small" OnClick="@(() => AbrirModalBaja(context))" Class="mr-1" />
+                    </MudTooltip>
+                }
+                else
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.Circle" Size="Size.Small" Color="Color.Default" Disabled="true" Style="opacity: 0.3;" Class="mr-1" />
+                }
+                <MudTooltip Text="Editar Carrera">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" OnClick="@(() => AbrirEditar(context))" />
+                </MudTooltip>
+            </div>
+        </MudTd>
+    </RowTemplate>
+
+    <RowEditingTemplate>
+        <MudTd><MudTextField @bind-Value="@context.Nombre" Label="Nombre" Class="force-black-text" /></MudTd>
+        <MudTd><MudTextField @bind-Value="@context.Titulo" Label="Título" Class="force-black-text" /></MudTd>
+        <MudTd><MudTextField @bind-Value="@context.ResolucionMinisterial" Label="Res." Class="force-black-text" /></MudTd>
+        <MudTd><MudText Typo="Typo.caption" Align="Align.Center">Usar Modal</MudText></MudTd>
+        <MudTd><MudNumericField @bind-Value="@context.DuracionAnios" Label="Años" Min="1" Max="10" Class="force-black-text" /></MudTd>
+        <MudTd><MudSwitch @bind-Value="@context.Activo" Color="Color.Success" /></MudTd>
+        <MudTd></MudTd>
+        <MudTd></MudTd>
+    </RowEditingTemplate>
+
+    <PagerContent>
+        <MudTablePager RowsPerPageString="Filas:" PageSizeOptions="new int[] { 5, 10, 25, 50 }" InfoFormat="{first_item}-{last_item} de {all_items}" Class="force-black-text" />
+    </PagerContent>
+</MudTable>
+
+@* --- MODAL 1: CREAR / EDITAR (DISEÑO MEJORADO) --- *@
+<MudDialog @bind-Visible="mostrarDialogoCrear" Options="optionsCrear" Class="unified-dialog-card">
+    <TitleContent>
+        <div class="pa-6 pb-2 d-flex justify-space-between align-center">
+            <div>
+                <MudText Class="modal-title">@(esEdicion ? "Editar Carrera" : "Nueva Carrera")</MudText>
+                <MudText Typo="Typo.body2" Style="color: #6B7280;">@(esEdicion ? "Modifique los datos necesarios." : "Ingresa los detalles para registrar.")</MudText>
+            </div>
+            <MudIconButton Icon="@Icons.Material.Filled.Close" OnClick="CerrarModales" Color="Color.Default" />
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <div class="px-6 pb-6">
+            <EditForm Model="@carreraModel" OnValidSubmit="GuardarCambios">
+                <DataAnnotationsValidator />
+                <MudGrid Spacing="2">
+                    <MudItem xs="12">
+                        <MudTextField Label="Nombre Oficial" @bind-Value="carreraModel.Nombre" For="@(() => carreraModel.Nombre)" Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.School" Class="force-black-text" />
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudTextField Label="Título a Otorgar" @bind-Value="carreraModel.Titulo" For="@(() => carreraModel.Titulo)" Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.WorkspacePremium" Class="force-black-text" />
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudTextField Label="Resolución" @bind-Value="carreraModel.ResolucionMinisterial" Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Gavel" Class="force-black-text" />
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudNumericField Label="Duración (Años)" @bind-Value="carreraModel.DuracionAnios" Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Timer" Min="1" Max="10" Class="force-black-text" />
+                    </MudItem>
+
+                    <MudItem xs="12">
+                        <MudSelect T="int" Label="Modalidades" MultiSelection="true" @bind-SelectedValues="modalidadesSeleccionadasIds" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter" AdornmentIcon="@Icons.Material.Filled.Devices" Class="force-black-text" ToStringFunc="@(id => listaModalidadesBD.FirstOrDefault(x => x.Id == id)?.Nombre)">
+                            @foreach (var mod in listaModalidadesBD)
+                            {
+                                <MudSelectItem T="int" Value="@mod.Id">@mod.Nombre</MudSelectItem>
+                            }
+                        </MudSelect>
+                        <div class="d-flex justify-end mt-1"><MudLink Href="/modalidades" Typo="Typo.caption" Color="Color.Primary">Gestionar Modalidades</MudLink></div>
+                    </MudItem>
+
+                    <MudItem xs="12">
+                        <MudTextField Label="Descripción" @bind-Value="carreraModel.Descripcion" Variant="Variant.Outlined" Lines="2" Class="force-black-text" />
+                    </MudItem>
+
+                    <MudItem xs="12" Class="d-flex justify-end gap-2 mt-4 pt-4" style="border-top: 1px solid #E5E7EB;">
+                        <MudButton OnClick="CerrarModales" Variant="Variant.Text" Color="Color.Default">Cancelar</MudButton>
+                        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="rounded-lg px-6" Elevation="0">@(esEdicion ? "Guardar Cambios" : "Guardar Carrera")</MudButton>
+                    </MudItem>
+                </MudGrid>
+            </EditForm>
+        </div>
+    </DialogContent>
+</MudDialog>
+
+@* --- MODAL 2: BAJA --- *@
+<MudDialog @bind-Visible="mostrarDialogoBaja" Options="optionsBaja" Class="unified-dialog-card">
+    <DialogContent>
+        <div class="pa-4 d-flex flex-column align-center text-center">
+            <MudIcon Icon="@Icons.Material.Filled.Block" Color="Color.Warning" Style="font-size: 4rem;" Class="mb-4" />
+            <MudText Class="modal-title-warning mb-2">Confirmar Baja</MudText>
+            <MudText Typo="Typo.body1" Class="force-black-text mb-4">La carrera <b>@carreraParaBaja?.Nombre</b> pasará a estado inactivo.</MudText>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <div class="px-6 pb-6 d-flex justify-center gap-4" style="width: 100%;">
+            <MudButton OnClick="CerrarModales" Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg">Cancelar</MudButton>
+            <MudButton OnClick="ConfirmarBaja" Variant="Variant.Filled" Color="Color.Warning" Class="rounded-lg px-6" Elevation="0">Confirmar</MudButton>
+        </div>
+    </DialogActions>
+</MudDialog>
+
+@* --- MODAL 3: SEDES --- *@
+<MudDialog @bind-Visible="mostrarDialogoSedes" Options="optionsCrear" Class="unified-dialog-card">
+    <TitleContent>
+        <div class="pa-6 pb-2 d-flex justify-space-between align-center">
+            <div><MudText Class="modal-title">Ubicación Geográfica</MudText></div>
+            <MudIconButton Icon="@Icons.Material.Filled.Close" OnClick="CerrarModales" Color="Color.Default" />
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <div class="px-6 pb-6">
+            @if (listaSedesDisponibles != null)
+            {
+                <MudGrid>
+                    @foreach (var sede in listaSedesDisponibles)
+                    {
+                        <MudItem xs="12" sm="6">
+                            <MudCheckBox T="bool" Value="@sedesSeleccionadas.Contains(sede.Id)" ValueChanged="@((bool check) => ToggleSede(sede.Id, check))" Label="@sede.Nombre" Color="Color.Primary" Class="force-black-text" />
+                        </MudItem>
+                    }
+                </MudGrid>
+            }
+            else
+            {
+                <div class="d-flex justify-center pa-4"><MudProgressCircular Indeterminate="true" Color="Color.Primary" /></div>
+            }
+            <div class="d-flex justify-end gap-2 mt-6 pt-4" style="border-top: 1px solid #E5E7EB;">
+                <MudButton OnClick="CerrarModales" Variant="Variant.Text" Color="Color.Default">Cancelar</MudButton>
+                <MudButton OnClick="GuardarSedes" Variant="Variant.Filled" Color="Color.Primary" Class="rounded-lg px-6" Elevation="0">Guardar</MudButton>
+            </div>
+        </div>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    private MudTable<CarreraDTO> _table;
+    private List<CarreraDTO> carreras = new List<CarreraDTO>();
+
+    // FILTROS
+    private string searchString = "";
+    private string filtroEstado = "Activas";
+    private string filtroSede = null;
+    private string filtroModalidad = null;
+
+    private List<SedeDTO> listasSedesFiltro = new List<SedeDTO>();
+    private List<ModalidadDTO> listasModalidadesFiltro = new List<ModalidadDTO>();
+
+    private CarreraDTO carreraModel = new CarreraDTO();
+    private bool esEdicion = false;
+    private List<ModalidadDTO> listaModalidadesBD = new List<ModalidadDTO>();
+    private IEnumerable<int> modalidadesSeleccionadasIds { get; set; } = new HashSet<int>();
+
+    private bool mostrarDialogoCrear = false;
+    private bool mostrarDialogoBaja = false;
+    private bool mostrarDialogoSedes = false;
+    private CarreraDTO carreraParaBaja;
+    private bool loading = true;
+
+    private string carreraSeleccionadaNombre = "";
+    private int carreraSeleccionadaId = 0;
+    private List<SedeDTO> listaSedesDisponibles = new List<SedeDTO>();
+    private HashSet<int> sedesSeleccionadas = new HashSet<int>();
+
+    private DialogOptions optionsCrear = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true };
+    private DialogOptions optionsBaja = new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true, CloseButton = false };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.WhenAll(CargarCarreras(), CargarListasFiltro());
+    }
+
+    private async Task CargarListasFiltro()
+    {
+        listasSedesFiltro = await SedeService.GetAllAsync();
+        listasModalidadesFiltro = await ModalidadService.GetAllAsync();
+    }
+
+    private async Task CargarCarreras()
+    {
+        loading = true;
+        carreras = await CarreraService.GetAllAsync();
+        loading = false;
+    }
+
+    private void CambiarFiltro(string nuevoEstado) { filtroEstado = nuevoEstado; }
+
+    private bool FilterFunc(CarreraDTO carrera)
+    {
+        if (!string.IsNullOrEmpty(filtroSede))
+        {
+            if (carrera.NombresSedes == null || !carrera.NombresSedes.Contains(filtroSede)) return false;
+        }
+
+        if (!string.IsNullOrEmpty(filtroModalidad))
+        {
+            if (carrera.Modalidades == null || !carrera.Modalidades.Contains(filtroModalidad)) return false;
+        }
+
+        bool matchTexto = true;
+        if (!string.IsNullOrWhiteSpace(searchString))
+        {
+            bool modMatch = carrera.Modalidades != null && carrera.Modalidades.Any(m => m.Contains(searchString, StringComparison.OrdinalIgnoreCase));
+            matchTexto = (carrera.Nombre?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                         (carrera.Titulo?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                         modMatch;
+        }
+        if (!matchTexto) return false;
+
+        switch (filtroEstado)
+        {
+            case "Activas": return carrera.Activo;
+            case "Bajas": return !carrera.Activo;
+            default: return true;
+        }
+    }
+
+    private async Task AbrirModalCrear()
+    {
+        carreraModel = new CarreraDTO { Activo = true };
+        listaModalidadesBD = await ModalidadService.GetAllAsync();
+        modalidadesSeleccionadasIds = new HashSet<int>();
+        esEdicion = false;
+        mostrarDialogoCrear = true;
+    }
+
+    private async Task AbrirEditar(CarreraDTO item)
+    {
+        carreraModel = new CarreraDTO
+        {
+            Id = item.Id,
+            Nombre = item.Nombre,
+            Titulo = item.Titulo,
+            DuracionAnios = item.DuracionAnios,
+            Activo = item.Activo,
+            ResolucionMinisterial = item.ResolucionMinisterial,
+            Descripcion = item.Descripcion,
+        };
+
+        listaModalidadesBD = await ModalidadService.GetAllAsync();
+        var idsActuales = await CarreraService.GetModalidadesIdsAsync(item.Id);
+        modalidadesSeleccionadasIds = new HashSet<int>(idsActuales);
+        esEdicion = true;
+        mostrarDialogoCrear = true;
+    }
+
+    private async Task GuardarCambios()
+    {
+        if (string.IsNullOrWhiteSpace(carreraModel.Nombre)) { Snackbar.Add("El nombre es obligatorio", Severity.Warning); return; }
+        if (!modalidadesSeleccionadasIds.Any()) { Snackbar.Add("Seleccione al menos una modalidad", Severity.Warning); return; }
+
+        string error = "";
+        int idCarrera = 0;
+
+        if (esEdicion)
+        {
+            error = await CarreraService.UpdateAsync(carreraModel);
+            idCarrera = carreraModel.Id;
+        }
+        else
+        {
+            error = await CarreraService.CreateAsync(carreraModel);
+            if (string.IsNullOrEmpty(error))
+            {
+                var carrerasTemp = await CarreraService.GetAllAsync();
+                var recienCreada = carrerasTemp.OrderByDescending(c => c.Id).FirstOrDefault();
+                if (recienCreada != null) idCarrera = recienCreada.Id;
+            }
+        }
+
+        if (string.IsNullOrEmpty(error))
+        {
+            if (idCarrera > 0) await CarreraService.ActualizarModalidadesAsync(idCarrera, modalidadesSeleccionadasIds.ToList());
+            Snackbar.Add(esEdicion ? "Carrera actualizada" : "Carrera creada", Severity.Success);
+            mostrarDialogoCrear = false;
+            await CargarCarreras();
+        }
+        else { Snackbar.Add(error, Severity.Error); }
+    }
+
+    private void AbrirModalBaja(CarreraDTO carrera) { carreraParaBaja = carrera; mostrarDialogoBaja = true; }
+    private async Task ConfirmarBaja()
+    {
+        if (carreraParaBaja == null) return;
+        var exito = await CarreraService.DeleteAsync(carreraParaBaja.Id);
+        if (exito) { Snackbar.Add("Carrera dada de baja", Severity.Warning); await CargarCarreras(); } else { Snackbar.Add("Error al dar de baja", Severity.Error); }
+        mostrarDialogoBaja = false;
+    }
+
+    private async Task AbrirModalSedes(CarreraDTO carrera)
+    {
+        carreraSeleccionadaId = carrera.Id;
+        carreraSeleccionadaNombre = carrera.Nombre;
+        listaSedesDisponibles = await SedeService.GetAllAsync();
+        var idsAsignados = await CarreraService.GetSedesIdsAsync(carrera.Id);
+        sedesSeleccionadas = new HashSet<int>(idsAsignados);
+        mostrarDialogoSedes = true;
+    }
+    private void ToggleSede(int idSede, bool isChecked) { if (isChecked) sedesSeleccionadas.Add(idSede); else sedesSeleccionadas.Remove(idSede); }
+    private async Task GuardarSedes()
+    {
+        var exito = await CarreraService.ActualizarSedesAsync(carreraSeleccionadaId, sedesSeleccionadas.ToList());
+        if (exito) { Snackbar.Add("Sedes actualizadas", Severity.Success); mostrarDialogoSedes = false; await CargarCarreras(); } else { Snackbar.Add("Error", Severity.Error); }
+    }
+
+    private void CerrarModales() { mostrarDialogoCrear = false; mostrarDialogoBaja = false; mostrarDialogoSedes = false; }
+    private async void ItemHasBeenCommitted(object element)
+    {
+        var carreraEditada = (CarreraDTO)element;
+        var error = await CarreraService.UpdateAsync(carreraEditada);
+        if (string.IsNullOrEmpty(error)) Snackbar.Add("Actualizado", Severity.Success); else { Snackbar.Add(error, Severity.Error); await CargarCarreras(); }
+    }
+}

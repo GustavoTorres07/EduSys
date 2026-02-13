@@ -1,0 +1,874 @@
+﻿@page "/comisiones"
+@using EduSys.Shared.DTOs
+@using EduSys.Shared.Models
+@using EduSys.Web.Services.Interfaces
+@inject IComisionService ComisionService
+@inject ICarreraService CarreraService
+@inject IHorarioService HorarioService
+@inject IAulaService AulaService
+@inject IPeriodoService PeriodoService
+@inject ISedeService SedeService
+@inject IPlanService PlanService
+@inject IDocenteService DocenteService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<style>
+    /* 1. ESTILO TEXTO NEGRO GENERAL */
+    .force-black-text,
+    .force-black-text input,
+    .force-black-text .mud-input-slot,
+    .force-black-text .mud-select-input {
+        color: #1F2937 !important;
+        -webkit-text-fill-color: #1F2937 !important;
+        font-weight: 500;
+    }
+
+        .force-black-text .mud-input-label {
+            color: #456990 !important;
+            background-color: white !important;
+            padding: 0 4px;
+            z-index: 2;
+            font-weight: 600;
+        }
+
+    /* 2. CLASE PARA BORDE AZUL (FILTROS Y MODALES) */
+    .custom-input-borde .mud-input-outlined-border {
+        border-color: #456990 !important;
+    }
+
+    .custom-input-borde.mud-input-control.mud-input-focused .mud-input-outlined-border {
+        border-width: 2px !important;
+    }
+
+    /* Aseguramos que el label también sea azul en estos inputs */
+    .custom-input-borde .mud-input-label {
+        color: #456990 !important;
+        background-color: white !important;
+    }
+
+    /* 3. PAGINADOR (TEXTO VISIBLE) */
+    .mud-table-pagination-caption {
+        color: #1F2937 !important;
+        font-weight: 600;
+    }
+
+    .mud-table-pagination-select .mud-input-root {
+        color: #1F2937 !important;
+    }
+
+    .mud-table-pagination-actions button {
+        color: #456990 !important;
+    }
+
+    /* 4. MODALES Y TARJETAS */
+    .unified-dialog-card {
+        background-color: white !important;
+        border-radius: 12px !important;
+    }
+
+    .modal-title {
+        color: var(--mud-palette-primary);
+        font-weight: 800;
+        font-size: 1.5rem;
+    }
+
+    .carrera-card {
+        border: 1px solid #E2E8F0;
+        transition: transform 0.2s;
+        cursor: pointer;
+    }
+
+        .carrera-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--mud-palette-primary);
+            background-color: #F8FAFC;
+        }
+
+    .search-modern {
+        background-color: white !important;
+        border: 1px solid #E5E7EB !important;
+        border-radius: 8px !important;
+    }
+</style>
+
+<MudText Typo="Typo.h5" Color="Color.Primary" Align="Align.Center" Class="mb-6"><b>Oferta Académica</b></MudText>
+
+@* ========================================================================================== *@
+@* VISTA 1: SELECCIÓN DE CARRERA                                                              *@
+@* ========================================================================================== *@
+@if (carreraSeleccionada == null)
+{
+    <MudContainer MaxWidth="MaxWidth.Large">
+        @if (loadingCarreras)
+        {
+            <div class="d-flex justify-center my-4"><MudProgressCircular Color="Color.Primary" Indeterminate="true" /></div>
+        }
+        else
+        {
+            <div class="d-flex justify-center mb-6">
+                <MudTextField @bind-Value="searchCarrera" Placeholder="Buscar Carrera..." Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search" Variant="Variant.Outlined"
+                              Class="search-modern force-black-text" Style="max-width: 500px;" Immediate="true" />
+            </div>
+
+            <MudGrid Justify="Justify.Center">
+                @foreach (var carrera in CarrerasFiltradas)
+                {
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudCard Class="carrera-card rounded-lg pa-4" @onclick="@(() => SeleccionarCarrera(carrera))" Elevation="0">
+                            <MudCardContent Class="d-flex flex-column align-center">
+                                <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Class="mb-3" Size="Size.Large">
+                                    <b>@carrera.Nombre.Substring(0, 1)</b>
+                                </MudAvatar>
+                                <MudText Typo="Typo.h6" Align="Align.Center"><b>@carrera.Nombre</b></MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Default" Align="Align.Center">@carrera.Titulo</MudText>
+                            </MudCardContent>
+                        </MudCard>
+                    </MudItem>
+                }
+            </MudGrid>
+        }
+    </MudContainer>
+}
+
+@* ========================================================================================== *@
+@* VISTA 2: TABLA DE COMISIONES                                                               *@
+@* ========================================================================================== *@
+else
+{
+    <div class="d-flex align-center gap-4 mb-4">
+        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Color="Color.Default" OnClick="VolverACarreras" Variant="Variant.Outlined" Class="rounded-circle" />
+        <div>
+            <MudText Typo="Typo.h5" Color="Color.Primary"><b>@carreraSeleccionada.Nombre</b></MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">Gestión de Cursadas</MudText>
+        </div>
+    </div>
+
+    @* --- BARRA SUPERIOR (PERIODO Y NUEVA) --- *@
+    <MudGrid Class="mb-2 align-center">
+        <MudItem xs="12" md="4">
+            <MudSelect T="int" Label="Período Académico" Value="filtroPeriodoId" ValueChanged="OnPeriodoChanged"
+                       Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter"
+                       Class="custom-input-borde force-black-text"
+                       ToStringFunc="ObtenerNombrePeriodo">
+                @foreach (var p in listaPeriodos)
+                {
+                    <MudSelectItem Value="@p.Id">@p.Nombre</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" md="8" Class="d-flex justify-end">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="AbrirModalCrear" Class="rounded-lg px-4">
+                Nueva Comisión
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+
+    @* --- TABLA CON FILTROS EN TOOLBAR --- *@
+    <MudTable Items="@comisiones" Hover="true" Loading="@loadingComisiones" RowsPerPage="10" Filter="new Func<ComisionDTO, bool>(FilterFunc)" Elevation="3" Class="rounded-xl mt-4">
+
+        <ToolBarContent>
+            <MudGrid Class="pt-2 pb-2 w-100 align-center" Spacing="2">
+
+                @* 1. BUSCADOR *@
+                <MudItem xs="12" md="3">
+                    <MudTextField @bind-Value="searchString" Label="Buscar" Placeholder="Código, Materia..."
+                                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                                  Variant="Variant.Outlined" Margin="Margin.Dense"
+                                  Class="custom-input-borde force-black-text" FullWidth="true" />
+                </MudItem>
+
+                @* 2. FILTRO SEDE *@
+                <MudItem xs="6" md="3">
+                    <MudSelect T="int" @bind-Value="filtroSedeId" Label="Sede"
+                               Variant="Variant.Outlined" Margin="Margin.Dense"
+                               Class="custom-input-borde force-black-text" FullWidth="true">
+                        <MudSelectItem Value="0">Todas</MudSelectItem>
+                        @foreach (var s in listaSedes)
+                        {
+                            <MudSelectItem Value="@s.Id">@s.Nombre</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+
+                @* 3. FILTRO TURNO *@
+                <MudItem xs="6" md="2">
+                    <MudSelect T="string" @bind-Value="filtroTurno" Label="Turno"
+                               Variant="Variant.Outlined" Margin="Margin.Dense"
+                               Class="custom-input-borde force-black-text" FullWidth="true">
+                        <MudSelectItem Value="@("Todos")">Todos</MudSelectItem>
+                        <MudSelectItem Value="@("Mañana")">Mañana</MudSelectItem>
+                        <MudSelectItem Value="@("Tarde")">Tarde</MudSelectItem>
+                        <MudSelectItem Value="@("Noche")">Noche</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+
+                @* 4. FILTRO ESTADO *@
+                <MudItem xs="6" md="2">
+                    <MudSelect T="string" @bind-Value="filtroEstado" Label="Estado"
+                               Variant="Variant.Outlined" Margin="Margin.Dense"
+                               Class="custom-input-borde force-black-text" FullWidth="true">
+                        <MudSelectItem Value="@("Todos")">Todos</MudSelectItem>
+                        <MudSelectItem Value="@("Abierta")">Abierta</MudSelectItem>
+                        <MudSelectItem Value="@("Cerrada")">Cerrada</MudSelectItem>
+                        <MudSelectItem Value="@("Cancelada")">Cancelada</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+
+                @* 5. LIMPIAR *@
+                <MudItem xs="6" md="2">
+                    <MudButton Variant="Variant.Outlined"
+                               OnClick="LimpiarFiltros"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.FilterAltOff"
+                               FullWidth="true"
+                               Class="mt-1"
+                               Style="height: 40px; border-width: 1px;">
+                        Limpiar
+                    </MudButton>
+                </MudItem>
+
+            </MudGrid>
+        </ToolBarContent>
+
+        <HeaderContent>
+            <MudTh>Código</MudTh><MudTh>Materia</MudTh><MudTh>Sede</MudTh><MudTh>Turno</MudTh><MudTh Style="text-align:center">Cupo</MudTh><MudTh Style="text-align:center">Estado</MudTh><MudTh Style="text-align:center">Acciones</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd><MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text"><b>@context.Codigo</b></MudChip></MudTd>
+            <MudTd>
+                <MudText Typo="Typo.body2" Style="font-weight:600;">@context.MateriaNombre</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Default">@context.PeriodoNombre</MudText>
+            </MudTd>
+            <MudTd>@context.SedeNombre</MudTd>
+            <MudTd>@context.Turno</MudTd>
+            <MudTd Style="text-align:center"><MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@context.CupoMaximo</MudChip></MudTd>
+            <MudTd Style="text-align:center">
+                <MudChip T="string" Color="@(context.Estado == "Abierta" ? Color.Success : Color.Error)" Size="Size.Small" Variant="Variant.Filled" Class="rounded">@context.Estado</MudChip>
+            </MudTd>
+            <MudTd Style="text-align:center">
+                <div class="d-flex justify-center gap-1">
+                    @* BOTÓN EQUIPO DOCENTE *@
+                    <MudTooltip Text="Equipo Docente">
+                        <MudIconButton Icon="@Icons.Material.Filled.People" Color="Color.Tertiary" Size="Size.Small" OnClick="@(() => AbrirModalDocentes(context))" />
+                    </MudTooltip>
+
+                    <MudTooltip Text="Horarios">
+                        <MudIconButton Icon="@Icons.Material.Filled.AccessTime" Color="Color.Info" Size="Size.Small" OnClick="@(() => AbrirModalHorarios(context))" />
+                    </MudTooltip>
+
+                    <MudTooltip Text="Editar">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" OnClick="@(() => AbrirModalEditar(context))" />
+                    </MudTooltip>
+
+                    <MudTooltip Text="Baja">
+                        <MudIconButton Icon="@Icons.Material.Filled.Block" Color="Color.Warning" Size="Size.Small" OnClick="@(() => AbrirModalBaja(context))" />
+                    </MudTooltip>
+                </div>
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText Align="Align.Center" Class="pa-4">No hay comisiones registradas.</MudText>
+        </NoRecordsContent>
+        <PagerContent><MudTablePager RowsPerPageString="Filas:" /></PagerContent>
+    </MudTable>
+}
+
+@* ========================================================================================== *@
+@* MODAL 1: CREAR / EDITAR COMISIÓN                                                           *@
+@* ========================================================================================== *@
+<MudDialog @bind-Visible="mostrarDialogo" Options="dialogOptions" Class="unified-dialog-card">
+    <TitleContent>
+        <div class="pa-6 pb-2 d-flex justify-space-between align-center">
+            <div>
+                <MudText Class="modal-title">@(esEdicion ? "Editar Comisión" : "Nueva Comisión")</MudText>
+                <MudText Typo="Typo.body2" Style="color: #6B7280;">@carreraSeleccionada?.Nombre</MudText>
+            </div>
+            <MudIconButton Icon="@Icons.Material.Filled.Close" OnClick="CerrarModales" Color="Color.Default" />
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <div class="px-6 pb-6">
+            <EditForm Model="@modelo" OnValidSubmit="Guardar">
+                <DataAnnotationsValidator />
+                <MudGrid Spacing="2">
+
+                    @* 1. SEDE (AHORA TIENE ValueChanged PARA FILTRAR MATERIAS) *@
+                    <MudItem xs="6">
+                        <MudSelect T="int" Label="Sede" Value="modelo.IdSede" ValueChanged="OnSedeChangedEnModal"
+                                   Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter"
+                                   Class="force-black-text custom-input-borde">
+                            <MudSelectItem Value="0">Seleccione Sede</MudSelectItem>
+                            @foreach (var s in listaSedes.Where(x => x.Activo).OrderBy(x => x.Nombre))
+                            {
+                                <MudSelectItem Value="@s.Id">@s.Nombre</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+
+                    @* 2. PERIODO *@
+                    <MudItem xs="6">
+                        <MudSelect T="int" Label="Período" @bind-Value="modelo.IdPeriodo"
+                                   Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter"
+                                   Class="force-black-text custom-input-borde" Disabled="true">
+                            @foreach (var p in listaPeriodos)
+                            {
+                                <MudSelectItem Value="@p.Id">@p.Nombre</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+
+                    @* 3. MATERIA (AHORA DEPENDE DE LA SEDE) *@
+                    <MudItem xs="12">
+                        <MudSelect T="int" Label="Materia" @bind-Value="modelo.IdPlanMateria"
+                                   Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter"
+                                   Class="force-black-text custom-input-borde" Required="true"
+                                   Disabled="@(listaMateriasDisponibles.Count == 0)">
+
+                            <MudSelectItem Value="0" Disabled="true">
+                                @(modelo.IdSede == 0 ? "Seleccione primero una Sede" : "Seleccione una materia...")
+                            </MudSelectItem>
+
+                            @foreach (var m in listaMateriasDisponibles)
+                            {
+                                <MudSelectItem Value="@m.Id">@m.NombreMateria (Año: @m.AnioCursada)</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+
+                    <MudItem xs="4">
+                        <MudTextField Label="Código" @bind-Value="modelo.Codigo"
+                                      Variant="Variant.Outlined"
+                                      Class="force-black-text custom-input-borde"
+                                      Required="true" Placeholder="Ej: ALG-2026" />
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudSelect T="string" Label="Turno" @bind-Value="modelo.Turno"
+                                   Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter"
+                                   Class="force-black-text custom-input-borde">
+                            <MudSelectItem Value="@("Mañana")" /><MudSelectItem Value="@("Tarde")" /><MudSelectItem Value="@("Noche")" />
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudNumericField Label="Cupo" @bind-Value="modelo.CupoMaximo"
+                                         Variant="Variant.Outlined"
+                                         Class="force-black-text custom-input-borde" Min="1" />
+                    </MudItem>
+                    <MudItem xs="12" Class="d-flex justify-end gap-2 mt-4 pt-4" style="border-top: 1px solid #E5E7EB;">
+                        <MudButton OnClick="CerrarModales" Variant="Variant.Text" Color="Color.Default">Cancelar</MudButton>
+                        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="rounded-lg px-6">Guardar</MudButton>
+                    </MudItem>
+                </MudGrid>
+            </EditForm>
+        </div>
+    </DialogContent>
+</MudDialog>
+
+@* ========================================================================================== *@
+@* MODAL 2: BAJA LÓGICA                                                                       *@
+@* ========================================================================================== *@
+<MudDialog @bind-Visible="mostrarDialogoBaja" Options="optionsBaja" Class="unified-dialog-card">
+    <DialogContent>
+        <div class="pa-4 d-flex flex-column align-center text-center">
+            <MudIcon Icon="@Icons.Material.Filled.Block" Color="Color.Warning" Style="font-size: 4rem;" Class="mb-4" />
+            <MudText Class="modal-title-warning mb-2">Dar de Baja</MudText>
+            <MudText Typo="Typo.body1" Class="force-black-text mb-4">La comisión <b>@modeloParaBaja?.Codigo</b> pasará a estado <b>Cancelada</b>.</MudText>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <div class="px-6 pb-6 d-flex justify-center gap-4 w-100">
+            <MudButton OnClick="CerrarModales" Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg">Cancelar</MudButton>
+            <MudButton OnClick="ConfirmarBaja" Variant="Variant.Filled" Color="Color.Warning" Class="rounded-lg px-6">Confirmar Baja</MudButton>
+        </div>
+    </DialogActions>
+</MudDialog>
+
+@* ========================================================================================== *@
+@* MODAL 3: GESTIÓN DE HORARIOS                                                               *@
+@* ========================================================================================== *@
+<MudDialog @bind-Visible="mostrarDialogoHorarios" Options="dialogOptions" Class="unified-dialog-card">
+    <TitleContent>
+        <div class="pa-6 pb-2 d-flex justify-space-between align-center">
+            <div>
+                <MudText Class="modal-title">Gestión de Horarios</MudText>
+                <MudText Typo="Typo.body2" Style="color: #6B7280;">@modeloParaHorario?.Codigo - @modeloParaHorario?.MateriaNombre</MudText>
+            </div>
+            <MudIconButton Icon="@Icons.Material.Filled.Close" OnClick="CerrarModales" Color="Color.Default" />
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <div class="px-6 pb-4">
+            <EditForm Model="@nuevoHorario" OnValidSubmit="AgregarHorario">
+                <MudGrid Spacing="2">
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.subtitle2" Color="Color.Primary" Style="font-weight: 700;">Agregar Nuevo Horario</MudText>
+                    </MudItem>
+                    <MudItem xs="3">
+                        <MudSelect T="string" Label="Día" @bind-Value="nuevoHorario.DiaSemana" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter" Class="force-black-text custom-input-borde">
+                            <MudSelectItem Value="@("Lunes")" /><MudSelectItem Value="@("Martes")" /><MudSelectItem Value="@("Miércoles")" />
+                            <MudSelectItem Value="@("Jueves")" /><MudSelectItem Value="@("Viernes")" /><MudSelectItem Value="@("Sábado")" />
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="3">
+                        <MudTimePicker Label="Inicio" @bind-Time="horaInicioTemp" Variant="Variant.Outlined" Class="force-black-text custom-input-borde" />
+                    </MudItem>
+                    <MudItem xs="3">
+                        <MudTimePicker Label="Fin" @bind-Time="horaFinTemp" Variant="Variant.Outlined" Class="force-black-text custom-input-borde" />
+                    </MudItem>
+                    <MudItem xs="3">
+                        <MudSelect T="int" Label="Aula" @bind-Value="nuevoHorario.IdAula"
+                                   Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter"
+                                   Class="force-black-text custom-input-borde">
+
+                            @* ✅ AGREGAMOS ESTA LÍNEA PARA QUE EL 0 TENGA TEXTO *@
+                            <MudSelectItem Value="0">Seleccione Aula</MudSelectItem>
+
+                            @foreach (var a in listaAulasDisponibles)
+                            {
+                                <MudSelectItem Value="@a.Id">@a.Nombre</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" Class="d-flex justify-end mb-4 pt-2">
+                        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="rounded-lg" StartIcon="@Icons.Material.Filled.Add">Asignar</MudButton>
+                    </MudItem>
+                </MudGrid>
+            </EditForm>
+            <MudDivider Class="my-4" />
+            <MudText Typo="Typo.subtitle2" Color="Color.Primary" Class="mb-2" Style="font-weight: 700;">Horarios Asignados</MudText>
+            <MudTable Items="@listaHorariosActuales" Dense="true" Hover="true" Outlined="true" Elevation="0" Class="rounded">
+                <HeaderContent>
+                    <MudTh>Día</MudTh><MudTh>Horario</MudTh><MudTh>Aula</MudTh><MudTh Style="text-align:center">Acción</MudTh>
+                </HeaderContent>
+                <RowTemplate Context="h">
+                    <MudTd><b>@h.DiaSemana</b></MudTd>
+                    <MudTd>@h.HoraInicio.ToString(@"hh\:mm") - @h.HoraFin.ToString(@"hh\:mm")</MudTd>
+                    <MudTd><MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text">@h.AulaNombre</MudChip></MudTd>
+                    <MudTd Style="text-align:center">
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => EliminarHorario(h.Id))" />
+                    </MudTd>
+                </RowTemplate>
+                <NoRecordsContent>
+                    <MudText Align="Align.Center" Class="pa-4" Color="Color.Secondary">No hay horarios asignados.</MudText>
+                </NoRecordsContent>
+            </MudTable>
+        </div>
+    </DialogContent>
+</MudDialog>
+
+@* ========================================================================================== *@
+@* MODAL 4: GESTIÓN DE EQUIPO DOCENTE                                                         *@
+@* ========================================================================================== *@
+<MudDialog @bind-Visible="mostrarDialogoDocentes" Options="dialogOptions" Class="unified-dialog-card">
+    <TitleContent>
+        <div class="pa-6 pb-2 d-flex justify-space-between align-center">
+            <div>
+                <MudText Class="modal-title">Equipo Docente</MudText>
+                <MudText Typo="Typo.body2" Style="color: #6B7280;">@modeloParaDocentes?.Codigo - @modeloParaDocentes?.MateriaNombre</MudText>
+            </div>
+            <MudIconButton Icon="@Icons.Material.Filled.Close" OnClick="CerrarModales" Color="Color.Default" />
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <div class="px-6 pb-4">
+
+            <EditForm Model="@nuevoDocenteAsignacion" OnValidSubmit="AsignarDocente">
+                <DataAnnotationsValidator />
+
+                <MudGrid Spacing="2" Class="mb-4 align-center">
+
+                    <MudItem xs="12" sm="6">
+                        <MudAutocomplete T="DocenteListadoDTO"
+                                         Label="Buscar Docente"
+                                         @bind-Value="docenteSeleccionadoParaAsignar"
+                                         SearchFunc="@BuscarDocentes"
+                                         ToStringFunc="@(d => d == null ? null : $"{d.Legajo} - {d.NombreCompleto}")"
+                                         Variant="Variant.Outlined"
+                                         AdornmentIcon="@Icons.Material.Filled.Search"
+                                         AnchorOrigin="Origin.BottomCenter"
+                                         Class="force-black-text custom-input-borde"
+                                         ResetValueOnEmptyText="true"
+                                         CoerceText="true"
+                                         Placeholder="Escriba nombre o legajo..." />
+                    </MudItem>
+
+                    @* 2. SELECTOR DE ROL *@
+                    <MudItem xs="8" sm="4">
+                        <MudSelect T="int" Label="Rol" @bind-Value="nuevoDocenteAsignacion.IdRolDocente"
+                                   Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter"
+                                   Class="force-black-text custom-input-borde">
+                            <MudSelectItem Value="1">Titular</MudSelectItem>
+                            <MudSelectItem Value="2">Adjunto</MudSelectItem>
+                            <MudSelectItem Value="3">Jefe Trab. Prácticos</MudSelectItem>
+                            <MudSelectItem Value="4">Ayudante</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+
+                    @* 3. BOTÓN ASIGNAR *@
+                    <MudItem xs="4" sm="2">
+                        <MudButton ButtonType="ButtonType.Submit"
+                                   Variant="Variant.Filled"
+                                   Color="Color.Tertiary"
+                                   FullWidth="true"
+                                   Style="height: 56px;"
+                                   Class="rounded-lg">
+                            Asignar
+                        </MudButton>
+                    </MudItem>
+
+                </MudGrid>
+            </EditForm>
+
+            @* --- LISTA DE ASIGNADOS --- *@
+            <MudText Typo="Typo.subtitle2" Color="Color.Primary" Class="mb-2" Style="font-weight: 700;">Docentes Asignados</MudText>
+            <MudTable Items="@listaDocentesAsignados" Dense="true" Hover="true" Outlined="true" Elevation="0" Class="rounded">
+                <HeaderContent>
+                    <MudTh>Legajo</MudTh>
+                    <MudTh>Docente</MudTh>
+                    <MudTh>Rol</MudTh>
+                    <MudTh Style="text-align:center">Acción</MudTh>
+                </HeaderContent>
+                <RowTemplate Context="d">
+                    <MudTd><b>@d.Legajo</b></MudTd>
+                    <MudTd>@d.NombreDocente</MudTd>
+                    <MudTd>
+                        <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text">@d.Rol</MudChip>
+                    </MudTd>
+                    <MudTd Style="text-align:center">
+                        <MudIconButton Icon="@Icons.Material.Filled.PersonRemove" Size="Size.Small" Color="Color.Error" OnClick="@(() => DesasignarDocente(d.Id))" />
+                    </MudTd>
+                </RowTemplate>
+                <NoRecordsContent>
+                    <MudText Align="Align.Center" Class="pa-4" Color="Color.Secondary">No hay docentes asignados a esta comisión.</MudText>
+                </NoRecordsContent>
+            </MudTable>
+        </div>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    // --- ESTADOS Y CARGA ---
+    private bool loadingCarreras = true;
+    private bool loadingComisiones = false;
+
+    // --- DATOS PRINCIPALES ---
+    private List<CarreraDTO> listaCarreras = new();
+    private CarreraDTO? carreraSeleccionada;
+    private List<ComisionDTO> comisiones = new();
+
+    // --- DATOS AUXILIARES ---
+    private List<PeriodoAcademicoDTO> listaPeriodos = new();
+    private List<SedeDTO> listaSedes = new();
+    private List<PlanMateriaDTO> listaMateriasDisponibles = new();
+
+    // --- FILTROS ---
+    private int filtroPeriodoId = 0;
+    private string searchString = "";
+    private string searchCarrera = "";
+    private int filtroSedeId = 0;
+    private string filtroTurno = "Todos";
+    private string filtroEstado = "Todos";
+
+    private IEnumerable<CarreraDTO> CarrerasFiltradas =>
+        string.IsNullOrWhiteSpace(searchCarrera)
+        ? listaCarreras
+        : listaCarreras.Where(c => c.Nombre.Contains(searchCarrera, StringComparison.OrdinalIgnoreCase));
+
+    // --- VARIABLES MODALES ABM ---
+    private bool mostrarDialogo = false;
+    private bool esEdicion = false;
+    private ComisionDTO modelo = new();
+
+    private bool mostrarDialogoBaja = false;
+    private ComisionDTO? modeloParaBaja;
+
+    // --- VARIABLES MODAL HORARIOS ---
+    private bool mostrarDialogoHorarios = false;
+    private ComisionDTO? modeloParaHorario;
+    private HorarioComisionDTO nuevoHorario = new();
+    private List<HorarioComisionDTO> listaHorariosActuales = new();
+    private List<Aula> listaAulasDisponibles = new();
+    private TimeSpan? horaInicioTemp = new TimeSpan(18, 0, 0);
+    private TimeSpan? horaFinTemp = new TimeSpan(22, 0, 0);
+
+    // --- VARIABLES MODAL DOCENTES ---
+    private bool mostrarDialogoDocentes = false;
+    private ComisionDTO? modeloParaDocentes;
+    private DocenteComisionRequestDTO nuevoDocenteAsignacion = new();
+    private List<DocenteComisionListadoDTO> listaDocentesAsignados = new();
+    private List<DocenteListadoDTO> listaTodosLosDocentes = new();
+    private DocenteListadoDTO? docenteSeleccionadoParaAsignar;
+
+    // --- OPCIONES DIALOGOS ---
+    private DialogOptions dialogOptions = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = false };
+    private DialogOptions optionsBaja = new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true, CloseButton = false };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarListasGlobales();
+    }
+
+    private async Task CargarListasGlobales()
+    {
+        loadingCarreras = true;
+        try
+        {
+            var t1 = PeriodoService.GetAllAsync();
+            var t2 = SedeService.GetAllAsync();
+            var t3 = CarreraService.GetAllAsync();
+
+            await Task.WhenAll(t1, t2, t3);
+
+            listaPeriodos = await t1;
+            listaSedes = await t2;
+            listaCarreras = await t3;
+
+            if (listaPeriodos.Any(p => p.Activo))
+                filtroPeriodoId = listaPeriodos.First(p => p.Activo).Id;
+            else if (listaPeriodos.Any())
+                filtroPeriodoId = listaPeriodos.First().Id;
+        }
+        catch (Exception ex) { Snackbar.Add("Error cargando datos: " + ex.Message, Severity.Error); }
+        finally { loadingCarreras = false; }
+    }
+
+    private async Task SeleccionarCarrera(CarreraDTO carrera)
+    {
+        carreraSeleccionada = carrera;
+        await CargarComisiones();
+        // NOTA: Ya no cargamos todas las materias aquí, se cargan por sede en el modal
+    }
+
+    private void VolverACarreras()
+    {
+        carreraSeleccionada = null;
+        comisiones.Clear();
+        searchString = "";
+        LimpiarFiltros();
+    }
+
+    private void LimpiarFiltros()
+    {
+        searchString = "";
+        filtroSedeId = 0;
+        filtroTurno = "Todos";
+        filtroEstado = "Todos";
+    }
+
+    private async Task OnPeriodoChanged(int id)
+    {
+        filtroPeriodoId = id;
+        if (carreraSeleccionada != null) await CargarComisiones();
+    }
+
+    private string ObtenerNombrePeriodo(int id) => listaPeriodos.FirstOrDefault(p => p.Id == id)?.Nombre ?? "Todos";
+
+    private async Task CargarComisiones()
+    {
+        if (carreraSeleccionada == null) return;
+        loadingComisiones = true;
+        try
+        {
+            comisiones = await ComisionService.GetByPeriodoAndCarreraAsync(filtroPeriodoId, carreraSeleccionada.Id);
+        }
+        finally { loadingComisiones = false; }
+    }
+
+    private bool FilterFunc(ComisionDTO c)
+    {
+        if (!string.IsNullOrWhiteSpace(searchString))
+        {
+            bool matchCodigo = c.Codigo.Contains(searchString, StringComparison.OrdinalIgnoreCase);
+            bool matchMateria = c.MateriaNombre?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false;
+            if (!matchCodigo && !matchMateria) return false;
+        }
+
+        if (filtroSedeId != 0 && c.IdSede != filtroSedeId) return false;
+        if (filtroTurno != "Todos" && c.Turno != filtroTurno) return false;
+        if (filtroEstado != "Todos" && c.Estado != filtroEstado) return false;
+
+        return true;
+    }
+
+    // ✅ LÓGICA DE APERTURA MODAL (CREAR)
+    private void AbrirModalCrear()
+    {
+        modelo = new ComisionDTO
+        {
+            IdPeriodo = filtroPeriodoId,
+            CupoMaximo = 40,
+            Estado = "Abierta",
+            Turno = "Noche",
+            IdSede = 0 // Forzamos a elegir
+        };
+
+        listaMateriasDisponibles.Clear(); // Se limpiará hasta que elija sede
+        esEdicion = false;
+        mostrarDialogo = true;
+    }
+
+    // ✅ LÓGICA DE APERTURA MODAL (EDITAR)
+    private async Task AbrirModalEditar(ComisionDTO c)
+    {
+        modelo = new ComisionDTO
+        {
+            Id = c.Id,
+            Codigo = c.Codigo,
+            IdPlanMateria = c.IdPlanMateria,
+            IdPeriodo = c.IdPeriodo,
+            IdSede = c.IdSede,
+            CupoMaximo = c.CupoMaximo,
+            Turno = c.Turno,
+            Estado = c.Estado
+        };
+
+        // Al editar, cargamos las materias de la sede que ya tiene la comisión
+        if (carreraSeleccionada != null)
+        {
+            listaMateriasDisponibles = await PlanService.GetMateriasPorSedeAsync(carreraSeleccionada.Id, c.IdSede);
+        }
+
+        esEdicion = true;
+        mostrarDialogo = true;
+    }
+
+    // ✅ NUEVO MÉTODO: CAMBIO DE SEDE EN MODAL
+    private async Task OnSedeChangedEnModal(int nuevaSedeId)
+    {
+        modelo.IdSede = nuevaSedeId;
+        modelo.IdPlanMateria = 0; // Reset materia
+
+        if (carreraSeleccionada != null && nuevaSedeId > 0)
+        {
+            listaMateriasDisponibles = await PlanService.GetMateriasPorSedeAsync(carreraSeleccionada.Id, nuevaSedeId);
+
+            if (listaMateriasDisponibles.Count == 0)
+            {
+                Snackbar.Add("No hay un Plan de Estudio activo para esta Sede.", Severity.Warning);
+            }
+        }
+        else
+        {
+            listaMateriasDisponibles.Clear();
+        }
+    }
+
+    private async Task Guardar()
+    {
+        bool exito = esEdicion ? await ComisionService.UpdateAsync(modelo) : await ComisionService.CreateAsync(modelo);
+        if (exito) { Snackbar.Add("Guardado correctamente", Severity.Success); mostrarDialogo = false; await CargarComisiones(); } else Snackbar.Add("Error al guardar", Severity.Error);
+    }
+
+    private void AbrirModalBaja(ComisionDTO c) { modeloParaBaja = c; mostrarDialogoBaja = true; }
+
+    private async Task ConfirmarBaja()
+    {
+        if (modeloParaBaja != null && await ComisionService.DeleteAsync(modeloParaBaja.Id)) { Snackbar.Add("Comisión dada de baja", Severity.Warning); await CargarComisiones(); }
+        mostrarDialogoBaja = false;
+    }
+
+    // --- LÓGICA DE HORARIOS ---
+    private async Task AbrirModalHorarios(ComisionDTO c)
+    {
+        modeloParaHorario = c;
+        nuevoHorario = new HorarioComisionDTO();
+        listaHorariosActuales = await HorarioService.GetByComisionAsync(c.Id);
+        try { listaAulasDisponibles = await AulaService.GetBySedeAsync(c.IdSede); } catch { Snackbar.Add("Error cargando aulas.", Severity.Error); listaAulasDisponibles = new(); }
+        mostrarDialogoHorarios = true;
+    }
+
+    private async Task AgregarHorario()
+    {
+        try
+        {
+            if (horaInicioTemp == null || horaFinTemp == null) { Snackbar.Add("Horas inválidas", Severity.Warning); return; }
+            nuevoHorario.IdComision = modeloParaHorario!.Id;
+            nuevoHorario.HoraInicio = horaInicioTemp.Value;
+            nuevoHorario.HoraFin = horaFinTemp.Value;
+            if (nuevoHorario.IdAula == 0) { Snackbar.Add("Seleccione un aula", Severity.Warning); return; }
+            if (await HorarioService.CreateAsync(nuevoHorario)) { Snackbar.Add("Horario agregado", Severity.Success); listaHorariosActuales = await HorarioService.GetByComisionAsync(modeloParaHorario.Id); nuevoHorario = new HorarioComisionDTO(); }
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private async Task EliminarHorario(int idHorario)
+    {
+        if (await HorarioService.DeleteAsync(idHorario)) { Snackbar.Add("Horario eliminado", Severity.Info); listaHorariosActuales = await HorarioService.GetByComisionAsync(modeloParaHorario!.Id); } else Snackbar.Add("Error al eliminar", Severity.Error);
+    }
+
+    // --- LÓGICA DE DOCENTES ---
+    private async Task AbrirModalDocentes(ComisionDTO c)
+    {
+        modeloParaDocentes = c;
+        nuevoDocenteAsignacion = new DocenteComisionRequestDTO { IdComision = c.Id, IdRolDocente = 1 };
+        docenteSeleccionadoParaAsignar = null;
+
+        var t1 = ComisionService.GetDocentesPorComisionAsync(c.Id);
+        var t2 = listaTodosLosDocentes.Any() ? Task.FromResult(listaTodosLosDocentes) : DocenteService.GetDocentesAsync();
+
+        await Task.WhenAll(t1, t2);
+
+        listaDocentesAsignados = await t1;
+        if (!listaTodosLosDocentes.Any()) listaTodosLosDocentes = await t2;
+
+        mostrarDialogoDocentes = true;
+    }
+
+    private async Task<IEnumerable<DocenteListadoDTO>> BuscarDocentes(string valor, CancellationToken token)
+    {
+        if (string.IsNullOrEmpty(valor)) return listaTodosLosDocentes;
+        return await Task.FromResult(listaTodosLosDocentes.Where(x =>
+            x.NombreCompleto.Contains(valor, StringComparison.InvariantCultureIgnoreCase) ||
+            x.Legajo.Contains(valor, StringComparison.InvariantCultureIgnoreCase)
+        ));
+    }
+
+    // ✅ LÓGICA DE ASIGNACIÓN DOCENTE CORREGIDA
+    private async Task AsignarDocente()
+    {
+        if (docenteSeleccionadoParaAsignar == null)
+        {
+            Snackbar.Add("Debe buscar y seleccionar un docente", Severity.Warning);
+            return;
+        }
+
+        nuevoDocenteAsignacion.IdDocente = docenteSeleccionadoParaAsignar.IdDocente;
+
+        // Recibimos DTO (Exito, Mensaje)
+        var resultado = await ComisionService.AsignarDocenteAsync(nuevoDocenteAsignacion);
+
+        if (resultado.Exito)
+        {
+            Snackbar.Add(resultado.Mensaje, Severity.Success);
+            listaDocentesAsignados = await ComisionService.GetDocentesPorComisionAsync(modeloParaDocentes!.Id);
+            docenteSeleccionadoParaAsignar = null;
+        }
+        else
+        {
+            // Muestra mensaje de conflicto en Rojo
+            Snackbar.Add(resultado.Mensaje, Severity.Error);
+        }
+    }
+
+    private async Task DesasignarDocente(int idAsignacion)
+    {
+        if (await ComisionService.DesasignarDocenteAsync(idAsignacion))
+        {
+            Snackbar.Add("Docente desasignado", Severity.Info);
+            listaDocentesAsignados = await ComisionService.GetDocentesPorComisionAsync(modeloParaDocentes!.Id);
+        }
+        else
+        {
+            Snackbar.Add("Error al desasignar", Severity.Error);
+        }
+    }
+
+    private void CerrarModales()
+    {
+        mostrarDialogo = false;
+        mostrarDialogoBaja = false;
+        mostrarDialogoHorarios = false;
+        mostrarDialogoDocentes = false;
+    }
+}

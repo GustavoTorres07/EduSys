@@ -1,0 +1,236 @@
+﻿@using EduSys.Shared.DTOs
+@inject ISnackbar Snackbar
+
+<style>
+    /* Estilos base */
+    .mud-dialog-close-icon {
+        display: none !important;
+    }
+
+    .mud-dialog-content {
+        padding: 0 !important;
+    }
+
+    .dialog-container {
+        display: flex;
+        flex-direction: column;
+        background-color: white;
+        max-height: 85vh;
+    }
+
+    .dialog-header-integrated {
+        background: #456990;
+        color: white;
+        padding: 12px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-shrink: 0;
+    }
+
+    .dialog-body {
+        padding: 24px;
+        overflow-y: auto;
+        flex-grow: 1;
+    }
+
+    .actions-footer {
+        padding: 16px 24px;
+        border-top: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        background-color: white;
+        flex-shrink: 0;
+    }
+
+    /* Inputs */
+    .force-black-text input, .force-black-text .mud-input-slot, .force-black-text .mud-select-input {
+        color: #1F2937 !important;
+        font-weight: 500;
+        -webkit-text-fill-color: #1F2937 !important;
+    }
+
+    .force-black-text .mud-input-label {
+        color: #456990 !important;
+        background-color: white !important;
+        padding: 0 5px;
+    }
+
+    .force-black-text .mud-input-outlined-border {
+        border-color: #456990 !important;
+    }
+
+    .force-black-text .mud-icon-root {
+        color: #456990 !important;
+    }
+
+    .section-title {
+        color: #456990;
+        font-weight: 700;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        border-bottom: 2px solid #e2e8f0;
+        padding-bottom: 4px;
+        margin-bottom: 12px;
+        margin-top: 8px;
+    }
+</style>
+
+<MudDialog DisableSidePadding="true" Class="rounded-lg overflow-hidden">
+    <DialogContent>
+        <div class="dialog-container">
+            @* CABECERA *@
+            <div class="dialog-header-integrated">
+                <div class="d-flex align-center">
+                    <MudIcon Icon="@(Docente.IdDocente == 0 ? Icons.Material.Filled.PersonAdd : Icons.Material.Filled.Edit)" Class="mr-3" />
+                    <MudText Typo="Typo.h6" Style="font-weight: 700; letter-spacing: 0.5px;">
+                        @(Docente.IdDocente == 0 ? "Nuevo Docente" : "Editar Docente")
+                    </MudText>
+                </div>
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" OnClick="Cancel" Size="Size.Small" />
+            </div>
+
+            @* CUERPO *@
+            <div class="dialog-body">
+                <MudForm @ref="form" Model="@docenteModel">
+                    <MudGrid Spacing="2">
+
+                        @* 1. IDENTIDAD *@
+                        <MudItem xs="12"><div class="section-title">Identificación</div></MudItem>
+
+                        <MudItem xs="6">
+                            <MudTextField @bind-Value="docenteModel.Dni" Label="DNI" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Badge" Class="force-black-text" />
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudTextField @bind-Value="docenteModel.Legajo" Label="Legajo" Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="true" Placeholder="Autogenerado" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.ConfirmationNumber" Class="force-black-text" />
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudTextField @bind-Value="docenteModel.Nombre" Label="Nombre" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" Class="force-black-text" />
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudTextField @bind-Value="docenteModel.Apellido" Label="Apellido" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" Class="force-black-text" />
+                        </MudItem>
+
+                        <MudItem xs="6">
+                            <MudDatePicker @bind-Date="fechaNacimiento" Label="Fecha Nacimiento" Variant="Variant.Outlined" Margin="Margin.Dense" Editable="true" DateFormat="dd/MM/yyyy" Class="force-black-text" />
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudSelect T="string" Label="Sexo" @bind-Value="docenteModel.Sexo" Variant="Variant.Outlined" Margin="Margin.Dense" AnchorOrigin="Origin.BottomCenter" Class="force-black-text">
+                                <MudSelectItem Value="@("Masculino")" />
+                                <MudSelectItem Value="@("Femenino")" />
+                                <MudSelectItem Value="@("X")" />
+                            </MudSelect>
+                        </MudItem>
+
+                        @* ✅ CAMPOS AGREGADOS QUE FALTABAN *@
+                        <MudItem xs="6">
+                            <MudSelect T="string" Label="Estado Civil" @bind-Value="docenteModel.EstadoCivil" Variant="Variant.Outlined" Margin="Margin.Dense" AnchorOrigin="Origin.BottomCenter" Class="force-black-text">
+                                <MudSelectItem Value="@("Soltero/a")" />
+                                <MudSelectItem Value="@("Casado/a")" />
+                                <MudSelectItem Value="@("Divorciado/a")" />
+                                <MudSelectItem Value="@("Viudo/a")" />
+                            </MudSelect>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudTextField @bind-Value="docenteModel.LugarNacimiento" Label="Lugar de Nacimiento" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" />
+                        </MudItem>
+
+                        @* 2. DATOS ACADÉMICOS *@
+                        <MudItem xs="12" Class="mt-2"><div class="section-title">Datos Académicos</div></MudItem>
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="docenteModel.TituloAcademico" Label="Título Académico" Placeholder="Ej: Licenciado en Sistemas, Ingeniero, etc." Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.School" Class="force-black-text" />
+                        </MudItem>
+
+                        @* 3. CONTACTO *@
+                        <MudItem xs="12" Class="mt-2"><div class="section-title">Contacto</div></MudItem>
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="docenteModel.Email" Label="Email Institucional" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" InputType="InputType.Email" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Email" Class="force-black-text" />
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudTextField @bind-Value="docenteModel.Telefono" Label="Teléfono" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" />
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudTextField @bind-Value="docenteModel.Localidad" Label="Localidad" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" />
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="docenteModel.Direccion" Label="Dirección" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Home" Class="force-black-text" />
+                        </MudItem>
+
+                        @* ✅ SECCIÓN DE EMERGENCIA AGREGADA *@
+                        <MudItem xs="12" Class="mt-2"><div class="section-title">Contacto de Emergencia</div></MudItem>
+                        <MudItem xs="6">
+                            <MudTextField @bind-Value="docenteModel.NombreContactoEmergencia" Label="Nombre Contacto" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" />
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudTextField @bind-Value="docenteModel.TelefonoContactoEmergencia" Label="Teléfono Contacto" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" />
+                        </MudItem>
+
+                        @* 4. ESTADO *@
+                        <MudItem xs="12" Class="d-flex align-center justify-center mt-3 pa-4" Style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
+                            <MudSwitch @bind-Value="docenteModel.Activo" Color="Color.Success" Label="Docente Activo en el Sistema" />
+                        </MudItem>
+
+                    </MudGrid>
+                </MudForm>
+            </div>
+
+            @* FOOTER *@
+            <div class="actions-footer">
+                <MudButton OnClick="Cancel" Variant="Variant.Outlined" Color="Color.Default">Cancelar</MudButton>
+                <MudButton OnClick="Submit" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save">Guardar Docente</MudButton>
+            </div>
+        </div>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+    [Parameter] public DocenteRequestDTO Docente { get; set; } = new();
+
+    private DocenteRequestDTO docenteModel = new();
+    private DateTime? fechaNacimiento;
+    private MudForm form;
+
+    protected override void OnInitialized()
+    {
+        // Clonamos los datos para no modificar el original hasta guardar
+        if (Docente != null)
+        {
+            docenteModel = new DocenteRequestDTO
+            {
+                IdDocente = Docente.IdDocente,
+                Nombre = Docente.Nombre,
+                Apellido = Docente.Apellido,
+                Dni = Docente.Dni,
+                Legajo = Docente.Legajo,
+                Email = Docente.Email,
+                TituloAcademico = Docente.TituloAcademico,
+                Telefono = Docente.Telefono,
+                Direccion = Docente.Direccion,
+                Localidad = Docente.Localidad,
+                Sexo = Docente.Sexo,
+                Activo = Docente.Activo,
+                FechaNacimiento = Docente.FechaNacimiento,
+                // Mapeamos los campos que faltaban
+                EstadoCivil = Docente.EstadoCivil,
+                LugarNacimiento = Docente.LugarNacimiento,
+                NombreContactoEmergencia = Docente.NombreContactoEmergencia,
+                TelefonoContactoEmergencia = Docente.TelefonoContactoEmergencia,
+                IdNacionalidad = Docente.IdNacionalidad
+            };
+            fechaNacimiento = Docente.FechaNacimiento;
+        }
+    }
+
+    private void Submit()
+    {
+        form.Validate();
+        if (!form.IsValid) return;
+
+        docenteModel.FechaNacimiento = fechaNacimiento;
+        MudDialog.Close(DialogResult.Ok(docenteModel));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

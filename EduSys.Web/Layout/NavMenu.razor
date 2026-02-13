@@ -1,0 +1,752 @@
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@using Microsoft.JSInterop
+@using EduSys.Web.Services.Interfaces
+
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager NavManager
+@inject IJSRuntime JS
+@inject IAuthService AuthService
+
+@implements IDisposable
+
+<style>
+    /* ===== VARIABLES & TEMA ===== */
+    :root {
+        --nav-primary: #1e3a58;
+        --nav-accent: #456990;
+        --nav-bg: #ffffff;
+        --nav-text: #334155;
+        --nav-text-muted: #94a3b8;
+        --nav-hover: #f1f5f9;
+        --nav-active-bg: #e0f2fe;
+        --nav-border: #e2e8f0;
+    }
+
+    .custom-nav-menu {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        background-color: var(--nav-bg);
+        font-family: 'Segoe UI', sans-serif;
+        user-select: none;
+    }
+
+    /* ===== 1. PERFIL DE USUARIO (CORREGIDO) ===== */
+    .nav-profile-section {
+        padding: 20px 16px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        border-bottom: 1px solid var(--nav-border);
+        background: linear-gradient(to bottom, #ffffff, #f8fafc);
+    }
+
+    .profile-info {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        flex: 1;
+        justify-content: center;
+    }
+
+    .profile-name {
+        font-weight: 800;
+        color: var(--nav-primary);
+        font-size: 0.95rem;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        line-height: 1.1;
+        margin-bottom: 2px;
+    }
+
+    /* EMAIL AHORA DEBAJO DEL NOMBRE */
+    .profile-email {
+        font-size: 0.75rem;
+        color: var(--nav-text-muted);
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        font-weight: 500;
+        margin-bottom: 4px;
+    }
+
+    .profile-role-badge {
+        display: inline-block;
+        font-size: 0.65rem;
+        color: var(--nav-accent);
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        background: #f1f5f9;
+        padding: 2px 6px;
+        border-radius: 4px;
+        align-self: flex-start; /* Alineado a la izquierda */
+        max-width: 100%;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+
+    /* ===== 2. BUSCADOR (TRIGGER) ===== */
+    .command-trigger {
+        margin: 12px 16px 8px 16px;
+        padding: 8px 12px;
+        background: #f8fafc;
+        border: 1px solid var(--nav-border);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        transition: 0.2s;
+    }
+
+        .command-trigger:hover {
+            border-color: var(--nav-accent);
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+    .command-trigger-text {
+        flex: 1;
+        font-size: 0.8rem;
+        color: var(--nav-text-muted);
+    }
+
+    .command-kbd {
+        background: white;
+        border: 1px solid var(--nav-border);
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 0.65rem;
+        font-weight: 700;
+        color: var(--nav-text-muted);
+    }
+
+    /* ===== 3. LISTA DE NAVEGACIÓN ===== */
+    .nav-scroll-area {
+        flex: 1;
+        overflow-y: auto;
+        padding: 8px 16px 16px 16px;
+    }
+
+        .nav-scroll-area::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .nav-scroll-area::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+    .nav-section-header {
+        font-size: 0.65rem;
+        font-weight: 800;
+        color: var(--nav-text-muted);
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        margin: 20px 0 8px 8px;
+        border-bottom: 1px solid #f1f5f9;
+        padding-bottom: 4px;
+    }
+
+        .nav-section-header:first-child {
+            margin-top: 8px;
+        }
+
+    /* Links */
+    .nav-link-wrapper {
+        position: relative;
+        margin-bottom: 2px;
+    }
+
+    .mud-nav-link {
+        font-weight: 600 !important;
+        border-radius: 8px !important;
+        color: var(--nav-text) !important;
+        padding: 8px 10px !important;
+        transition: all 0.2s ease;
+        display: flex !important;
+        align-items: center !important;
+        font-size: 0.9rem !important;
+    }
+
+        .mud-nav-link:hover {
+            background-color: var(--nav-hover) !important;
+            color: var(--nav-primary) !important;
+            transform: translateX(3px);
+        }
+
+        .mud-nav-link.active {
+            background-color: var(--nav-active-bg) !important;
+            color: var(--nav-primary) !important;
+            font-weight: 700 !important;
+        }
+
+    .mud-nav-link-icon {
+        color: #64748b !important;
+        min-width: 24px !important;
+        margin-right: 12px !important;
+        font-size: 1.2rem !important;
+    }
+
+    .mud-nav-link.active .mud-nav-link-icon {
+        color: var(--nav-accent) !important;
+    }
+
+    /* Estrella Favoritos */
+    .favorite-star-btn {
+        position: absolute;
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        opacity: 0;
+        transition: 0.2s;
+        cursor: pointer;
+        color: #cbd5e1;
+        background: transparent;
+        border: none;
+        padding: 4px;
+        display: flex;
+        z-index: 10;
+    }
+
+    .nav-link-wrapper:hover .favorite-star-btn {
+        opacity: 1;
+    }
+
+    .favorite-star-btn.active {
+        opacity: 1;
+        color: #f59e0b;
+    }
+
+    .favorite-star-btn:hover {
+        color: #f59e0b;
+        transform: translateY(-50%) scale(1.2);
+    }
+
+    .favorites-pinned {
+        margin-bottom: 16px;
+        padding-bottom: 8px;
+        border-bottom: 1px dashed var(--nav-border);
+    }
+
+    /* ===== 4. FOOTER ===== */
+    .nav-footer {
+        padding: 12px 16px;
+        border-top: 1px solid var(--nav-border);
+        background: #fff;
+    }
+
+    /* ===== MODAL COMMAND PALETTE ===== */
+    .command-palette-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(30, 58, 88, 0.4);
+        backdrop-filter: blur(3px);
+        z-index: 2000;
+        display: flex;
+        justify-content: center;
+        padding-top: 12vh;
+        animation: fadeIn 0.2s ease-out;
+    }
+
+    .command-palette {
+        width: 600px;
+        max-width: 90%;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        max-height: 500px;
+        animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .command-input-container {
+        padding: 16px;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .command-input {
+        width: 100%;
+        font-size: 1.1rem;
+        border: none;
+        outline: none;
+        color: var(--nav-primary);
+        font-weight: 500;
+    }
+
+    .command-results {
+        flex: 1;
+        overflow-y: auto;
+        padding: 8px 0;
+    }
+
+    .command-item {
+        padding: 12px 20px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        cursor: pointer;
+        border-left: 3px solid transparent;
+        transition: 0.1s;
+    }
+
+        .command-item:hover, .command-item.selected {
+            background: #f8fafc;
+            border-left-color: var(--nav-accent);
+        }
+
+    .command-empty {
+        padding: 40px;
+        text-align: center;
+        color: #94a3b8;
+    }
+
+    @@keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
+    }
+
+    @@keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+
+<div class="custom-nav-menu">
+
+    @* 1. PERFIL (ESTRUCTURA ACTUALIZADA: NOMBRE -> EMAIL -> ROL) *@
+    <AuthorizeView>
+        <Authorized>
+            <div class="nav-profile-section">
+                <MudAvatar Size="Size.Large" Elevation="2" Color="@GetAvatarColor(context.User)">
+                    @if (!string.IsNullOrEmpty(FotoPerfilUsuario))
+                    {
+                        // ✅ CORRECCIÓN: Estilos para que la imagen llene el avatar
+                        <MudImage Src="@FotoPerfilUsuario" Style="width:100%; height:100%; object-fit:cover;" />
+                    }
+                    else
+                    {
+                        @UserInitial
+                    }
+                </MudAvatar>
+                <div class="profile-info">
+                    @* NOMBRE *@
+                    <span class="profile-name">@NombreUsuario</span>
+
+                    @* EMAIL (Ahora aquí abajo) *@
+                    <span class="profile-email">@UserEmail</span>
+
+                    @* ROL (Como badge/etiqueta al final) *@
+                    <span class="profile-role-badge">@RoleFull</span>
+                </div>
+            </div>
+        </Authorized>
+    </AuthorizeView>
+
+    @* 2. BUSCADOR *@
+    <div class="command-trigger" @onclick="OpenCommandPalette">
+        <MudIcon Icon="@Icons.Material.Filled.Search" Size="Size.Small" Color="Color.Default" />
+        <span class="command-trigger-text">Buscar...</span>
+        <span class="command-kbd">Ctrl+K</span>
+    </div>
+
+    @* 3. LISTA DE NAVEGACIÓN *@
+    <div class="nav-scroll-area">
+
+        @* SECCIÓN DE FAVORITOS (POR USUARIO) *@
+        @if (favoritePages.Any())
+        {
+            <div class="favorites-pinned">
+                <div class="nav-section-header" style="margin-top:0;">Favoritos</div>
+                @foreach (var fav in favoritePages)
+                {
+                    @RenderNavLink(fav.Url, fav.Title, fav.Icon)
+                }
+            </div>
+        }
+
+        @* === ADMINISTRATIVOS === *@
+        <AuthorizeView Roles="Administrador, Secretaria Academica, Coordinador">
+            <Authorized>
+                <div class="nav-section-header">Panel de Control</div>
+                @RenderNavLink("/Home", "Dashboard", Icons.Material.Filled.Dashboard, true)
+
+                <div class="nav-section-header">Gestión Académica</div>
+                @RenderNavLink("/carreras", "Carreras", Icons.Material.Filled.AccountBalance)
+                @RenderNavLink("/planes", "Planes de Estudio", Icons.Material.Filled.Map)
+                @RenderNavLink("/materias", "Materias", Icons.Material.Filled.Book)
+                @RenderNavLink("/sedes", "Sedes", Icons.Material.Filled.Place)
+                @* @RenderNavLink("/aulas", "Aulas", Icons.Material.Filled.MeetingRoom) *@
+
+                <div class="nav-section-header">Ciclo Lectivo</div>
+                @RenderNavLink("/comisiones", "Comisiones", Icons.Material.Filled.Groups)
+                @RenderNavLink("/horarios", "Horarios", Icons.Material.Filled.AccessTime)
+                @RenderNavLink("/inscripciones", "Inscripciones", Icons.Material.Filled.HowToReg)
+                @RenderNavLink("/asistencia", "Asistencias", Icons.Material.Filled.FactCheck)
+
+                <div class="nav-section-header">Evaluaciones y Actas</div>
+                @RenderNavLink("/evaluaciones", "Parciales", Icons.Material.Filled.Assignment)
+                @RenderNavLink("/notas", "Carga de Notas", Icons.Material.Filled.Grade)
+                @RenderNavLink("/admin/actas", "Libros de Actas", Icons.Material.Filled.Description)
+                @RenderNavLink("/mesas-finales", "Mesas de Finales", Icons.Material.Filled.EventAvailable)
+                @RenderNavLink("/resultados-finales", "Actas de Finales", Icons.Material.Filled.EmojiEvents)
+
+                <div class="nav-section-header">Comunidad</div>
+                @RenderNavLink("/alumnos", "Alumnos", Icons.Material.Filled.Person)
+                @RenderNavLink("/docentes", "Docentes", Icons.Material.Filled.Face)
+                @RenderNavLink("/admin/solicitudes", "Solicitudes Ingreso", Icons.Material.Filled.AssignmentInd)
+                @RenderNavLink("/solicitudes/bandeja", "Mesa de Entradas", Icons.Material.Filled.Inbox)
+
+                <div class="nav-section-header">Sistema</div>
+                @RenderNavLink("/admin/tickets", "Gestión de Tickets", Icons.Material.Filled.ConfirmationNumber)
+                @RenderNavLink("/reportes/operativos", "Reportes", Icons.Material.Filled.BarChart)
+                @RenderNavLink("/emails/masivos", "Comunicación", Icons.Material.Filled.Email)
+
+                <AuthorizeView Roles="Administrador, Secretaria Academica" Context="configAuth">
+                    <Authorized>
+                        @RenderNavLink("/institucion", "Configuración", Icons.Material.Filled.Settings)
+                        <AuthorizeView Roles="Administrador" Context="secAuth">
+                            <Authorized>
+                                @RenderNavLink("/usuarios", "Seguridad", Icons.Material.Filled.Security)
+                            </Authorized>
+                        </AuthorizeView>
+                    </Authorized>
+                </AuthorizeView>
+            </Authorized>
+        </AuthorizeView>
+
+        @* === ALUMNOS === *@
+        <AuthorizeView Roles="Alumno">
+            <Authorized>
+                <div class="nav-section-header">Mi Espacio</div>
+                @RenderNavLink("/dashboard-alumno", "Inicio", Icons.Material.Filled.Home, true)
+
+                <div class="nav-section-header">Cursada</div>
+                @RenderNavLink("/alumno/mis-cursadas", "Mis Notas", Icons.Material.Filled.Grade)
+                @RenderNavLink("/horarios-alumno", "Mis Horarios", Icons.Material.Filled.CalendarMonth)
+                @RenderNavLink("/alumno/asistencias", "Mis Asistencias", Icons.Material.Filled.FactCheck)
+
+                <div class="nav-section-header">Autogestión</div>
+                @RenderNavLink("/inscripcion-materias", "Cursar Materias", Icons.Material.Filled.Class)
+                @RenderNavLink("/inscripcion-finales", "Rendir Finales", Icons.Material.Filled.AssignmentTurnedIn)
+                @RenderNavLink("/alumno/mis-inscripciones", "Comprobantes", Icons.Material.Filled.ListAlt)
+
+                <div class="nav-section-header">Trámites</div>
+                @RenderNavLink("/historia-academica", "Historia Académica", Icons.Material.Filled.HistoryEdu)
+                @RenderNavLink("/tramites", "Solicitar Trámites", Icons.Material.Filled.Description)
+                @RenderNavLink("/alumno/analitico", "Analítico", Icons.Material.Filled.MenuBook)
+
+                <div class="nav-section-header">Ayuda</div>
+                @RenderNavLink("/soporte/nuevo-ticket", "Soporte Técnico", Icons.Material.Filled.SupportAgent)
+            </Authorized>
+        </AuthorizeView>
+
+        @* === DOCENTES === *@
+        <AuthorizeView Roles="Docente">
+            <Authorized>
+                <div class="nav-section-header">Mi Espacio</div>
+                @RenderNavLink("/dashboard-docente", "Inicio", Icons.Material.Filled.Home, true)
+
+                <div class="nav-section-header">Mis Clases</div>
+                @RenderNavLink("/mis-comisiones", "Mis Comisiones", Icons.Material.Filled.Groups)
+                @RenderNavLink("/docente/tomar-asistencia", "Tomar Asistencia", Icons.Material.Filled.HowToReg)
+
+                <div class="nav-section-header">Evaluaciones</div>
+                @RenderNavLink("/docente/evaluaciones", "Planificar Exámenes", Icons.Material.Filled.Assignment)
+                @RenderNavLink("/docente/cargar-notas", "Cargar Notas", Icons.Material.Filled.EditNote)
+                @RenderNavLink("/docente/actas", "Cerrar Actas", Icons.Material.Filled.Description)
+
+                <div class="nav-section-header">Exámenes Finales</div>
+                @RenderNavLink("/docente/mesas-asignadas", "Mesas Asignadas", Icons.Material.Filled.EventSeat)
+                @RenderNavLink("/docente/cargar-finales", "Notas de Finales", Icons.Material.Filled.EmojiEvents)
+                @RenderNavLink("/docente/actas-finales", "Actas de Finales", Icons.Material.Filled.MenuBook)
+
+                <div class="nav-section-header">Ayuda</div>
+                @RenderNavLink("/soporte/nuevo-ticket", "Soporte Técnico", Icons.Material.Filled.SupportAgent)
+            </Authorized>
+        </AuthorizeView>
+    </div>
+
+    @* 4. FOOTER *@
+    <div class="nav-footer">
+        <MudButton FullWidth="true" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Person" Href="/perfil" Style="justify-content:flex-start; color:#475569;">
+            Mi Perfil
+        </MudButton>
+        <MudButton FullWidth="true" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Logout" OnClick="CerrarSesion" Style="justify-content:flex-start; color:#ef4444;">
+            Cerrar Sesión
+        </MudButton>
+    </div>
+</div>
+
+@* ===== PALETA DE COMANDOS (MODAL) ===== *@
+@if (showCommandPalette)
+{
+    <div class="command-palette-overlay" @onclick="CloseCommandPalette">
+        <div class="command-palette" @onclick:stopPropagation="true">
+            <div class="command-input-container">
+                <input type="text" class="command-input" placeholder="Escribe para buscar..."
+                       @bind="commandSearch" @bind:event="oninput" @ref="commandInputRef"
+                       @onkeydown="HandleCommandKeyDown" />
+            </div>
+            <div class="command-results">
+                @if (filteredCommands.Any())
+                {
+                    @foreach (var (cmd, index) in filteredCommands.Select((x, i) => (x, i)))
+                    {
+                        <div class="command-item @(index == selectedCommandIndex ? "selected" : "")"
+                             @onclick="() => ExecuteCommand(cmd)">
+                            <MudIcon Icon="@cmd.Icon" Size="Size.Medium" Class="command-item-icon" />
+                            <div class="command-item-content">
+                                <div class="command-item-title">@cmd.Title</div>
+                                <div class="command-item-subtitle">@cmd.Category</div>
+                            </div>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="command-empty">No encontramos resultados para "@commandSearch"</div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    // --- Variables de Usuario ---
+    private string FotoPerfilUsuario = "";
+    private string NombreUsuario = "Cargando...";
+    private string UserEmail = "";
+    private string UserInitial = "U";
+    private string RoleFull = "";
+    private string UserId = "";
+
+    // --- Command Palette ---
+    private bool showCommandPalette = false;
+    private string commandSearch = "";
+    private int selectedCommandIndex = 0;
+    private ElementReference commandInputRef;
+    private List<CommandItem> allCommands = new();
+    private List<CommandItem> filteredCommands = new();
+
+    // --- Favoritos (Clave dinámica por ID) ---
+    private List<NavPage> favoritePages = new();
+    private string FavoritesKey => string.IsNullOrEmpty(UserId) ? "edusys_favorites_guest" : $"edusys_favorites_{UserId}";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity != null && user.Identity.IsAuthenticated)
+        {
+            NombreUsuario = GetFullUserName(user);
+            // Intentar varias formas de obtener el email
+            UserEmail = user.FindFirst(ClaimTypes.Email)?.Value ?? user.FindFirst("email")?.Value ?? "";
+
+            UserInitial = string.IsNullOrEmpty(NombreUsuario) ? "U" : NombreUsuario.Substring(0, 1).ToUpper();
+            FotoPerfilUsuario = user.FindFirst("FotoPerfilUrl")?.Value ?? "";
+
+            // Obtener ID para favoritos únicos
+            UserId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value ?? "";
+
+            // Asignar nombres de rol amigables
+            if (user.IsInRole("Administrador")) RoleFull = "Administrador del Sistema";
+            else if (user.IsInRole("Secretaria Academica")) RoleFull = "Secretaría Académica";
+            else if (user.IsInRole("Coordinador")) RoleFull = "Coordinador de Carrera";
+            else if (user.IsInRole("Docente")) RoleFull = "Docente Académico";
+            else if (user.IsInRole("Alumno")) RoleFull = "Alumno Regular";
+            else RoleFull = "Usuario";
+
+            InitializeCommands(user);
+        }
+
+        await LoadFavorites();
+        NavManager.LocationChanged += OnLocationChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("eval", "document.addEventListener('keydown', function(e) { if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); DotNet.invokeMethodAsync('EduSys.Web', 'OpenCommandPaletteFromJS'); } });");
+            }
+            catch { }
+        }
+        if (showCommandPalette) try { await commandInputRef.FocusAsync(); } catch { }
+    }
+
+    // --- Helpers de Usuario ---
+    private string GetFullUserName(ClaimsPrincipal user)
+    {
+        var nombre = user.FindFirst("Nombre")?.Value ?? user.FindFirst(ClaimTypes.GivenName)?.Value;
+        var apellido = user.FindFirst("Apellido")?.Value ?? user.FindFirst(ClaimTypes.Surname)?.Value;
+        return (!string.IsNullOrEmpty(nombre)) ? $"{nombre} {apellido}".Trim() : user.Identity?.Name ?? "Usuario";
+    }
+
+    private Color GetAvatarColor(ClaimsPrincipal user)
+    {
+        if (user.IsInRole("Docente")) return Color.Tertiary;
+        if (user.IsInRole("Alumno")) return Color.Secondary;
+        return Color.Primary;
+    }
+
+    private async Task CerrarSesion()
+    {
+        await AuthService.Logout();
+        NavManager.NavigateTo("/");
+    }
+
+    // --- Helper para Renderizar Links con Favoritos ---
+    private RenderFragment RenderNavLink(string href, string title, string icon, bool matchAll = false) => builder =>
+    {
+        var isFav = IsFavorite(href);
+        builder.OpenElement(0, "div");
+        builder.AddAttribute(1, "class", "nav-link-wrapper");
+
+        builder.OpenComponent<MudNavLink>(2);
+        builder.AddAttribute(3, "Href", href);
+        builder.AddAttribute(4, "Match", matchAll ? NavLinkMatch.All : NavLinkMatch.Prefix);
+        builder.AddAttribute(5, "Class", "mud-nav-link");
+        builder.AddAttribute(6, "ChildContent", (RenderFragment)((b2) =>
+        {
+            b2.OpenComponent<MudIcon>(7);
+            b2.AddAttribute(8, "Icon", icon);
+            b2.AddAttribute(9, "Class", "mud-nav-link-icon");
+            b2.AddAttribute(10, "Size", Size.Small);
+            b2.CloseComponent();
+            b2.AddContent(11, title);
+        }));
+        builder.CloseComponent();
+
+        // Botón Estrella
+        builder.OpenElement(12, "button");
+        builder.AddAttribute(13, "class", $"favorite-star-btn {(isFav ? "active" : "")}");
+        builder.AddAttribute(14, "onclick", EventCallback.Factory.Create(this, () => ToggleFavorite(href, title, icon)));
+        builder.OpenComponent<MudIcon>(15);
+        builder.AddAttribute(16, "Icon", isFav ? Icons.Material.Filled.Star : Icons.Material.Filled.StarBorder);
+        builder.AddAttribute(17, "Size", Size.Small);
+        builder.CloseComponent();
+        builder.CloseElement();
+
+        builder.CloseElement();
+    };
+
+    // --- Lógica de Favoritos ---
+    private async Task LoadFavorites()
+    {
+        try
+        {
+            var json = await JS.InvokeAsync<string>("localStorage.getItem", FavoritesKey);
+            if (!string.IsNullOrEmpty(json)) favoritePages = System.Text.Json.JsonSerializer.Deserialize<List<NavPage>>(json) ?? new();
+        }
+        catch { }
+    }
+
+    private async Task ToggleFavorite(string url, string title, string icon)
+    {
+        if (favoritePages.Any(f => f.Url == url)) favoritePages.RemoveAll(f => f.Url == url);
+        else favoritePages.Add(new NavPage(url, title, icon));
+
+        var json = System.Text.Json.JsonSerializer.Serialize(favoritePages);
+        await JS.InvokeVoidAsync("localStorage.setItem", FavoritesKey, json);
+    }
+
+    private bool IsFavorite(string url) => favoritePages.Any(f => f.Url == url);
+
+    // --- Lógica Command Palette ---
+    private void InitializeCommands(ClaimsPrincipal user)
+    {
+        allCommands.Clear();
+        // Comunes
+        allCommands.Add(new CommandItem { Title = "Mi Perfil", Category = "Cuenta", Url = "/perfil", Icon = Icons.Material.Filled.Person });
+        allCommands.Add(new CommandItem { Title = "Cerrar Sesión", Category = "Cuenta", Action = CerrarSesion, Icon = Icons.Material.Filled.Logout });
+
+        // Admin
+        if (user.IsInRole("Administrador") || user.IsInRole("Secretaria Academica"))
+        {
+            allCommands.Add(new CommandItem { Title = "Dashboard", Category = "Inicio", Url = "/Home", Icon = Icons.Material.Filled.Dashboard });
+            allCommands.Add(new CommandItem { Title = "Carreras", Category = "Académica", Url = "/carreras", Icon = Icons.Material.Filled.AccountBalance });
+            allCommands.Add(new CommandItem { Title = "Planes", Category = "Académica", Url = "/planes", Icon = Icons.Material.Filled.Map });
+            allCommands.Add(new CommandItem { Title = "Materias", Category = "Académica", Url = "/materias", Icon = Icons.Material.Filled.Book });
+            allCommands.Add(new CommandItem { Title = "Comisiones", Category = "Cursada", Url = "/comisiones", Icon = Icons.Material.Filled.Groups });
+            allCommands.Add(new CommandItem { Title = "Alumnos", Category = "Comunidad", Url = "/alumnos", Icon = Icons.Material.Filled.Person });
+            allCommands.Add(new CommandItem { Title = "Docentes", Category = "Comunidad", Url = "/docentes", Icon = Icons.Material.Filled.Face });
+            allCommands.Add(new CommandItem { Title = "Reportes", Category = "Sistema", Url = "/reportes/operativos", Icon = Icons.Material.Filled.BarChart });
+        }
+
+        // Alumno
+        if (user.IsInRole("Alumno"))
+        {
+            allCommands.Add(new CommandItem { Title = "Mis Notas", Category = "Cursada", Url = "/alumno/dashboard", Icon = Icons.Material.Filled.Grade });
+            allCommands.Add(new CommandItem { Title = "Inscribirme", Category = "Trámites", Url = "/inscripcion-materias", Icon = Icons.Material.Filled.LibraryAdd });
+            allCommands.Add(new CommandItem { Title = "Mis Horarios", Category = "Cursada", Url = "/horarios-alumno", Icon = Icons.Material.Filled.CalendarMonth });
+        }
+
+        // Docente
+        if (user.IsInRole("Docente"))
+        {
+            allCommands.Add(new CommandItem { Title = "Mis Comisiones", Category = "Clases", Url = "/mis-comisiones", Icon = Icons.Material.Filled.Groups });
+            allCommands.Add(new CommandItem { Title = "Cargar Notas", Category = "Evaluación", Url = "/docente/cargar-notas", Icon = Icons.Material.Filled.EditNote });
+            allCommands.Add(new CommandItem { Title = "Finales", Category = "Evaluación", Url = "/docente/mesas-asignadas", Icon = Icons.Material.Filled.EventSeat });
+        }
+
+        filteredCommands = allCommands;
+    }
+
+    private void OpenCommandPalette() { showCommandPalette = true; commandSearch = ""; filteredCommands = allCommands; StateHasChanged(); }
+    private void CloseCommandPalette() => showCommandPalette = false;
+
+    private void ExecuteCommand(CommandItem cmd)
+    {
+        if (cmd.Action != null) cmd.Action.Invoke();
+        else NavManager.NavigateTo(cmd.Url);
+        CloseCommandPalette();
+    }
+
+    private void OnCommandSearchChanged()
+    {
+        if (string.IsNullOrWhiteSpace(commandSearch)) filteredCommands = allCommands;
+        else filteredCommands = allCommands.Where(c => c.Title.ToLower().Contains(commandSearch.ToLower()) || c.Category.ToLower().Contains(commandSearch.ToLower())).ToList();
+        selectedCommandIndex = 0;
+    }
+
+    private async Task HandleCommandKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "ArrowDown") selectedCommandIndex = Math.Min(selectedCommandIndex + 1, filteredCommands.Count - 1);
+        else if (e.Key == "ArrowUp") selectedCommandIndex = Math.Max(selectedCommandIndex - 1, 0);
+        else if (e.Key == "Enter" && filteredCommands.Any()) ExecuteCommand(filteredCommands[selectedCommandIndex]);
+        else if (e.Key == "Escape") CloseCommandPalette();
+    }
+
+    [JSInvokable] public static void OpenCommandPaletteFromJS() { /* Hook para JS global */ }
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e) => StateHasChanged();
+    public void Dispose() => NavManager.LocationChanged -= OnLocationChanged;
+
+    private record NavPage(string Url, string Title, string Icon);
+    private class CommandItem { public string Title { get; set; } = ""; public string Category { get; set; } = ""; public string Url { get; set; } = ""; public string Icon { get; set; } = ""; public Func<Task>? Action { get; set; } }
+}

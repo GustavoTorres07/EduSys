@@ -1,0 +1,525 @@
+﻿@page "/docente/notas/{IdComision:int}"
+@using EduSys.Shared.DTOs
+@using EduSys.Web.Services.Interfaces
+@using EduSys.Web.Pages.Docente.Componentes
+@using Microsoft.AspNetCore.Authorization
+@using System.Globalization
+
+@inject INotasService NotasService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject NavigationManager NavigationManager
+
+@attribute [Authorize(Roles = "Docente, Administrador")]
+
+<style>
+    /* =========================================
+           ESTILOS PLANILLA (TABLA AVANZADA)
+           ========================================= */
+
+    :root {
+        --excel-header-bg: #f8f9fa;
+        --excel-border: #dee2e6;
+        --brand-blue: #1e3a58;
+        --text-dark: #212529;
+        --header-height-row1: 50px; /* Altura fila superior */
+    }
+
+    /* CONTENEDOR DE TABLA CON SCROLL */
+    .custom-table-container {
+        overflow: auto;
+        height: 650px; /* Altura fija para scroll */
+        border: 1px solid var(--excel-border);
+        background: white;
+        border-radius: 4px;
+        position: relative;
+    }
+
+    /* TABLA BASE */
+    .custom-table {
+        width: 100%;
+        border-collapse: separate; /* Necesario para sticky headers */
+        border-spacing: 0;
+        font-family: 'Segoe UI', sans-serif;
+    }
+
+        /* --- CABECERAS --- */
+
+        .custom-table thead th {
+            background-color: white;
+            position: sticky;
+            z-index: 20;
+            border-bottom: 1px solid var(--brand-blue);
+            border-right: 1px solid var(--excel-border);
+        }
+
+    /* FILA 1: GRUPOS (Instancias, Legajo, etc) */
+    .th-group {
+        top: 0;
+        height: var(--header-height-row1);
+        text-align: center;
+        font-weight: 900;
+        color: var(--brand-blue);
+        text-transform: uppercase;
+        font-size: 0.8rem;
+        letter-spacing: 0.5px;
+        background-color: #fff !important;
+        border-bottom: 2px solid var(--brand-blue) !important;
+        vertical-align: middle;
+    }
+
+    /* Header específico del grupo de exámenes */
+    .th-group-exams {
+        background-color: #f1f5f9 !important; /* Gris muy suave */
+        color: #1e3a58;
+        border-bottom: 1px solid var(--excel-border) !important;
+    }
+
+    /* FILA 2: DETALLE (Nombres de exámenes) */
+    .th-detail {
+        top: var(--header-height-row1); /* Se pega debajo de la fila 1 */
+        background-color: #f8f9fa !important;
+        color: #495057;
+        padding: 8px;
+        font-size: 0.8rem;
+        border-bottom: 2px solid #94a3b8 !important;
+        vertical-align: top;
+    }
+
+    /* Ajuste Z-Index para que las esquinas no se tapen al scrollear */
+    .th-corner {
+        z-index: 30 !important; /* Más alto que el resto */
+        left: 0;
+    }
+
+    .th-corner-2 {
+        z-index: 30 !important;
+        left: 140px;
+    }
+
+    /* --- CUERPO --- */
+    .custom-table tbody tr {
+        background-color: white;
+    }
+
+        .custom-table tbody tr:nth-child(even) {
+            background-color: #fcfcfc; /* Striped sutil */
+        }
+
+        .custom-table tbody tr:hover {
+            background-color: #e3f2fd;
+        }
+
+    .custom-table td {
+        border-bottom: 1px solid var(--excel-border);
+        border-right: 1px solid var(--excel-border);
+        height: 50px;
+        padding: 0;
+        vertical-align: middle;
+    }
+
+    /* COLUMNAS FIJAS (IZQUIERDA) */
+    .col-fixed-legajo {
+        position: sticky;
+        left: 0;
+        background: inherit;
+        z-index: 10;
+        width: 140px;
+        min-width: 140px;
+        max-width: 140px;
+        font-family: 'Consolas', monospace;
+        font-weight: 700;
+        color: #495057;
+        text-align: center;
+        border-right: 2px solid var(--excel-border) !important;
+    }
+
+    .col-fixed-nombre {
+        position: sticky;
+        left: 140px;
+        background: inherit;
+        z-index: 10;
+        width: 250px;
+        min-width: 250px;
+        max-width: 250px;
+        font-weight: 600;
+        color: var(--text-dark);
+        text-align: left;
+        padding-left: 12px !important;
+        border-right: 2px solid var(--excel-border) !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* ESTILOS ESPECÍFICOS DE CELDA */
+    .eval-date {
+        display: block;
+        font-size: 0.9rem;
+        font-weight: 700;
+        margin-top: 4px;
+        color: #495057;
+    }
+
+    .html-grade-input {
+        width: 100%;
+        height: 100%;
+        border: none;
+        outline: none;
+        text-align: center;
+        font-family: 'Segoe UI', sans-serif;
+        font-weight: 800;
+        font-size: 1.2rem;
+        color: #000000;
+        background: transparent;
+        cursor: pointer;
+    }
+
+        .html-grade-input:focus {
+            background-color: white;
+            cursor: text;
+        }
+
+    .grade-readonly {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        background-color: #f8f9fa;
+        color: #6c757d;
+        font-weight: 700;
+        font-size: 1rem;
+        cursor: not-allowed;
+    }
+
+    /* COLUMNA PROMEDIO */
+    .td-promedio {
+        background-color: #e3f2fd !important;
+        border-left: 2px solid #90caf9 !important;
+        text-align: center;
+        font-weight: 800;
+        color: var(--brand-blue);
+        font-size: 1.1rem;
+    }
+
+    /* HEADER PAGE */
+    .course-info-panel {
+        background-color: white;
+        border: 1px solid var(--excel-border);
+        border-left: 6px solid var(--brand-blue);
+        border-radius: 6px;
+        padding: 20px;
+        margin-bottom: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }
+
+    .info-label {
+        font-size: 0.75rem;
+        color: #6c757d;
+        text-transform: uppercase;
+        font-weight: 700;
+        display: block;
+    }
+
+    .info-value {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--brand-blue);
+    }
+
+    .info-divider {
+        width: 1px;
+        height: 40px;
+        background-color: var(--excel-border);
+        margin: 0 20px;
+    }
+
+    .ciclo-badge {
+        font-size: 1.1rem;
+        font-weight: 900;
+        color: #000000;
+        border: 2px solid #000000;
+        padding: 6px 16px;
+        border-radius: 8px;
+        letter-spacing: 0.5px;
+        background-color: #f8f9fa;
+    }
+</style>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-6 mb-10">
+    @if (planilla == null)
+    {
+        <div class="d-flex flex-column align-center justify-center py-20">
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+            <MudText Class="mt-4 mud-text-secondary">Cargando planilla...</MudText>
+        </div>
+    }
+    else
+    {
+        <div class="d-flex align-center justify-space-between mb-4">
+            <div class="d-flex align-center gap-2">
+                <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick="Volver" />
+                <MudText Typo="Typo.h5" Style="font-weight: 800; color: #1e3a58;">Planilla de Calificaciones</MudText>
+            </div>
+
+            <div class="d-flex gap-2">
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="CargarDatos">Recargar</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.AddCircleOutline" OnClick="AbrirDialogoNuevaEvaluacion">Nueva Instancia</MudButton>
+            </div>
+        </div>
+
+        <div class="course-info-panel">
+            <div class="d-flex align-center">
+                <div>
+                    <span class="info-label">Materia</span>
+                    <span class="info-value" style="font-size: 1.3rem;">@planilla.MateriaNombre.ToUpper()</span>
+                </div>
+                <div class="info-divider"></div>
+                <div>
+                    <span class="info-label">Comisión</span>
+                    <span class="info-value">@planilla.ComisionCodigo</span>
+                </div>
+                <div class="info-divider"></div>
+                <div>
+                    <span class="info-label">Inscriptos</span>
+                    <span class="info-value">@planilla.Alumnos.Count Estudiantes</span>
+                </div>
+            </div>
+
+            <div class="ciclo-badge">CICLO 2026</div>
+        </div>
+
+        <div class="custom-table-container">
+            <table class="custom-table">
+                <thead>
+                    <tr>
+                        <th class="th-group th-corner col-fixed-legajo" rowspan="2">LEGAJO</th>
+                        <th class="th-group th-corner-2 col-fixed-nombre" rowspan="2" style="text-align: center;">ESTUDIANTE</th>
+
+                        @if (planilla.Evaluaciones.Any())
+                        {
+                            <th class="th-group th-group-exams" colspan="@planilla.Evaluaciones.Count">
+                                INSTANCIAS DE EVALUACIÓN
+                            </th>
+                        }
+                        else
+                        {
+                            <th class="th-group th-group-exams">SIN EXÁMENES</th>
+                        }
+
+                        <th class="th-group" rowspan="2" style="background-color: #e0f2fe !important;">PROMEDIO</th>
+                        <th class="th-group" rowspan="2">ESTADO</th>
+                    </tr>
+
+                    <tr>
+                        @if (planilla.Evaluaciones.Any())
+                        {
+                            @foreach (var eval in planilla.Evaluaciones)
+                            {
+                                <th class="th-detail">
+                                    <div class="d-flex flex-column align-center justify-space-between h-100">
+                                        <span style="font-weight: 800; color: #1e3a58; text-transform: uppercase;">@eval.Nombre</span>
+                                        <span class="eval-date">@eval.Fecha.ToString("dd/MM")</span>
+
+                                        <div class="d-flex align-center gap-1 mt-2">
+                                            @if (eval.EstaCerrada)
+                                            {
+                                                <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" Style="color: #1e3a58;" Title="Acta Cerrada" />
+                                            }
+                                            else
+                                            {
+                                                <MudIcon Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Style="color: #0288d1;" Title="Acta Abierta" />
+                                            }
+
+                                            @if (eval.EstaCerrada)
+                                            {
+                                                <MudTooltip Text="Reabrir">
+                                                    <MudIconButton Icon="@Icons.Material.Filled.LockReset" Size="Size.Small" Color="Color.Warning" OnClick="@(() => ReabrirActa(eval))" />
+                                                </MudTooltip>
+                                            }
+                                            else
+                                            {
+                                                <MudTooltip Text="Editar">
+                                                    <MudIconButton Icon="@Icons.Material.Filled.Settings" Size="Size.Small" OnClick="@(() => AbrirDialogoEditarEvaluacion(eval))" />
+                                                </MudTooltip>
+                                                <MudTooltip Text="Cerrar">
+                                                    <MudIconButton Icon="@Icons.Material.Filled.LockOpen" Size="Size.Small" Color="Color.Error" OnClick="@(() => AbrirDialogoCierreActa(eval))" />
+                                                </MudTooltip>
+                                            }
+                                        </div>
+                                    </div>
+                                </th>
+                            }
+                        }
+                        else
+                        {
+                            <th class="th-detail text-center text-muted" style="font-style:italic;">---</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var alumno in planilla.Alumnos)
+                    {
+                        <tr>
+                            <td class="col-fixed-legajo">@alumno.Legajo</td>
+
+                            <td class="col-fixed-nombre">@alumno.AlumnoNombre.ToUpper()</td>
+
+                            @if (planilla.Evaluaciones.Any())
+                            {
+                                @foreach (var eval in planilla.Evaluaciones)
+                                {
+                                    var notaActual = alumno.Notas.ContainsKey(eval.IdEvaluacion) ? alumno.Notas[eval.IdEvaluacion] : null;
+
+                                    <td>
+                                        @if (eval.EstaCerrada)
+                                        {
+                                            <div class="grade-readonly">
+                                                @(notaActual?.ToString("0.##") ?? "-")
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <input type="text"
+                                                   class="html-grade-input"
+                                                   value="@(notaActual.HasValue? notaActual.Value.ToString("0.##") : "-")"
+                                                   placeholder="-"
+                                                   @onchange="@((ChangeEventArgs e) => ProcesarInputNota(alumno, eval.IdEvaluacion, e.Value?.ToString()))" />
+                                        }
+                                    </td>
+                                }
+                            }
+                            else
+                            {
+                                <td class="text-center bg-light"></td>
+                            }
+
+                            <td class="td-promedio">
+                                @if (alumno.Promedio.HasValue)
+                                {
+                                    <span style="@(alumno.Promedio >= 4 ? "color: #0d47a1;" : "color: #b71c1c;")">
+                                        @alumno.Promedio.Value.ToString("0.##")
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span style="color: #90a4ae; font-weight: 400;">-</span>
+                                }
+                            </td>
+
+                            <td style="text-align: center;">
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="@GetEstadoColor(alumno.Estado)" Style="font-weight: 700; font-size: 0.7rem;">
+                                    @alumno.Estado.ToUpper()
+                                </MudChip>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public int IdComision { get; set; }
+    private PlanillaNotasDTO? planilla;
+
+    protected override async Task OnInitializedAsync() => await CargarDatos();
+
+    private async Task CargarDatos() => planilla = await NotasService.GetPlanillaAsync(IdComision);
+
+    private async Task ProcesarInputNota(NotaAlumnoDTO alumno, int idEvaluacion, string? input)
+    {
+        decimal? valorAGuardar = null;
+        input = input?.Trim();
+
+        if (string.IsNullOrEmpty(input) || input == "-")
+        {
+            valorAGuardar = null;
+        }
+        else if (decimal.TryParse(input.Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out decimal resultado))
+        {
+            if (resultado >= 0 && resultado <= 10) valorAGuardar = resultado;
+            else { await CargarDatos(); return; }
+        }
+        else
+        {
+            await CargarDatos(); return;
+        }
+
+        await GuardarNota(alumno, idEvaluacion, valorAGuardar);
+    }
+
+    private async Task GuardarNota(NotaAlumnoDTO alumno, int idEvaluacion, decimal? nuevoValor)
+    {
+        alumno.Notas[idEvaluacion] = nuevoValor;
+        RecalcularPromedioAlumno(alumno);
+        var exito = await NotasService.GuardarNotaAsync(alumno.IdInscripcion, idEvaluacion, nuevoValor);
+        if (!exito) { Snackbar.Add("Error al guardar.", Severity.Error); await CargarDatos(); }
+    }
+
+    private void RecalcularPromedioAlumno(NotaAlumnoDTO alumno)
+    {
+        var notasValidas = alumno.Notas.Values.Where(v => v.HasValue).Select(v => v!.Value).ToList();
+        if (notasValidas.Any()) alumno.Promedio = Math.Round(notasValidas.Average(), 2);
+        else alumno.Promedio = null;
+    }
+
+    private async Task ReabrirActa(EvaluacionDTO eval)
+    {
+        var confirm = await DialogService.ShowMessageBox("Reabrir Acta", $"Se reabrirá el acta '{eval.Nombre}'.", yesText: "Confirmar", cancelText: "Cancelar");
+        if (confirm == true)
+        {
+            if (await NotasService.ReabrirActaAsync(eval.IdEvaluacion)) { Snackbar.Add("Reabierta.", Severity.Success); await CargarDatos(); }
+            else Snackbar.Add("Error al reabrir.", Severity.Error);
+        }
+    }
+
+    private async Task AbrirDialogoNuevaEvaluacion()
+    {
+        var parameters = new DialogParameters<DialogoEvaluacion> { { x => x.ListaAlumnos, planilla?.Alumnos ?? new() } };
+        var dialog = await DialogService.ShowAsync<DialogoEvaluacion>("Nueva Evaluación", parameters, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        var result = await dialog.Result;
+        if (!result.Canceled && result.Data is EvaluacionDTO nuevaEval)
+        {
+            if (await NotasService.CrearEvaluacionAsync(IdComision, nuevaEval)) { Snackbar.Add("Creada", Severity.Success); await CargarDatos(); }
+        }
+    }
+
+    private async Task AbrirDialogoEditarEvaluacion(EvaluacionDTO evaluacion)
+    {
+        var evalClone = new EvaluacionDTO { IdEvaluacion = evaluacion.IdEvaluacion, Nombre = evaluacion.Nombre, Fecha = evaluacion.Fecha, EsRecuperatorio = evaluacion.EsRecuperatorio };
+        var parameters = new DialogParameters<DialogoEvaluacion> { { x => x.model, evalClone } };
+        var dialog = await DialogService.ShowAsync<DialogoEvaluacion>("Editar Evaluación", parameters);
+        var result = await dialog.Result;
+        if (!result.Canceled && result.Data is EvaluacionDTO evalEditada)
+        {
+            if (await NotasService.EditarEvaluacionAsync(evalEditada)) { Snackbar.Add("Actualizada", Severity.Success); await CargarDatos(); }
+        }
+    }
+
+    private async Task AbrirDialogoCierreActa(EvaluacionDTO eval)
+    {
+        var parameters = new DialogParameters<DialogoCierreActa> { { x => x.IdEvaluacion, eval.IdEvaluacion } };
+        var dialog = await DialogService.ShowAsync<DialogoCierreActa>("Cerrar Acta", parameters);
+        var result = await dialog.Result;
+        if (!result.Canceled && result.Data is CierreActaDTO cierreDto)
+        {
+            if (await NotasService.CerrarActaAsync(cierreDto)) { Snackbar.Add("Cerrada", Severity.Success); await CargarDatos(); }
+            else Snackbar.Add("Error.", Severity.Error);
+        }
+    }
+
+    private Color GetEstadoColor(string estado) => estado switch
+    {
+        "Promocionado" => Color.Success,
+        "Regular" => Color.Info,
+        "Libre" => Color.Error,
+        _ => Color.Default
+    };
+
+    private void Volver() => NavigationManager.NavigateTo("/docente/dashboard");
+}

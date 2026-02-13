@@ -1,0 +1,252 @@
+﻿@page "/calendario"
+@using EduSys.Shared.DTOs
+@using EduSys.Web.Services.Interfaces
+@inject IVentanaService VentanaService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<style>
+    /* Estilos base */
+    .force-black-text, .mud-input-control .mud-input-slot {
+        color: #1F2937 !important;
+        font-weight: 500;
+    }
+
+    /* Badges */
+    .scope-badge-global {
+        background-color: #456990;
+        color: white;
+        font-weight: bold;
+    }
+
+    .scope-badge-carrera {
+        background-color: #EF767A;
+        color: white;
+        font-weight: bold;
+    }
+
+    .scope-badge-sede {
+        background-color: #49BEAA;
+        color: white;
+        font-weight: bold;
+    }
+
+    /* Estilos del Modal Unificado */
+    .unified-dialog-card {
+        background-color: white !important;
+        border-radius: 12px !important;
+    }
+
+    .modal-title-warning {
+        color: #d97706;
+        font-weight: 800;
+        font-size: 1.5rem;
+    }
+</style>
+
+<MudText Typo="Typo.h5" Color="Color.Primary" Align="Align.Center" Class="mb-6"><b>Calendario Académico</b></MudText>
+
+<MudContainer MaxWidth="MaxWidth.Large">
+
+    <div class="d-flex justify-end mb-4">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="@(() => AbrirModal())" Class="rounded-lg px-4">
+            Nueva Fecha
+        </MudButton>
+    </div>
+
+    <MudTable Items="@listaVentanas" Hover="true" Loading="@loading" Elevation="3" Class="rounded-xl">
+        <HeaderContent>
+            <MudTh>Período</MudTh>
+            <MudTh>Tipo de Acción</MudTh>
+            <MudTh>Vigencia</MudTh>
+            <MudTh>Alcance</MudTh>
+            <MudTh Style="text-align:center">Estado</MudTh>
+            <MudTh Style="text-align:center">Acciones</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>
+                <MudText Typo="Typo.body2" Style="font-weight:600;">@context.NombrePeriodo</MudText>
+            </MudTd>
+
+            @* --- TIPO DE ACCIÓN (ESTILO MEJORADO) --- *@
+            <MudTd>
+                @if (context.TipoAccion == "INSCRIPCION_INGRESO")
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Filled" Icon="@Icons.Material.Filled.PersonAdd">Ingreso</MudChip>
+                }
+                else if (context.TipoAccion == "INSCRIPCION_CURSADA")
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled" Icon="@Icons.Material.Filled.Class">Cursadas</MudChip>
+                }
+                else
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Filled" Icon="@Icons.Material.Filled.AssignmentTurnedIn">Finales</MudChip>
+                }
+            </MudTd>
+
+            <MudTd>
+                <div class="d-flex flex-column">
+                    <MudText Typo="Typo.caption"><b>Desde:</b> @context.FechaInicio?.ToString("dd/MM/yyyy")</MudText>
+                    <MudText Typo="Typo.caption"><b>Hasta:</b> @context.FechaFin?.ToString("dd/MM/yyyy")</MudText>
+                </div>
+            </MudTd>
+
+            <MudTd>
+                @if (context.IdCarrera == null && context.IdSede == null)
+                {
+                    <MudChip T="string" Size="Size.Small" Class="scope-badge-global">GLOBAL</MudChip>
+                }
+                else
+                {
+                    <div class="d-flex flex-column gap-1">
+                        @if (context.IdCarrera != null)
+                        {
+                            <MudChip T="string" Size="Size.Small" Class="scope-badge-carrera" Icon="@Icons.Material.Filled.School">@context.NombreCarrera</MudChip>
+                        }
+                        @if (context.IdSede != null)
+                        {
+                            <MudChip T="string" Size="Size.Small" Class="scope-badge-sede" Icon="@Icons.Material.Filled.Place">@context.NombreSede</MudChip>
+                        }
+                    </div>
+                }
+            </MudTd>
+
+            @* --- ESTADO (VIGENTE) --- *@
+            <MudTd Style="text-align:center">
+                @if (context.EstaVigente)
+                {
+                    <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Filled">VIGENTE</MudChip>
+                }
+                else if (context.FechaFin < DateTime.Now)
+                {
+                    <MudChip T="string" Color="Color.Default" Size="Size.Small" Variant="Variant.Outlined">FINALIZADO</MudChip>
+                }
+                else
+                {
+                    <MudChip T="string" Color="Color.Info" Size="Size.Small" Variant="Variant.Text">PRÓXIMAMENTE</MudChip>
+                }
+            </MudTd>
+
+            @* --- ACCIONES CON TOOLTIPS --- *@
+            <MudTd Style="text-align:center">
+                <div class="d-flex justify-center gap-2">
+                    <MudTooltip Text="Editar Regla">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small"
+                                       OnClick="@(() => AbrirModal(context))" />
+                    </MudTooltip>
+
+                    <MudTooltip Text="Eliminar Regla">
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                                       OnClick="@(() => AbrirModalEliminar(context.Id))" />
+                    </MudTooltip>
+                </div>
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText Align="Align.Center" Class="pa-4">No hay fechas definidas en el calendario.</MudText>
+        </NoRecordsContent>
+    </MudTable>
+</MudContainer>
+
+@* --- MODAL ELIMINAR (ESTILO UNIFICADO) --- *@
+<MudDialog @bind-Visible="mostrarDialogoEliminar" Options="optionsEliminar" Class="unified-dialog-card">
+    <DialogContent>
+        <div class="pa-4 d-flex flex-column align-center text-center">
+            <MudIcon Icon="@Icons.Material.Filled.WarningAmber" Color="Color.Warning" Style="font-size: 4rem;" Class="mb-4" />
+
+            <MudText Class="modal-title-warning mb-2">Eliminar Regla</MudText>
+
+            <MudText Typo="Typo.body1" Class="mb-4">
+                ¿Estás seguro de eliminar esta fecha del calendario?
+            </MudText>
+
+            <MudText Typo="Typo.caption" Color="Color.Default">
+                Esto impedirá inscripciones si no hay otra regla vigente que cubra estas fechas.
+            </MudText>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <div class="px-6 pb-6 d-flex justify-center gap-4" style="width: 100%;">
+            <MudButton OnClick="CerrarModalEliminar" Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg">Cancelar</MudButton>
+            <MudButton OnClick="ConfirmarEliminar" Variant="Variant.Filled" Color="Color.Error" Class="rounded-lg px-6">Eliminar</MudButton>
+        </div>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private bool loading = true;
+    private List<VentanaOperativaDTO> listaVentanas = new();
+    private bool mostrarDialogoEliminar = false;
+    private int idParaEliminar = 0;
+    private DialogOptions optionsEliminar = new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true, BackdropClick = false, CloseButton = false };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarDatos();
+    }
+
+    private async Task CargarDatos()
+    {
+        loading = true;
+        try
+        {
+            listaVentanas = await VentanaService.GetAllAsync();
+            listaVentanas = listaVentanas.OrderByDescending(v => v.EstaVigente).ThenBy(v => v.FechaInicio).ToList();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Error cargando calendario: " + ex.Message, Severity.Error);
+        }
+        finally { loading = false; }
+    }
+
+    private async Task AbrirModal(VentanaOperativaDTO? ventanaParaEditar = null)
+    {
+        var parameters = new DialogParameters();
+        if (ventanaParaEditar != null) parameters.Add("Ventana", ventanaParaEditar);
+        else parameters.Add("Ventana", new VentanaOperativaDTO());
+
+        // Opciones del Modal principal
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, BackdropClick = false, CloseButton = false };
+
+        var dialog = await DialogService.ShowAsync<EditVentanaDialog>("", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data is VentanaOperativaDTO modeloGuardado)
+        {
+            bool exito;
+            if (modeloGuardado.Id == 0) exito = await VentanaService.CreateAsync(modeloGuardado);
+            else
+            {
+                await VentanaService.DeleteAsync(modeloGuardado.Id);
+                exito = await VentanaService.CreateAsync(modeloGuardado);
+            }
+
+            if (exito) { Snackbar.Add("Regla guardada", Severity.Success); await CargarDatos(); }
+            else Snackbar.Add("Error al guardar", Severity.Error);
+        }
+    }
+
+    private void AbrirModalEliminar(int id)
+    {
+        idParaEliminar = id;
+        mostrarDialogoEliminar = true;
+    }
+
+    private async Task ConfirmarEliminar()
+    {
+        if (await VentanaService.DeleteAsync(idParaEliminar))
+        {
+            Snackbar.Add("Regla eliminada", Severity.Success);
+            await CargarDatos();
+        }
+        else
+        {
+            Snackbar.Add("No se pudo eliminar", Severity.Error);
+        }
+        mostrarDialogoEliminar = false;
+    }
+
+    private void CerrarModalEliminar() => mostrarDialogoEliminar = false;
+}

@@ -1,0 +1,283 @@
+﻿@page "/docentes"
+@using EduSys.Shared.DTOs
+@using EduSys.Web.Services.Interfaces
+@using EduSys.Web.Pages.Admin.Components
+@using Microsoft.AspNetCore.Authorization
+
+@inject IDocenteService DocenteService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@attribute [Authorize(Roles = "Administrador, Secretaria Academica")]
+
+<style>
+    /* Estilos de tabla personalizados */
+    .table-header-custom .mud-table-head .mud-table-cell {
+        color: #456990 !important;
+        font-weight: 800 !important;
+        background-color: #f8fafc !important;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.5px;
+    }
+
+    /* Eliminamos el estilo de cursor pointer (manito) ya que no es clickeable la fila */
+
+    /* Estilos para inputs */
+    .force-black-text input, .force-black-text .mud-input-slot {
+        color: #1F2937 !important;
+        font-weight: 500;
+    }
+
+    .force-black-text .mud-input-outlined-border {
+        border-color: #456990 !important;
+    }
+
+    .force-black-text .mud-icon-root {
+        color: #456990 !important;
+    }
+</style>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-6">
+
+    @* --- CABECERA DE LA PÁGINA --- *@
+    <div class="d-flex align-center justify-space-between mb-6">
+        <div>
+            <MudText Typo="Typo.h4" Style="font-weight: 700; color: #456990;">Gestión de Docentes</MudText>
+            <MudText Typo="Typo.subtitle1" Class="mud-text-secondary">Directorio de profesores y personal académico.</MudText>
+        </div>
+        <MudButton Variant="Variant.Filled"
+                   StartIcon="@Icons.Material.Filled.PersonAdd"
+                   Color="Color.Primary"
+                   OnClick="CrearDocente">
+            Nuevo Docente
+        </MudButton>
+    </div>
+
+    @* --- GRILLA DE DATOS --- *@
+    @* ✅ CAMBIO: Se eliminó 'OnRowClick' y 'RowClass' para desactivar el click en la fila *@
+    <MudTable T="DocenteListadoDTO"
+              Items="@listaDocentes"
+              Dense="true"
+              Hover="true"
+              Bordered="false"
+              Striped="false"
+              Filter="new Func<DocenteListadoDTO, bool>(FiltrarDocentes)"
+              Elevation="3"
+              Class="rounded-lg table-header-custom"
+              Loading="@cargando">
+
+        <ToolBarContent>
+            <MudSpacer />
+            <MudTextField @bind-Value="searchString"
+                          Placeholder="Buscar por nombre, DNI o legajo..."
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          Class="force-black-text mt-0"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Style="max-width: 400px;" />
+        </ToolBarContent>
+
+        <HeaderContent>
+            <MudTh>Legajo</MudTh>
+            <MudTh>Docente</MudTh>
+            <MudTh>DNI</MudTh>
+            <MudTh>Título</MudTh>
+            <MudTh>Email</MudTh>
+            <MudTh Style="text-align:center;">Estado</MudTh>
+            <MudTh Style="text-align:center;">Acciones</MudTh>
+        </HeaderContent>
+
+        <RowTemplate>
+            <MudTd DataLabel="Legajo">
+                <MudText Style="font-weight:700; color:#456990;">@context.Legajo</MudText>
+            </MudTd>
+
+            <MudTd DataLabel="Docente">@context.NombreCompleto</MudTd>
+
+            <MudTd DataLabel="DNI">@context.Dni</MudTd>
+
+            <MudTd DataLabel="Título">
+                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text" Class="font-weight-bold">
+                    @context.TituloAcademico
+                </MudChip>
+            </MudTd>
+
+            <MudTd DataLabel="Email">@context.Email</MudTd>
+
+            <MudTd DataLabel="Estado" Style="text-align:center;">
+                @if (context.Activo)
+                {
+                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" />
+                }
+                else
+                {
+                    <MudIcon Icon="@Icons.Material.Filled.Cancel" Color="Color.Error" Size="Size.Small" />
+                }
+            </MudTd>
+
+            <MudTd Style="text-align:center;">
+                @* Botón Editar (Única forma de editar ahora) *@
+                <MudTooltip Text="Editar Datos">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                   Color="Color.Primary"
+                                   Size="Size.Small"
+                                   OnClick="@(() => EditarDocente(context))" />
+                </MudTooltip>
+
+                @* Botón Baja Lógica *@
+                <MudTooltip Text="Dar de Baja">
+                    <MudIconButton Icon="@Icons.Material.Filled.PersonOff"
+                                   Color="Color.Error"
+                                   Size="Size.Small"
+                                   OnClick="@(() => EliminarDocente(context))" />
+                </MudTooltip>
+            </MudTd>
+        </RowTemplate>
+
+        <PagerContent>
+            <MudTablePager InfoFormat="{first_item}-{last_item} de {all_items}" RowsPerPageString="Filas por página:" />
+        </PagerContent>
+
+        <NoRecordsContent>
+            <MudText>No se encontraron docentes registrados.</MudText>
+        </NoRecordsContent>
+    </MudTable>
+
+</MudContainer>
+
+@code {
+    private List<DocenteListadoDTO> listaDocentes = new();
+    private string searchString = "";
+    private bool cargando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarDatos();
+    }
+
+    private async Task CargarDatos()
+    {
+        cargando = true;
+        try
+        {
+            listaDocentes = await DocenteService.GetDocentesAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Error al cargar docentes: " + ex.Message, Severity.Error);
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private bool FiltrarDocentes(DocenteListadoDTO element)
+    {
+        if (string.IsNullOrWhiteSpace(searchString)) return true;
+        if (element.NombreCompleto.Contains(searchString, StringComparison.OrdinalIgnoreCase)) return true;
+        if (element.Dni.Contains(searchString, StringComparison.OrdinalIgnoreCase)) return true;
+        if (element.Legajo.Contains(searchString, StringComparison.OrdinalIgnoreCase)) return true;
+        return false;
+    }
+
+    private async Task CrearDocente()
+    {
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+            BackdropClick = false,
+            CloseButton = false,
+            NoHeader = true
+        };
+
+        var parameters = new DialogParameters { { "Docente", new DocenteRequestDTO() } };
+
+        var dialog = DialogService.Show<CrearEditarDocenteDialog>("", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data is DocenteRequestDTO nuevoDocente)
+        {
+            var exito = await DocenteService.CrearDocenteAsync(nuevoDocente);
+            if (exito)
+            {
+                Snackbar.Add("Docente creado correctamente", Severity.Success);
+                await CargarDatos();
+            }
+            else
+            {
+                Snackbar.Add("Error al crear docente", Severity.Error);
+            }
+        }
+    }
+
+    private async Task EditarDocente(DocenteListadoDTO item)
+    {
+        var docenteCompleto = await DocenteService.GetDocenteByIdAsync(item.IdDocente);
+        if (docenteCompleto == null) return;
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+            BackdropClick = false,
+            CloseButton = false,
+            NoHeader = true
+        };
+
+        var parameters = new DialogParameters { { "Docente", docenteCompleto } };
+
+        var dialog = DialogService.Show<CrearEditarDocenteDialog>("", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data is DocenteRequestDTO docenteEditado)
+        {
+            var exito = await DocenteService.EditarDocenteAsync(docenteEditado);
+            if (exito)
+            {
+                Snackbar.Add("Docente actualizado", Severity.Success);
+                await CargarDatos();
+            }
+            else
+            {
+                Snackbar.Add("Error al actualizar", Severity.Error);
+            }
+        }
+    }
+
+    private async Task EliminarDocente(DocenteListadoDTO item)
+    {
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true,
+            BackdropClick = false,
+            CloseButton = false,
+            NoHeader = true
+        };
+
+        var parameters = new DialogParameters
+        {
+            { "NombreEntidad", item.NombreCompleto }
+        };
+
+        var dialog = DialogService.Show<ConfirmarBajaDialog>("", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            var exito = await DocenteService.EliminarDocenteAsync(item.IdDocente);
+            if (exito)
+            {
+                Snackbar.Add("Docente dado de baja correctamente", Severity.Success);
+                await CargarDatos();
+            }
+            else
+            {
+                Snackbar.Add("Ocurrió un error al intentar dar de baja", Severity.Error);
+            }
+        }
+    }
+}

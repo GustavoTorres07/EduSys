@@ -1,0 +1,238 @@
+﻿@page "/legajos"
+@using EduSys.Shared.DTOs
+@using EduSys.Web.Services.Interfaces
+@using EduSys.Web.Pages.Admin.Components
+@using Microsoft.AspNetCore.Authorization
+
+@inject IAlumnoService AlumnoService
+@inject IDialogService DialogService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@attribute [Authorize(Roles = "Administrador, Secretaria Academica")]
+
+<style>
+    /* HEADER TABLA */
+    .table-header-custom .mud-table-head .mud-table-cell {
+        color: #456990 !important;
+        font-weight: 800 !important;
+        background-color: #f8fafc !important;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.5px;
+    }
+
+    .row-hover-effect:hover {
+        background-color: #f1f5f9 !important;
+        cursor: pointer;
+    }
+
+    /* --- CORRECCIÓN DE INPUTS (TEXTO NEGRO FORZADO) --- */
+    .force-black-text,
+    .force-black-text input,
+    .force-black-text .mud-input-slot,
+    .force-black-text .mud-select-input {
+        color: #1F2937 !important;
+        font-weight: 500;
+        -webkit-text-fill-color: #1F2937 !important;
+    }
+
+        .force-black-text .mud-input-label {
+            color: #456990 !important;
+            background-color: white !important;
+            padding: 0 5px;
+        }
+
+        .force-black-text .mud-input-outlined-border {
+            border-color: #456990 !important;
+        }
+
+        .force-black-text.mud-input-control.mud-input-focused .mud-input-outlined-border {
+            border-width: 2px !important;
+        }
+
+        .force-black-text .mud-input-adornment-icon {
+            color: #456990 !important;
+        }
+
+        .force-black-text .mud-icon-root {
+            color: #456990 !important;
+        }
+
+    /* ESTILO BOTÓN LIMPIAR */
+    .btn-filter-height {
+        height: 40px;
+        border-width: 1px;
+    }
+</style>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-6">
+
+    <div class="d-flex align-center justify-space-between mb-6">
+        <div>
+            <MudText Typo="Typo.h4" Style="font-weight: 700; color: #456990;">Gestión de Legajos</MudText>
+            <MudText Typo="Typo.subtitle1" Class="mud-text-secondary">Directorio de alumnos y documentación digital.</MudText>
+        </div>
+        <MudButton Variant="Variant.Outlined"
+                   StartIcon="@Icons.Material.Filled.Refresh"
+                   Color="Color.Primary"
+                   OnClick="CargarDatos">
+            Actualizar
+        </MudButton>
+    </div>
+
+    <MudTable T="AlumnoListadoDTO"
+              Items="@listaAlumnos"
+              Dense="true"
+              Hover="true"
+              Bordered="false"
+              Striped="false"
+              Filter="new Func<AlumnoListadoDTO, bool>(FiltrarAlumnos)"
+              Elevation="3"
+              Class="rounded-lg table-header-custom"
+              Loading="@cargando"
+              LoadingProgressColor="Color.Primary"
+              RowClass="row-hover-effect"
+              OnRowClick="@((TableRowClickEventArgs<AlumnoListadoDTO> args) => VerLegajo(args.Item))">
+
+        <ToolBarContent>
+            <MudGrid Class="pt-2 pb-2 align-center" Spacing="2">
+                @* BUSCADOR *@
+                <MudItem xs="12" md="5">
+                    <MudTextField @bind-Value="searchString" Label="Buscar Alumno" Placeholder="Legajo, DNI o Nombre..." Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Class="force-black-text" Variant="Variant.Outlined" Margin="Margin.Dense" FullWidth="true" />
+                </MudItem>
+
+                @* FILTRO CARRERA *@
+                <MudItem xs="12" md="5">
+                    <MudSelect T="string" @bind-Value="filtroCarrera" Label="Carrera" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" FullWidth="true">
+                        <MudSelectItem Value="@("Todas")">Todas las Carreras</MudSelectItem>
+                        @foreach (var carrera in listaCarrerasDisponibles)
+                        {
+                            <MudSelectItem Value="@carrera">@carrera</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+
+                @* BOTÓN LIMPIAR *@
+                <MudItem xs="12" md="2">
+                    <MudButton Variant="Variant.Outlined" OnClick="LimpiarFiltros" Color="Color.Primary" StartIcon="@Icons.Material.Filled.FilterAltOff" FullWidth="true" Class="btn-filter-height">Limpiar</MudButton>
+                </MudItem>
+            </MudGrid>
+        </ToolBarContent>
+
+        <HeaderContent>
+            <MudTh>Perfil</MudTh>
+            <MudTh>Legajo</MudTh>
+            <MudTh>Apellido y Nombre</MudTh>
+            <MudTh>DNI</MudTh>
+            <MudTh>Carrera</MudTh>
+            <MudTh Style="text-align:center;">Estado</MudTh>
+            <MudTh Style="text-align:center;">Acciones</MudTh>
+        </HeaderContent>
+
+        <RowTemplate>
+            @* ✅ AQUI ESTÁ LA CORRECCIÓN DE LA FOTO *@
+            <MudTd DataLabel="Perfil">
+                @if (!string.IsNullOrEmpty(context.FotoPerfilUrl))
+                {
+                    <MudAvatar Image="@context.FotoPerfilUrl" Size="Size.Small" />
+                }
+                else
+                {
+                    <MudAvatar Color="Color.Primary" Size="Size.Small" Variant="Variant.Outlined">
+                        @(string.IsNullOrEmpty(context.NombreCompleto) ? "?" : context.NombreCompleto.Substring(0, 1))
+                    </MudAvatar>
+                }
+            </MudTd>
+
+            <MudTd DataLabel="Legajo">
+                <MudText Typo="Typo.body2" Style="font-weight: 700; color: #456990;">@context.Legajo</MudText>
+            </MudTd>
+            <MudTd DataLabel="Nombre">@context.NombreCompleto</MudTd>
+            <MudTd DataLabel="DNI">@context.Dni</MudTd>
+            <MudTd DataLabel="Carrera">
+                <MudText Typo="Typo.caption" Style="font-weight:600;">@context.NombreCarrera</MudText>
+            </MudTd>
+            <MudTd DataLabel="Estado" Style="text-align:center;">
+                @if (context.Activo)
+                {
+                    <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Text">ACTIVO</MudChip>
+                }
+                else
+                {
+                    <MudChip T="string" Color="Color.Default" Size="Size.Small" Variant="Variant.Text">INACTIVO</MudChip>
+                }
+            </MudTd>
+            <MudTd Style="text-align:center;">
+                <MudTooltip Text="Ver Legajo Digital">
+                    <MudIconButton Icon="@Icons.Material.Filled.FolderShared" Color="Color.Primary" Size="Size.Small" OnClick="@(() => VerLegajo(context))" />
+                </MudTooltip>
+            </MudTd>
+        </RowTemplate>
+
+        <PagerContent>
+            <MudTablePager RowsPerPageString="Alumnos por página" InfoFormat="{first_item}-{last_item} de {all_items}" />
+        </PagerContent>
+        <NoRecordsContent>
+            <MudText>No se encontraron legajos.</MudText>
+        </NoRecordsContent>
+    </MudTable>
+
+</MudContainer>
+
+@code {
+    private List<AlumnoListadoDTO> listaAlumnos = new();
+    private List<string> listaCarrerasDisponibles = new();
+    private string searchString = "";
+    private string filtroCarrera = "Todas";
+    private bool cargando = true;
+
+    protected override async Task OnInitializedAsync() { await CargarDatos(); }
+
+    private async Task CargarDatos()
+    {
+        cargando = true;
+        try
+        {
+            listaAlumnos = await AlumnoService.GetAlumnosAsync();
+            if (listaAlumnos != null)
+            {
+                listaCarrerasDisponibles = listaAlumnos.Select(a => a.NombreCarrera).Distinct().OrderBy(c => c).ToList();
+            }
+        }
+        catch (Exception ex) { Snackbar.Add("Error al cargar alumnos: " + ex.Message, Severity.Error); }
+        finally { cargando = false; }
+    }
+
+    private void LimpiarFiltros() { searchString = ""; filtroCarrera = "Todas"; }
+
+    private bool FiltrarAlumnos(AlumnoListadoDTO element)
+    {
+        if (element == null) return false;
+        if (filtroCarrera != "Todas" && element.NombreCarrera != filtroCarrera) return false;
+        if (string.IsNullOrWhiteSpace(searchString)) return true;
+        if ((element.Legajo ?? "").Contains(searchString, StringComparison.OrdinalIgnoreCase)) return true;
+        if ((element.NombreCompleto ?? "").Contains(searchString, StringComparison.OrdinalIgnoreCase)) return true;
+        if ((element.Dni ?? "").Contains(searchString, StringComparison.OrdinalIgnoreCase)) return true;
+        return false;
+    }
+
+    private void VerLegajo(AlumnoListadoDTO alumno)
+    {
+        var parameters = new DialogParameters
+        {
+            { "IdAlumno", alumno.IdAlumno },
+            { "AlumnoNombre", alumno.NombreCompleto }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+            NoHeader = true,
+            CloseButton = false,
+            BackdropClick = false
+        };
+
+        DialogService.Show<LegajoDigitalDialog>("", parameters, options);
+    }
+}

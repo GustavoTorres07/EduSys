@@ -1,0 +1,314 @@
+﻿@using EduSys.Shared.DTOs
+@using EduSys.Web.Services.Interfaces
+@inject IPlanService PlanService
+@inject ISnackbar Snackbar
+@inject IJSRuntime JSRuntime
+
+<style>
+    /* ... (ESTILOS SIN CAMBIOS) ... */
+    .mud-dialog-close-icon {
+        display: none !important;
+    }
+
+    .mud-dialog-content {
+        padding: 0 !important;
+    }
+
+    .dialog-container {
+        display: flex;
+        flex-direction: column;
+        background-color: white;
+        max-height: 85vh;
+    }
+
+    .dialog-header-integrated {
+        background: #456990;
+        color: white;
+        padding: 12px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-shrink: 0;
+    }
+
+    .dialog-body {
+        padding: 24px;
+        overflow-y: auto;
+        flex-grow: 1;
+    }
+
+    .actions-footer {
+        padding: 16px 24px;
+        border-top: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        background-color: white;
+        flex-shrink: 0;
+    }
+
+    .force-black-text input, .force-black-text .mud-input-slot, .force-black-text .mud-select-input {
+        color: #1F2937 !important;
+        font-weight: 500;
+        -webkit-text-fill-color: #1F2937 !important;
+    }
+
+    .force-black-text .mud-input-label {
+        color: #456990 !important;
+        background-color: white !important;
+        padding: 0 5px;
+    }
+
+    .force-black-text .mud-input-outlined-border {
+        border-color: #456990 !important;
+    }
+
+    .force-black-text .mud-icon-root {
+        color: #456990 !important;
+    }
+
+    .section-title {
+        color: #456990;
+        font-weight: 700;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        border-bottom: 2px solid #e2e8f0;
+        padding-bottom: 4px;
+        margin-bottom: 12px;
+        margin-top: 8px;
+    }
+
+    /* Estilo alerta bloqueo */
+    .bloqueo-alert {
+        background-color: #FEF2F2;
+        border: 1px solid #EF767A;
+        border-radius: 8px;
+        padding: 16px;
+        margin-top: 10px;
+    }
+</style>
+
+<MudDialog DisableSidePadding="true" Class="rounded-lg overflow-hidden">
+    <DialogContent>
+        <div class="dialog-container">
+            <div class="dialog-header-integrated">
+                <div class="d-flex align-center">
+                    <MudIcon Icon="@(Alumno.IdAlumno == 0 ? Icons.Material.Filled.PersonAdd : Icons.Material.Filled.Edit)" Class="mr-3" />
+                    <MudText Typo="Typo.h6" Style="font-weight: 700; letter-spacing: 0.5px;">
+                        @(Alumno.IdAlumno == 0 ? "Nuevo Alumno" : "Editar Alumno")
+                    </MudText>
+                </div>
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" OnClick="Cancel" Size="Size.Small" />
+            </div>
+
+            <div class="dialog-body">
+                <MudForm @ref="form" Model="@alumnoModel">
+                    <MudGrid Spacing="2">
+
+                        @* 1. IDENTIDAD *@
+                        <MudItem xs="12"><div class="section-title">Identificación</div></MudItem>
+                        <MudItem xs="6"><MudTextField @bind-Value="alumnoModel.Dni" Label="DNI" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Badge" Class="force-black-text" /></MudItem>
+                        <MudItem xs="6"><MudTextField @bind-Value="alumnoModel.Legajo" Label="Legajo" Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="true" Placeholder="@(alumnoModel.IdAlumno == 0 ? "Se autogenera al guardar" : "")" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.ConfirmationNumber" Class="force-black-text" /></MudItem>
+                        <MudItem xs="6"><MudTextField @bind-Value="alumnoModel.Nombre" Label="Nombre" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Person" Class="force-black-text" /></MudItem>
+                        <MudItem xs="6"><MudTextField @bind-Value="alumnoModel.Apellido" Label="Apellido" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Person" Class="force-black-text" /></MudItem>
+                        <MudItem xs="6"><MudDatePicker @bind-Date="fechaNacimiento" Label="Fecha Nacimiento" Variant="Variant.Outlined" Margin="Margin.Dense" Editable="true" DateFormat="dd/MM/yyyy" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.CalendarMonth" Class="force-black-text" /></MudItem>
+                        <MudItem xs="6">
+                            <MudSelect T="string" Label="Sexo" @bind-Value="alumnoModel.Sexo" Variant="Variant.Outlined" Margin="Margin.Dense" AnchorOrigin="Origin.BottomCenter" Class="force-black-text">
+                                <MudSelectItem Value="@("Masculino")" /><MudSelectItem Value="@("Femenino")" /><MudSelectItem Value="@("X")" />
+                            </MudSelect>
+                        </MudItem>
+
+                        @* ... (Resto de campos de identidad: EstadoCivil, LugarNacimiento) ... *@
+                        <MudItem xs="6"><MudSelect T="string" Label="Estado Civil" @bind-Value="alumnoModel.EstadoCivil" Variant="Variant.Outlined" Margin="Margin.Dense" AnchorOrigin="Origin.BottomCenter" Class="force-black-text"><MudSelectItem Value="@("Soltero/a")" /><MudSelectItem Value="@("Casado/a")" /><MudSelectItem Value="@("Divorciado/a")" /><MudSelectItem Value="@("Viudo/a")" /></MudSelect></MudItem>
+                        <MudItem xs="6"><MudTextField @bind-Value="alumnoModel.LugarNacimiento" Label="Lugar de Nacimiento" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" /></MudItem>
+
+                        @* 2. CONTACTO *@
+                        <MudItem xs="12" Class="mt-2"><div class="section-title">Contacto</div></MudItem>
+                        <MudItem xs="12"><MudTextField @bind-Value="alumnoModel.Email" Label="Email" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" InputType="InputType.Email" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Email" Class="force-black-text" /></MudItem>
+                        <MudItem xs="6"><MudTextField @bind-Value="alumnoModel.Telefono" Label="Teléfono" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Phone" Class="force-black-text" /></MudItem>
+                        <MudItem xs="6"><MudTextField @bind-Value="alumnoModel.Localidad" Label="Localidad" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" /></MudItem>
+                        <MudItem xs="12"><MudTextField @bind-Value="alumnoModel.Direccion" Label="Dirección" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Home" Class="force-black-text" /></MudItem>
+
+                        @* 3. ACADÉMICO (Aquí agregamos Fecha Egreso) *@
+                        <MudItem xs="12" Class="mt-2"><div class="section-title">Académico</div></MudItem>
+                        <MudItem xs="12">
+                            <MudSelect T="int" Label="Plan de Estudio" @bind-Value="alumnoModel.IdPlanActual"
+                                       Variant="Variant.Outlined" Margin="Margin.Dense" AnchorOrigin="Origin.BottomCenter"
+                                       AdornmentIcon="@Icons.Material.Filled.School" AdornmentColor="Color.Primary"
+                                       ToStringFunc="@(id => GetNombrePlan(id))" Class="force-black-text">
+                                <MudSelectItem Value="0" Disabled="true">-- Seleccione un Plan --</MudSelectItem>
+                                @foreach (var plan in planes)
+                                {
+                                    <MudSelectItem Value="@plan.Id">@plan.Nombre (@plan.NombreCarrera)</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+
+                        <MudItem xs="6">
+                            <MudDatePicker @bind-Date="fechaIngreso" Label="Fecha Ingreso" Variant="Variant.Outlined" Margin="Margin.Dense" Editable="true" DateFormat="dd/MM/yyyy" Class="force-black-text" />
+                        </MudItem>
+
+                        @* ✅ NUEVO: FECHA EGRESO *@
+                        <MudItem xs="6">
+                            <MudDatePicker @bind-Date="fechaEgreso" Label="Fecha Egreso" Variant="Variant.Outlined" Margin="Margin.Dense" Editable="true" DateFormat="dd/MM/yyyy" Clearable="true" Placeholder="Sin egreso" Class="force-black-text" />
+                        </MudItem>
+
+                        @* 4. LABORALES *@
+                        <MudItem xs="12" Class="mt-2"><div class="section-title">Datos Laborales</div></MudItem>
+                        <MudItem xs="12"><MudTextField @bind-Value="alumnoModel.Ocupacion" Label="Ocupación" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" /></MudItem>
+                        <MudItem xs="6"><MudTextField @bind-Value="alumnoModel.LugarTrabajo" Label="Lugar Trabajo" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" /></MudItem>
+                        <MudItem xs="6"><MudTextField @bind-Value="alumnoModel.HorarioLaboral" Label="Horario" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" /></MudItem>
+
+                        @* 5. DOCUMENTACIÓN (URLs) *@
+                        <MudItem xs="12" Class="mt-2"><div class="section-title">Documentación (URLs)</div></MudItem>
+                        <MudItem xs="12"><MudTextField @bind-Value="alumnoModel.FotoPerfilUrl" Label="Foto Perfil" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Visibility" OnAdornmentClick="@(() => OpenLink(alumnoModel.FotoPerfilUrl))" Class="force-black-text" /></MudItem>
+                        <MudItem xs="6"><MudTextField @bind-Value="alumnoModel.UrlDniFrente" Label="DNI Frente" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" /></MudItem>
+                        <MudItem xs="6"><MudTextField @bind-Value="alumnoModel.UrlDniDorso" Label="DNI Dorso" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" /></MudItem>
+                        <MudItem xs="6"><MudTextField @bind-Value="alumnoModel.UrlTituloSecundario" Label="Título Sec." Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" /></MudItem>
+                        <MudItem xs="6"><MudTextField @bind-Value="alumnoModel.UrlAntecedentesPenales" Label="Antecedentes" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" /></MudItem>
+
+                        @* 6. ESTADO Y OBSERVACIONES *@
+                        <MudItem xs="12" Class="mt-2"><div class="section-title">Estado y Notas</div></MudItem>
+
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="alumnoModel.Observaciones" Label="Observaciones Generales" Variant="Variant.Outlined" Lines="3" Class="force-black-text" />
+                        </MudItem>
+
+                        <MudItem xs="12" Class="d-flex align-center justify-space-around mt-3 pa-4" Style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
+                            <MudSwitch @bind-Value="alumnoModel.Activo" Color="Color.Success" Label="Alumno Activo" />
+                            <MudDivider Vertical="true" FlexItem="true" Class="mx-4" />
+                            <MudSwitch @bind-Value="alumnoModel.TituloSecundarioEntregado" Color="Color.Secondary" Label="Título Entregado" />
+                            <MudDivider Vertical="true" FlexItem="true" Class="mx-4" />
+                            @* ✅ NUEVO: SWITCH BLOQUEO *@
+                            <MudSwitch @bind-Value="estaBloqueadoTemp" Color="Color.Error" Label="Bloquear Acceso" />
+                        </MudItem>
+
+                        @* ✅ SECCIÓN DE BLOQUEO (Solo si está bloqueado) *@
+                        @if (estaBloqueadoTemp)
+                        {
+                            <MudItem xs="12">
+                                <div class="bloqueo-alert animate__animated animate__fadeIn">
+                                    <MudText Typo="Typo.subtitle2" Color="Color.Error" Class="mb-2" Style="font-weight: 700;">
+                                        <MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Small" Class="mr-1" style="vertical-align: text-bottom;" />
+                                        Motivo del Bloqueo
+                                    </MudText>
+                                    <MudTextField @bind-Value="alumnoModel.MotivoBloqueo" Variant="Variant.Outlined" Margin="Margin.Dense" Lines="2" Placeholder="Indique la razón del bloqueo administrativo..." Class="force-black-text" Required="true" />
+                                </div>
+                            </MudItem>
+                        }
+
+                    </MudGrid>
+                </MudForm>
+            </div>
+
+            <div class="actions-footer">
+                <MudButton OnClick="Cancel" Variant="Variant.Outlined" Color="Color.Default">Cancelar</MudButton>
+                <MudButton OnClick="Submit" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save">Guardar Datos</MudButton>
+            </div>
+        </div>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+    [Parameter] public AlumnoRequestDTO Alumno { get; set; } = new();
+
+    private AlumnoRequestDTO alumnoModel = new();
+    private List<PlanEstudioDTO> planes = new();
+    private MudForm form;
+
+    // Variables temporales para fechas y switches
+    private DateTime? fechaNacimiento;
+    private DateTime? fechaIngreso;
+    private DateTime? fechaEgreso;
+    private bool estaBloqueadoTemp;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try { planes = await PlanService.GetAllAsync(); } catch { }
+
+        if (Alumno != null && Alumno.IdAlumno > 0)
+        {
+            // Mapeo
+            alumnoModel = new AlumnoRequestDTO
+            {
+                IdAlumno = Alumno.IdAlumno,
+                Nombre = Alumno.Nombre,
+                Apellido = Alumno.Apellido,
+                Dni = Alumno.Dni,
+                Email = Alumno.Email,
+                Telefono = Alumno.Telefono,
+                Direccion = Alumno.Direccion,
+                Localidad = Alumno.Localidad,
+                Sexo = Alumno.Sexo,
+                EstadoCivil = Alumno.EstadoCivil,
+                LugarNacimiento = Alumno.LugarNacimiento,
+                IdNacionalidad = Alumno.IdNacionalidad,
+                NombreContactoEmergencia = Alumno.NombreContactoEmergencia,
+                TelefonoContactoEmergencia = Alumno.TelefonoContactoEmergencia,
+                Ocupacion = Alumno.Ocupacion,
+                LugarTrabajo = Alumno.LugarTrabajo,
+                HorarioLaboral = Alumno.HorarioLaboral,
+                Legajo = Alumno.Legajo,
+                IdPlanActual = Alumno.IdPlanActual,
+                TituloSecundarioEntregado = Alumno.TituloSecundarioEntregado,
+                Activo = Alumno.Activo,
+                Observaciones = Alumno.Observaciones,
+
+                // Nuevos campos mapeados
+                MotivoBloqueo = Alumno.MotivoBloqueo,
+
+                FotoPerfilUrl = Alumno.FotoPerfilUrl,
+                UrlDniFrente = Alumno.UrlDniFrente,
+                UrlDniDorso = Alumno.UrlDniDorso,
+                UrlTituloSecundario = Alumno.UrlTituloSecundario,
+                UrlAntecedentesPenales = Alumno.UrlAntecedentesPenales,
+                UrlValidacionIdentidad = Alumno.UrlValidacionIdentidad
+            };
+
+            // Asignar fechas temporales
+            fechaNacimiento = Alumno.FechaNacimiento;
+            fechaIngreso = Alumno.FechaIngreso;
+            fechaEgreso = Alumno.FechaEgreso; // ✅ Nuevo
+            estaBloqueadoTemp = Alumno.EstaBloqueado ?? false; // ✅ Nuevo
+        }
+        else
+        {
+            alumnoModel.IdPlanActual = 0;
+            alumnoModel.Activo = true;
+            fechaIngreso = DateTime.Now;
+        }
+    }
+
+    private string GetNombrePlan(int id)
+    {
+        if (id == 0) return "-- Seleccione un Plan --";
+        var plan = planes.FirstOrDefault(x => x.Id == id);
+        return plan != null ? $"{plan.Nombre} ({plan.NombreCarrera})" : "Cargando...";
+    }
+
+    private async Task OpenLink(string url) { if (!string.IsNullOrEmpty(url)) await JSRuntime.InvokeVoidAsync("open", url, "_blank"); }
+
+    private void Submit()
+    {
+        form.Validate();
+        if (!form.IsValid) return;
+        if (alumnoModel.IdPlanActual == 0) { Snackbar.Add("Seleccione un plan de estudio", Severity.Warning); return; }
+
+        if (estaBloqueadoTemp && string.IsNullOrWhiteSpace(alumnoModel.MotivoBloqueo))
+        {
+            Snackbar.Add("Debe indicar un motivo si bloquea al alumno.", Severity.Warning);
+            return;
+        }
+
+        // Asignar valores temporales al modelo final
+        alumnoModel.FechaNacimiento = fechaNacimiento;
+        alumnoModel.FechaIngreso = fechaIngreso;
+        alumnoModel.FechaEgreso = fechaEgreso;
+        alumnoModel.EstaBloqueado = estaBloqueadoTemp;
+
+        MudDialog.Close(DialogResult.Ok(alumnoModel));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}
