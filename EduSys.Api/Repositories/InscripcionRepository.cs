@@ -237,6 +237,76 @@ namespace EduSys.Api.Repositories
             return cumple;
         }
 
+        public async Task<ResultadoInscripcionDTO> InscribirAdminAsync(InscripcionManualDTO dto)
+        {
+            // 1. Obtener datos de la comisión y plan
+            var comision = await _context.Comisions
+                .Include(c => c.IdPlanMateriaNavigation)
+                .Include(c => c.IdPeriodoNavigation)
+                .FirstOrDefaultAsync(c => c.Id == dto.IdComision);
+
+            if (comision == null)
+                return new ResultadoInscripcionDTO { Exito = false, Mensaje = "La comisión no existe." };
+
+            // 2. Validación CRÍTICA: Duplicados (Esta NUNCA se ignora para no romper la BD)
+            bool yaInscripto = await _context.InscripcionCursada
+                .AnyAsync(i => i.IdAlumno == dto.IdAlumno &&
+                               i.IdComision == dto.IdComision &&
+                               i.Estado != "Baja");
+
+            if (yaInscripto)
+                return new ResultadoInscripcionDTO { Exito = false, Mensaje = "El alumno ya está inscripto en esta materia." };
+
+            // 3. Validaciones con OVERRIDE (Si el flag es false, validamos. Si es true, pasamos)
+
+            // A. Cupo
+            if (!dto.IgnorarCupo)
+            {
+                int inscriptos = await _context.InscripcionCursada
+                    .CountAsync(i => i.IdComision == dto.IdComision && i.Estado != "Baja");
+
+                if (inscriptos >= comision.CupoMaximo)
+                    return new ResultadoInscripcionDTO { Exito = false, Mensaje = "El cupo está completo." };
+            }
+
+            // B. Correlativas (Usamos tu método existente de validación)
+            if (!dto.IgnorarCorrelativas)
+            {
+                var (cumple, error) = await ValidarCorrelativasDetalladoAsync(dto.IdAlumno, comision.IdPlanMateria);
+                if (!cumple)
+                    return new ResultadoInscripcionDTO { Exito = false, Mensaje = $"Error de Correlativas: {error}" };
+            }
+
+            // C. Ventana de Fechas (Opcional, usualmente Admin opera fuera de fecha)
+            if (!dto.IgnorarVentana)
+            {
+                if (comision.IdPeriodoNavigation.Estado != "Abierto")
+                    return new ResultadoInscripcionDTO { Exito = false, Mensaje = "El periodo académico está cerrado." };
+            }
+
+            // 4. Guardar Inscripción Forzada
+            try
+            {
+                var nuevaInscripcion = new InscripcionCursada
+                {
+                    IdAlumno = dto.IdAlumno,
+                    IdComision = dto.IdComision,
+                    FechaInscripcion = DateTime.Now,
+                    Estado = "Cursando",
+                    EsLibre = false // Podrías agregar este flag al DTO también si quieres
+                };
+
+                _context.InscripcionCursada.Add(nuevaInscripcion);
+                await _context.SaveChangesAsync();
+
+                return new ResultadoInscripcionDTO { Exito = true, Mensaje = "Inscripción administrativa realizada con éxito." };
+            }
+            catch (Exception ex)
+            {
+                return new ResultadoInscripcionDTO { Exito = false, Mensaje = $"Error interno: {ex.Message}" };
+            }
+        }
+
         private async Task<(bool, string)> ValidarCorrelativasDetalladoAsync(int idAlumno, int idPlanMateria)
         {
             var requisitos = await _context.Correlatividads
@@ -291,6 +361,24 @@ namespace EduSys.Api.Repositories
             }
 
             return (true, "");
+        }
+
+        public async Task<List<InscripcionCursadaListadoDTO>> GetInscripcionesByAlumnoAsync(int idAlumno)
+        {
+            return await _context.InscripcionCursada
+                .Include(i => i.IdComisionNavigation)
+                    .ThenInclude(c => c.IdPlanMateriaNavigation)
+                    .ThenInclude(pm => pm.IdMateriaNavigation)
+                .Where(i => i.IdAlumno == idAlumno && i.Estado != "Baja")
+                .Select(i => new InscripcionCursadaListadoDTO
+                {
+                    IdInscripcion = i.Id,
+                    Materia = i.IdComisionNavigation.IdPlanMateriaNavigation.IdMateriaNavigation.Nombre,
+                    ComisionCodigo = i.IdComisionNavigation.Codigo,
+                    Estado = i.Estado,
+                    Fecha = i.FechaInscripcion ?? DateTime.Now
+                })
+                .ToListAsync();
         }
 
         // Helper para respuestas fallidas

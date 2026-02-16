@@ -403,8 +403,7 @@
                                                 {
                                                     @foreach (var comision in grupoMateria)
                                                     {
-                                                        bool esMiComision = inscripto && miInscripcion!.Comision == comision.Codigo;
-
+                                                        bool esMiComision = inscripto && miInscripcion!.ComisionCodigo == comision.Codigo;
                                                         <div class="comision-item @(esMiComision ? "mi-comision" : "")">
                                                             <div class="d-flex justify-space-between mb-3 align-center">
                                                                 <div style="font-weight:800; color:var(--edusys-blue); font-size: 0.9rem;">Comisión @comision.Codigo</div>
@@ -427,7 +426,7 @@
 
                                                             @if (esMiComision)
                                                             {
-                                                                <button class="btn-desinscribir" disabled="@procesando" @onclick="@(() => AbrirModalBaja(miInscripcion!.Id, comision.MateriaNombre))">
+                                                                <button class="btn-desinscribir" disabled="@procesando" @onclick="@(() => AbrirModalBaja(miInscripcion!.IdInscripcion, comision.MateriaNombre))">
                                                                     <MudIcon Icon="@Icons.Material.Filled.Close" Size="Size.Small" /> DAR DE BAJA
                                                                 </button>
                                                             }

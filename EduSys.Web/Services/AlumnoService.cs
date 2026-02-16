@@ -44,6 +44,14 @@ namespace EduSys.Web.Services
             var response = await _http.PutAsJsonAsync("api/alumnos", dto);
             return response.IsSuccessStatusCode;
         }
+
+        public async Task<List<AlumnoListadoDTO>> GetAllAsync()
+        {
+            // Llamamos al endpoint del backend. 
+            // Asegúrate de que tu AlumnosController tenga un [HttpGet] que devuelva la lista.
+            var response = await _http.GetFromJsonAsync<List<AlumnoListadoDTO>>("api/alumnos");
+            return response ?? new List<AlumnoListadoDTO>();
+        }
         public async Task<AlumnoDTO?> GetByUsuarioIdAsync(int idUsuario)
         {
             try

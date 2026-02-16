@@ -199,7 +199,13 @@ namespace EduSys.Api.Controllers
             }
         }
 
-
+        [HttpGet("sede/{idSede}")]
+        public async Task<ActionResult<List<ComisionDTO>>> GetPorSede(int idSede)
+        {
+            // Usamos el repositorio para buscar las comisiones
+            var comisiones = await _comisionRepository.GetPorSedeAsync(idSede);
+            return Ok(comisiones);
+        }
 
         [HttpDelete("docentes/{idAsignacion}")]
         [Authorize(Roles = "Administrador, Secretaria Academica")]

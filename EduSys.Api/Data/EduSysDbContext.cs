@@ -46,11 +46,7 @@ public partial class EduSysDbContext : DbContext
     public virtual DbSet<CarreraModalidad> CarreraModalidads { get; set; }
     public virtual DbSet<PlanEstudioSede> PlanEstudioSedes { get; set; }
     public virtual DbSet<SolicitudIngreso> SolicitudIngresos { get; set; }
-    public virtual DbSet<Notificacion> Notificacions { get; set; } // <--- AGREGAR ESTO
-
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration.
-        => optionsBuilder.UseSqlServer("Server=GUSTAVOTORRESPC;Database=EduSysDB;Trusted_Connection=True;TrustServerCertificate=True;");
+    public virtual DbSet<Notificacion> Notificacions { get; set; } 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -24,5 +24,7 @@ namespace EduSys.Api.Repositories.Interfaces
         // --- DTO OPTIMIZADO PARA FRONT ---
         Task<List<ComisionDTO>> GetDTOByPeriodoAndCarreraAsync(int idPeriodo, int idCarrera);
 
+        Task<List<ComisionDTO>> GetPorSedeAsync(int idSede);
+
     }
 }

@@ -47,5 +47,19 @@ namespace EduSys.Web.Services
             return await _http.GetFromJsonAsync<List<ComisionDTO>>($"api/inscripciones/oferta/{idAlumno}?idPeriodo={idPeriodo}")
                    ?? new List<ComisionDTO>();
         }
+
+        // Implementación en InscripcionService
+        // En InscripcionService.cs
+        public async Task<ResultadoInscripcionDTO> InscribirAdminAsync(InscripcionManualDTO dto)
+        {
+            var response = await _http.PostAsJsonAsync("api/inscripciones/admin/inscribir", dto);
+            // Manejar errores de conexión si es necesario
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadFromJsonAsync<ResultadoInscripcionDTO>();
+                return error ?? new ResultadoInscripcionDTO { Exito = false, Mensaje = "Error en el servidor" };
+            }
+            return await response.Content.ReadFromJsonAsync<ResultadoInscripcionDTO>();
+        }
     }
 }

@@ -13,5 +13,8 @@ namespace EduSys.Api.Repositories.Interfaces
         Task<bool> ValidarCorrelativasAsync(int idAlumno, int idPlanMateria);
 
         Task<List<ComisionDTO>> GetOfertaParaAlumnoAsync(int idAlumno, int idPeriodo);
+
+        Task<List<InscripcionCursadaListadoDTO>> GetInscripcionesByAlumnoAsync(int idAlumno);
+        Task<ResultadoInscripcionDTO> InscribirAdminAsync(InscripcionManualDTO dto);
     }
 }

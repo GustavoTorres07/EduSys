@@ -2,215 +2,279 @@
 @using EduSys.Web.Services.Interfaces
 @inject IInscripcionService InscripcionService
 @inject ISnackbar Snackbar
-@inject IDialogService DialogService
 
 <style>
-    .dialog-header {
-        background: linear-gradient(135deg, #456990 0%, #2c4a6e 100%);
-        color: white;
-        padding: 16px 24px;
+    /* ... (Tus estilos de current-inscriptions-panel, etc. Mantenlos igual) ... */
+    .current-inscriptions-panel {
+        background: white;
+        border: 2px solid var(--edusys-border, #e2e8f0);
+        border-radius: 12px;
+        overflow: hidden;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+
+    .current-item {
+        padding: 0.75rem 1.25rem;
+        border-bottom: 1px solid var(--edusys-border, #e2e8f0);
         display: flex;
         align-items: center;
         justify-content: space-between;
     }
 
-    .custom-tab-panel {
-        height: 550px;
-        overflow-y: auto;
-        padding: 16px;
-        background-color: #f8fafc;
-    }
-
-    /* Input Fix Visibility */
-    .fix-visibility .mud-input-slot {
-        color: #1e293b !important;
-        font-weight: 500;
-    }
-
-    .fix-visibility .mud-icon-root {
-        color: #456990 !important;
-    }
-
-    .fix-visibility .mud-input-outlined-border {
-        border-color: #cbd5e1 !important;
-    }
-
-    .fix-visibility input::placeholder {
-        color: #94a3b8 !important;
-    }
-
-    /* Separador Año */
-    .year-separator {
-        background-color: #e2e8f0;
-        color: #456990;
+    .section-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
         font-weight: 800;
-        letter-spacing: 1px;
-        padding: 0.75rem 1rem;
-        border-radius: 4px;
-        margin-top: 15px;
-        margin-bottom: 5px;
+        color: #1e3a58;
+        margin-bottom: 12px;
+        margin-top: 20px;
     }
 
-    .mini-table-header {
-        color: #64748b;
-        font-weight: 700;
-        font-size: 0.75rem;
-        text-transform: uppercase;
+    .exception-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        margin-bottom: 8px;
     }
 </style>
 
-<MudDialog DisableSidePadding="true" Class="rounded-lg overflow-hidden">
-    <DialogContent>
-        <div class="d-flex flex-column" style="height: 700px; background: white;">
-            <div class="dialog-header">
-                <div>
-                    <MudText Typo="Typo.h6" Style="font-weight: 700;">Gestión de Inscripciones</MudText>
-                    <MudText Typo="Typo.body2" Style="opacity: 0.9;">Alumno: <b>@AlumnoNombre</b></MudText>
+<MudDialog Options="dialogOptions">
+    <TitleContent>
+        <div class="d-flex align-center gap-3 pa-2" style="background-color: #1e3a58; border-radius: 8px 8px 0 0; margin: -16px -24px 16px -24px;">
+            <MudIcon Icon="@Icons.Material.Filled.AssignmentInd" Size="Size.Large" Style="color: white; margin-left:16px;" />
+            <div style="color: white;">
+                <div style="font-size: 1.25rem; font-weight: 800; margin-bottom: 0.25rem;">
+                    Gestión Académica de Cursadas
                 </div>
-                <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" OnClick="Cancel" />
+                <div style="font-size: 0.9rem; font-weight: 400; opacity: 0.95;">
+                    Administración de inscripciones y excepciones
+                </div>
+            </div>
+        </div>
+    </TitleContent>
+
+    <DialogContent>
+        <div class="pa-4 mb-4 rounded" style="background-color: #f8fafc; border: 1px solid #e2e8f0;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <MudAvatar Color="Color.Primary" Variant="Variant.Filled">
+                    @AlumnoNombre.Substring(0, 1).ToUpper()
+                </MudAvatar>
+                <div>
+                    <div style="font-weight: 800; font-size: 1.1rem; color: #1e293b;">@AlumnoNombre</div>
+                    <div style="font-size: 0.85rem; color: #64748b; font-weight: 600;">
+                        <MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Small" Style="font-size: 0.8rem; vertical-align: middle; margin-right: 4px;" />
+                        Ciclo Lectivo Actual
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-title">
+            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" Color="Color.Success" />
+            <span>Materias Inscriptas</span>
+        </div>
+
+        <div class="current-inscriptions-panel mb-6">
+            @if (cargando)
+            {
+                <div class="pa-4 text-center"><MudProgressCircular Indeterminate="true" Size="Size.Small" Color="Color.Primary" /></div>
+            }
+            else if (inscripcionesActuales == null || !inscripcionesActuales.Any())
+            {
+                <div class="pa-4 text-center">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">El alumno no registra inscripciones activas.</MudText>
+                </div>
+            }
+            else
+            {
+                @foreach (var ins in inscripcionesActuales)
+                {
+                    <div class="current-item">
+                        <div>
+                            <MudText Typo="Typo.body2" Style="font-weight: 800; color: #334155;">@ins.Materia</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Comisión: <b>@ins.ComisionCodigo</b> | Estado: @ins.Estado</MudText>
+                        </div>
+                        <MudButton Size="Size.Small" Color="Color.Error" Variant="Variant.Outlined"
+                                   StartIcon="@Icons.Material.Filled.Delete"
+                                   OnClick="@(() => DarDeBaja(ins.IdInscripcion))">Baja</MudButton>
+                    </div>
+                }
+            }
+        </div>
+
+        <MudForm @ref="form">
+            <div class="section-title">
+                <MudIcon Icon="@Icons.Material.Filled.AddCircle" Size="Size.Small" Color="Color.Primary" />
+                <span>Nueva Inscripción Administrativa</span>
             </div>
 
-            <MudTabs Elevation="0" Rounded="false" ApplyEffectsToContainer="true" PanelClass="custom-tab-panel" Class="flex-grow-1" Color="Color.Primary">
-                <MudTabPanel Text="Cursadas Vigentes" Icon="@Icons.Material.Filled.ListAlt">
-                    @if (cargandoCursadas)
+            <div class="mb-4">
+                <MudSelect T="int?"
+                           Label="Seleccionar materia disponible"
+                           Variant="Variant.Outlined"
+                           AnchorOrigin="Origin.BottomCenter"
+                           @bind-Value="idComisionSeleccionada"
+                           AdornmentIcon="@Icons.Material.Filled.Search"
+                           AdornmentColor="Color.Primary"
+                           Margin="Margin.Dense">
+                    <MudSelectItem T="int?" Value="null">Seleccione una comisión...</MudSelectItem>
+                    @foreach (var c in comisionesDisponibles)
                     {
-                        <div class="d-flex justify-center mt-10"><MudProgressCircular Indeterminate="true" Color="Color.Primary" /></div>
+                        <MudSelectItem T="int?" Value="@c.Id">
+                            @c.Materia (@c.Codigo) - Cupo: @c.CupoActual/@c.CupoMaximo
+                        </MudSelectItem>
                     }
-                    else if (cursadas.Count == 0)
-                    {
+                </MudSelect>
+            </div>
 
-                        <MudAlert Severity="Severity.Info" Class="mt-2" Variant="Variant.Filled">No hay inscripciones vigentes.</MudAlert>
-                    }
-                    else
-                    {
-                        <MudTable Items="@cursadas" Dense="true" Hover="true" Striped="true" Elevation="1">
-                            <HeaderContent><MudTh>Materia</MudTh> <MudTh>Comisión</MudTh> <MudTh>Estado</MudTh> <MudTh Style="text-align:center">Baja</MudTh></HeaderContent>
-                            <RowTemplate>
-                                <MudTd><b>@context.Materia</b></MudTd> <MudTd>@context.Comision (@context.Turno)</MudTd> <MudTd><MudChip T="string" Size="Size.Small" Color="Color.Success">@context.Estado</MudChip></MudTd>
-                                <MudTd Style="text-align:center"><MudIconButton Icon="@Icons.Material.Filled.DeleteForever" Color="Color.Error" Size="Size.Small" OnClick="@(() => DarDeBaja(context))" /></MudTd>
-                            </RowTemplate>
-                        </MudTable>
-                    }
-                </MudTabPanel>
+            <div class="exceptions-panel">
+                <MudText Typo="Typo.caption" Style="font-weight: 800; color: #b91c1c; display:block; margin-bottom:8px;">OVERRIDE DE REGLAS ACADÉMICAS</MudText>
 
-                <MudTabPanel Text="Nueva Inscripción" Icon="@Icons.Material.Filled.PostAdd">
-                    @* ✅ BUSCADOR CON FIX VISUAL *@
-                    <MudTextField @bind-Value="searchOferta" Placeholder="Buscar materia..." Adornment="Adornment.Start"
-                                  AdornmentIcon="@Icons.Material.Filled.Search" Variant="Variant.Outlined" Margin="Margin.Dense"
-                                  Class="fix-visibility mb-2 bg-white" />
+                <div class="exception-item">
+                    <div>
+                        <div style="font-weight:700; color:#1e293b;">Ignorar Correlativas</div>
+                        <div style="font-size:0.75rem; color:#64748b;">Permite inscribir sin validar requisitos previos.</div>
+                    </div>
+                    <MudSwitch @bind-Value="ignorarCorrelativas" Color="Color.Error" />
+                </div>
 
-                    @if (cargandoOferta)
-                    {
-                        <div class="d-flex justify-center mt-10"><MudProgressCircular Indeterminate="true" Color="Color.Secondary" /></div>
-                    }
-                    else if (!OfertaAgrupadaPorAnio.Any())
-                    {
+                <div class="exception-item">
+                    <div>
+                        <div style="font-weight:700; color:#1e293b;">Ignorar Cupo</div>
+                        <div style="font-size:0.75rem; color:#64748b;">Permite el sobrecupo en la comisión.</div>
+                    </div>
+                    <MudSwitch @bind-Value="ignorarCupo" Color="Color.Error" />
+                </div>
 
-                        <MudAlert Severity="Severity.Info" Class="my-2">No se encontraron materias disponibles.</MudAlert>
-                    }
-                    else
-                    {
-                        @* ✅ AGRUPACIÓN POR AÑO *@
-                        @foreach (var grupoAnio in OfertaAgrupadaPorAnio)
-                        {
-                            <div class="year-separator shadow-sm"><MudText Typo="Typo.subtitle2">AÑO @grupoAnio.Key °</MudText></div>
-                            <MudTable Items="@grupoAnio.ToList()" Dense="true" Hover="true" Bordered="true" Elevation="0" Class="mb-4">
-                                <HeaderContent>
-                                    <MudTh Class="mini-table-header" Style="width: 40%;">Materia</MudTh>
-                                    <MudTh Class="mini-table-header" Style="width: 30%;">Comisión</MudTh>
-                                    <MudTh Class="mini-table-header" Style="width: 15%; text-align:center;">Cupo</MudTh>
-                                    <MudTh Class="mini-table-header" Style="width: 15%; text-align:center;">Acción</MudTh>
-                                </HeaderContent>
-                                <RowTemplate>
-                                    <MudTd><b>@context.MateriaNombre</b></MudTd>
-                                    <MudTd>
-                                        <div class="d-flex flex-column"><span style="font-weight:700;">@context.Codigo</span><span style="font-size:0.75rem;" class="text-muted">@context.SedeNombre - @context.Turno</span></div>
-                                    </MudTd>
-                                    <MudTd Style="text-align:center;">
-                                        <MudChip T="string" Size="Size.Small" Color="@(context.CupoDisponible > 0 ? Color.Success : Color.Error)" Variant="Variant.Text">@context.CupoDisponible / @context.CupoMaximo</MudChip>
-                                    </MudTd>
-                                    <MudTd Style="text-align:center">
-                                        @if (context.YaInscripto)
-                                        {
-                                            <MudChip T="string" Color="Color.Info" Size="Size.Small" Icon="@Icons.Material.Filled.Check">Inscripto</MudChip>
-                                        }
-                                        else if (!context.CumpleCorrelativas)
-                                        {
+                <div class="exception-item">
+                    <div>
+                        <div style="font-weight:700; color:#1e293b;">Fuera de Término</div>
+                        <div style="font-size:0.75rem; color:#64748b;">Ignora las fechas del calendario académico.</div>
+                    </div>
+                    <MudSwitch @bind-Value="ignorarVentana" Color="Color.Warning" />
+                </div>
+            </div>
+        </MudForm>
 
-                                            <MudTooltip Text="@context.MensajeError"><MudIconButton Icon="@Icons.Material.Filled.Lock" Color="Color.Warning" Size="Size.Small" /></MudTooltip>
-                                        }
-                                        else if (context.CupoDisponible <= 0)
-                                        {
-
-                                            <MudTooltip Text="Sin cupo"><MudIconButton Icon="@Icons.Material.Filled.GroupOff" Color="Color.Error" Size="Size.Small" /></MudTooltip>
-                                        }
-                                        else
-                                        {
-
-                                            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="@(() => Inscribir(context))">Inscribir</MudButton>
-                                        }
-                                    </MudTd>
-                                </RowTemplate>
-                            </MudTable>
-                        }
-                    }
-                </MudTabPanel>
-            </MudTabs>
-        </div>
+        @if (procesando)
+        {
+            <div class="d-flex justify-center mt-4">
+                <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Small" />
+            </div>
+        }
     </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Cancel" Variant="Variant.Outlined">Cerrar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Confirmar"
+                   Disabled="@(idComisionSeleccionada == null || procesando)"
+                   StartIcon="@Icons.Material.Filled.Save">
+            Confirmar Inscripción
+        </MudButton>
+    </DialogActions>
 </MudDialog>
 
 @code {
     [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+
+    // ✅ CORRECCIÓN 1: Ajustamos los parámetros a lo que envía el padre exactamente.
     [Parameter] public int IdAlumno { get; set; }
-    [Parameter] public string AlumnoNombre { get; set; }
-    [Parameter] public int IdPeriodo { get; set; }
+    [Parameter] public string AlumnoNombre { get; set; } // En el padre se llama AlumnoNombre
+    [Parameter] public int IdPeriodo { get; set; }       // Necesario para traer la info de ese ciclo
 
-    private List<InscripcionCursadaListadoDTO> cursadas = new();
-    private List<ComisionDTO> oferta = new();
-    private string searchOferta = "";
-    private bool cargandoCursadas = true;
-    private bool cargandoOferta = true;
+    private MudForm form;
+    private int? idComisionSeleccionada;
+    private List<ComisionDTO> comisionesDisponibles = new();
+    private List<InscripcionCursadaListadoDTO> inscripcionesActuales = new();
 
-    private IEnumerable<ComisionDTO> ofertaFiltrada =>
-        string.IsNullOrWhiteSpace(searchOferta) ? oferta : oferta.Where(x => x.MateriaNombre.Contains(searchOferta, StringComparison.OrdinalIgnoreCase));
+    private bool cargando = true;
+    private bool procesando = false;
 
-    // Propiedad para agrupar por año (Asegurate de haber aplicado el Paso 1 en Backend)
-    private IEnumerable<IGrouping<int, ComisionDTO>> OfertaAgrupadaPorAnio =>
-        ofertaFiltrada.GroupBy(c => c.AnioCursada).OrderBy(g => g.Key);
+    private bool ignorarCorrelativas = false;
+    private bool ignorarCupo = false;
+    private bool ignorarVentana = true; // Secretaria casi siempre opera fuera de término
 
-    protected override async Task OnInitializedAsync() { await CargarTodo(); }
-    private async Task CargarTodo() { await CargarCursadas(); await CargarOferta(); }
+    private DialogOptions dialogOptions = new() { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true };
 
-    private async Task CargarCursadas()
+    protected override async Task OnInitializedAsync()
     {
-        cargandoCursadas = true;
-        try { cursadas = await InscripcionService.GetInscripcionesAlumnoAsync(IdAlumno, IdPeriodo); }
-        catch { Snackbar.Add("Error al cargar cursadas", Severity.Error); }
-        finally { cargandoCursadas = false; }
+        await CargarDatos();
     }
 
-    private async Task CargarOferta()
+    private async Task CargarDatos()
     {
-        cargandoOferta = true;
-        try { oferta = await InscripcionService.GetOfertaInscripcionAsync(IdAlumno, IdPeriodo); }
-        catch { Snackbar.Add("Error oferta", Severity.Error); }
-        finally { cargandoOferta = false; }
+        cargando = true;
+        try
+        {
+            // ✅ CORRECCIÓN 2: Usamos el nombre del método real y le pasamos el IdPeriodo
+            inscripcionesActuales = await InscripcionService.GetInscripcionesAlumnoAsync(IdAlumno, IdPeriodo);
+
+            // ✅ CORRECCIÓN 3: Buscamos la oferta específica para ese alumno y periodo (no todas las de la sede)
+            var oferta = await InscripcionService.GetOfertaInscripcionAsync(IdAlumno, IdPeriodo);
+            // Filtramos solo las comisiones, asumiendo que tu DTO trae la materia y su código dentro de 'ComisionDTO'
+            comisionesDisponibles = oferta ?? new List<ComisionDTO>();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al sincronizar datos: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            cargando = false;
+            StateHasChanged();
+        }
     }
 
-    private async Task Inscribir(ComisionDTO comision)
+    private async Task Confirmar()
     {
-        var dto = new InscripcionCursadaRequestDTO { IdAlumno = IdAlumno, IdComision = comision.Id };
-        var respuesta = await InscripcionService.InscribirAsync(dto);
-        if (respuesta.Exito) { Snackbar.Add("Inscripción Exitosa", Severity.Success); await CargarTodo(); }
-        else { Snackbar.Add(respuesta.Mensaje, Severity.Error); }
+        if (idComisionSeleccionada == null) return;
+        procesando = true;
+
+        var dto = new InscripcionManualDTO
+        {
+            IdAlumno = IdAlumno,
+            IdComision = idComisionSeleccionada.Value,
+            IgnorarCorrelativas = ignorarCorrelativas,
+            IgnorarCupo = ignorarCupo,
+            IgnorarVentana = ignorarVentana
+        };
+
+        // ✅ Llama perfectamente a tu servicio InscribirAdminAsync
+        var res = await InscripcionService.InscribirAdminAsync(dto);
+        if (res.Exito)
+        {
+            Snackbar.Add("Inscripción administrativa exitosa", Severity.Success);
+            idComisionSeleccionada = null; // Limpiamos selector
+            await CargarDatos();           // Recargamos listas (baja del select y sube a inscriptas)
+        }
+        else
+        {
+            Snackbar.Add(res.Mensaje, Severity.Error);
+        }
+
+        procesando = false;
     }
 
-    private async Task DarDeBaja(InscripcionCursadaListadoDTO item)
+    private async Task DarDeBaja(int idIns)
     {
-        var exito = await InscripcionService.CancelarInscripcionAsync(item.Id);
-        if (exito) { Snackbar.Add("Baja procesada", Severity.Success); await CargarTodo(); }
-        else { Snackbar.Add("Error al dar de baja", Severity.Error); }
+        procesando = true;
+        // ✅ Llama a tu servicio CancelarInscripcionAsync
+        var res = await InscripcionService.CancelarInscripcionAsync(idIns);
+        if (res)
+        {
+            Snackbar.Add("Baja realizada correctamente", Severity.Info);
+            await CargarDatos();
+        }
+        else
+        {
+            Snackbar.Add("No se pudo procesar la baja", Severity.Error);
+        }
+        procesando = false;
     }
 
     void Cancel() => MudDialog.Cancel();

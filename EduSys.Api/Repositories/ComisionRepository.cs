@@ -238,6 +238,50 @@ namespace EduSys.Api.Repositories
                 );
         }
 
+
+        public async Task<List<ComisionDTO>> GetPorSedeAsync(int idSede)
+        {
+            // Traemos las comisiones de la sede, incluyendo relaciones necesarias
+            var query = await _context.Comisions
+                .Include(c => c.IdPlanMateriaNavigation)
+                    .ThenInclude(pm => pm.IdMateriaNavigation) // Para sacar el nombre de la materia
+                .Include(c => c.HorarioComisions) // Para armar el string de horario
+                .Include(c => c.IdPeriodoNavigation)
+                .Where(c => c.IdSede == idSede && c.Estado == "Abierta" && c.IdPeriodoNavigation.Estado == "Abierto")
+                .ToListAsync();
+
+            // Mapeamos a DTO
+            var resultado = new List<ComisionDTO>();
+
+            foreach (var c in query)
+            {
+                // Calculamos inscriptos actuales (Cursando)
+                int inscriptos = await _context.InscripcionCursada
+                    .CountAsync(i => i.IdComision == c.Id && i.Estado != "Baja");
+
+                // Formateamos horario (Ej: "Lun 18:00-22:00")
+                var horariosStr = string.Join(", ", c.HorarioComisions
+                    .Select(h => $"{h.DiaSemana} {h.HoraInicio:hh\\:mm}-{h.HoraFin:hh\\:mm}"));
+
+                resultado.Add(new ComisionDTO
+                {
+                    Id = c.Id,
+                    Codigo = c.Codigo,
+                    IdPlanMateria = c.IdPlanMateria,
+                    IdSede = c.IdSede,
+                    CupoMaximo = c.CupoMaximo,
+                    Turno = c.Turno,
+                    Estado = c.Estado,
+
+                    // PROPIEDADES EXTRA PARA EL MODAL ADMIN
+                    Materia = c.IdPlanMateriaNavigation.IdMateriaNavigation.Nombre,
+                    Horario = horariosStr,
+                    CupoActual = inscriptos
+                });
+            }
+
+            return resultado;
+        }
         private async Task<string?> ObtenerConflictoHorarioDocenteAsync(int idDocente, int idComisionNueva)
         {
             // A. Obtenemos los horarios de la NUEVA comisión (Ya lo tienes en memoria o lo traemos)

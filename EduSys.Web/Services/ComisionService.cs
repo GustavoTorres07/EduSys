@@ -64,7 +64,13 @@ namespace EduSys.Web.Services
         }
 
 
-
+        public async Task<List<ComisionDTO>> GetComisionesPorSedeAsync(int idSede)
+        {
+            // Llamamos al endpoint del backend que filtra por sede
+            // Nota: Asegúrate de que la ruta coincida con el controlador (ver paso 3)
+            var response = await _http.GetFromJsonAsync<List<ComisionDTO>>($"api/comisiones/sede/{idSede}");
+            return response ?? new List<ComisionDTO>();
+        }
         public async Task<bool> DesasignarDocenteAsync(int idAsignacion)
         {
             var response = await _http.DeleteAsync($"api/comisiones/docentes/{idAsignacion}");

@@ -14,5 +14,7 @@ namespace EduSys.Web.Services.Interfaces
         Task<List<DocenteComisionListadoDTO>> GetDocentesPorComisionAsync(int idComision);
         Task<ResultadoOperacionDTO> AsignarDocenteAsync(DocenteComisionRequestDTO dto);
         Task<bool> DesasignarDocenteAsync(int idAsignacion);
+
+        Task<List<ComisionDTO>> GetComisionesPorSedeAsync(int idSede);
     }
 }

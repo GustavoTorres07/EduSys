@@ -37,6 +37,10 @@
         // ✅ AGREGAR ESTAS DOS PROPIEDADES:
         public int CupoDisponible { get; set; }
         public bool YaInscripto { get; set; }
+
+        public string Materia { get; set; } = string.Empty; // Subject Name (e.g., "Algebra I")
+        public string Horario { get; set; } = string.Empty; // Formatted schedule (e.g., "Mon 18:00 - 22:00")
+        public int CupoActual { get; set; } // Count of enrolled students (e.g., 45)
         public List<DocenteComisionListadoDTO> Docentes { get; set; } = new();
     }
 }

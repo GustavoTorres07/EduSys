@@ -101,5 +101,18 @@ namespace EduSys.Api.Controllers
                 return BadRequest(ex.Message);
             }
         }
+
+        [HttpPost("admin/inscribir")]
+        [Authorize(Roles = "Administrador, Secretaria Academica")] // Seguridad RBAC
+        public async Task<ActionResult<ResultadoInscripcionDTO>> InscribirManual([FromBody] InscripcionManualDTO dto)
+        {
+            // Llamamos al método especial de Admin
+            var resultado = await _inscripcionRepository.InscribirAdminAsync(dto);
+
+            if (resultado.Exito)
+                return Ok(resultado);
+            else
+                return BadRequest(resultado);
+        }
     }
 }

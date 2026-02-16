@@ -8,13 +8,10 @@ namespace EduSys.Shared.DTOs
 {
     public class InscripcionCursadaListadoDTO
     {
-        public int Id { get; set; }
-        public string Materia { get; set; }
-        public string Comision { get; set; }
-        public string Turno { get; set; }
-        public string Estado { get; set; }
-        public DateTime? Fecha { get; set; }
-
-        public string Sede { get; set; }
+        public int IdInscripcion { get; set; }
+        public string Materia { get; set; } = string.Empty;
+        public string ComisionCodigo { get; set; } = string.Empty;
+        public string Estado { get; set; } = string.Empty; // "Cursando", "Baja", etc.
+        public DateTime Fecha { get; set; }
     }
 }

@@ -12,5 +12,6 @@ namespace EduSys.Web.Services.Interfaces
         Task<bool> CrearAsync(AlumnoRequestDTO dto);
         Task<bool> EditarAsync(AlumnoRequestDTO dto);
         Task<AlumnoDTO?> GetByUsuarioIdAsync(int idUsuario);
+        Task<List<AlumnoListadoDTO>> GetAllAsync();
     }
 }

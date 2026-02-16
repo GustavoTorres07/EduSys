@@ -22,25 +22,37 @@ namespace EduSys.Api.Repositories
         {
             return await _context.Alumnos
                 .Include(a => a.IdUsuarioNavigation)
+                .Include(a => a.IdSedeNavigation) // Necesario para el nombre de la sede
                 .Include(a => a.IdPlanActualNavigation)
                     .ThenInclude(p => p.IdCarreraNavigation)
-                .Include(a => a.IdSedeNavigation) // ✅ AGREGADO: Para mostrar la Sede
                 .Where(a => a.Activo == true)
                 .Select(a => new AlumnoListadoDTO
                 {
-                    IdAlumno = a.Id,
-                    NombreCompleto = $"{a.IdUsuarioNavigation.Apellido}, {a.IdUsuarioNavigation.Nombre}",
-                    Dni = a.IdUsuarioNavigation.Dni,
+                    // 1. Mapeo correcto de IDs y Legajo
+                    IdAlumno = a.Id,      // En tu DTO se llama IdAlumno, no Id
                     Legajo = a.Legajo,
+                    Activo = a.Activo ?? true,
+
+                    // 2. Mapeo de Usuario (Concatenamos NombreCompleto)
+                    // IMPORTANTE: Usamos 'Dni' (minúscula) como está en tu Usuario.cs
+                    Dni = a.IdUsuarioNavigation.Dni,
+                    NombreCompleto = a.IdUsuarioNavigation.Apellido + ", " + a.IdUsuarioNavigation.Nombre,
                     Email = a.IdUsuarioNavigation.Email,
-                    NombrePlan = a.IdPlanActualNavigation != null ? a.IdPlanActualNavigation.Nombre : "Sin Plan",
-                    NombreCarrera = a.IdPlanActualNavigation != null ? a.IdPlanActualNavigation.IdCarreraNavigation.Nombre : "-",
+                    FotoPerfilUrl = a.IdUsuarioNavigation.FotoPerfilUrl,
 
-                    // Si tienes el campo en el DTO, descomenta esto:
-                    // NombreSede = a.IdSedeNavigation != null ? a.IdSedeNavigation.Nombre : "-", 
+                    // 3. Mapeo seguro de Carrera y Plan (Validando Nulos)
+                    NombreCarrera = a.IdPlanActualNavigation != null
+                                    ? a.IdPlanActualNavigation.IdCarreraNavigation.Nombre
+                                    : "Sin Carrera Asignada",
 
-                    Activo = a.Activo ?? false,
-                    FotoPerfilUrl = a.IdUsuarioNavigation.FotoPerfilUrl
+                    NombrePlan = a.IdPlanActualNavigation != null
+                                 ? a.IdPlanActualNavigation.Nombre
+                                 : "Sin Plan",
+
+                    // 4. Mapeo de Sede
+                    NombreSede = a.IdSedeNavigation != null
+                                 ? a.IdSedeNavigation.Nombre
+                                 : "Sin Sede"
                 })
                 .ToListAsync();
         }
