@@ -2,6 +2,7 @@
 using EduSys.Shared.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using EduSys.Shared.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -62,22 +63,47 @@ namespace EduSys.Api.Controllers
         // 3. VER MIS INSCRIPCIONES (Para que el alumno vea qué cursa)
         // =========================================================================
         [HttpGet("alumno/{idAlumno}/periodo/{idPeriodo}")]
-        public async Task<ActionResult> GetPorAlumno(int idAlumno, int idPeriodo)
+        public async Task<ActionResult<List<InscripcionCursadaListadoDTO>>> GetPorAlumno(int idAlumno, int idPeriodo)
         {
             var lista = await _inscripcionRepository.GetInscripcionesPorAlumnoAsync(idAlumno, idPeriodo);
 
-            // Mapeo simple para la vista del alumno
-            var result = lista.Select(i => new
+            var result = lista.Select(i => new InscripcionCursadaListadoDTO
             {
-                i.Id,
+                IdInscripcion = i.Id,
                 Materia = i.IdComisionNavigation.IdPlanMateriaNavigation.IdMateriaNavigation.Nombre,
-                Comision = i.IdComisionNavigation.Codigo,
-                Turno = i.IdComisionNavigation.Turno,
-                Estado = i.Estado, // "Cursando", "Regular", etc.
-                Fecha = i.FechaInscripcion
-            });
+                ComisionCodigo = i.IdComisionNavigation.Codigo,
+                Estado = i.Estado,
+                Fecha = i.FechaInscripcion ?? DateTime.Now
+            }).ToList();
 
             return Ok(result);
+        }
+
+        // =========================================================================
+        // 5. INSCRIBIR ADMIN (Con Overrides / Excepciones)
+        // =========================================================================
+        [HttpPost("admin/inscribir")]
+        [Authorize(Roles = "Administrador, Secretaria Academica")] // Protegido por rol
+        public async Task<ActionResult<ResultadoInscripcionDTO>> InscribirManual([FromBody] InscripcionManualDTO dto)
+        {
+            try
+            {
+                // Llamamos al método especial que creamos en el repositorio
+                var resultado = await _inscripcionRepository.InscribirAdminAsync(dto);
+
+                if (resultado.Exito)
+                    return Ok(resultado);
+                else
+                    return BadRequest(resultado);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ResultadoInscripcionDTO
+                {
+                    Exito = false,
+                    Mensaje = "Error interno al forzar inscripción: " + ex.Message
+                });
+            }
         }
 
         // =========================================================================
@@ -102,17 +128,12 @@ namespace EduSys.Api.Controllers
             }
         }
 
-        [HttpPost("admin/inscribir")]
-        [Authorize(Roles = "Administrador, Secretaria Academica")] // Seguridad RBAC
-        public async Task<ActionResult<ResultadoInscripcionDTO>> InscribirManual([FromBody] InscripcionManualDTO dto)
+        [HttpGet("admin/alumno/{idAlumno}")]
+        [Authorize(Roles = "Administrador, Secretaria Academica")]
+        public async Task<ActionResult<List<InscripcionCursadaListadoDTO>>> GetInscripcionesAlumno(int idAlumno)
         {
-            // Llamamos al método especial de Admin
-            var resultado = await _inscripcionRepository.InscribirAdminAsync(dto);
-
-            if (resultado.Exito)
-                return Ok(resultado);
-            else
-                return BadRequest(resultado);
+            var inscripciones = await _inscripcionRepository.GetInscripcionesByAlumnoAsync(idAlumno);
+            return Ok(inscripciones);
         }
     }
 }

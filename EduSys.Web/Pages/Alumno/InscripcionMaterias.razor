@@ -3,6 +3,7 @@
 @using EduSys.Web.Services.Interfaces
 @using Microsoft.AspNetCore.Components.Authorization
 @using System.Security.Claims
+
 @inject IComisionService ComisionService
 @inject IInscripcionService InscripcionService
 @inject IPeriodoService PeriodoService
@@ -12,7 +13,6 @@
 @inject IDialogService DialogService
 
 <style>
-    /* ... (Tus estilos se mantienen igual) ... */
     :root {
         --edusys-coral: #EF767A;
         --edusys-blue: #456990;
@@ -35,7 +35,6 @@
         box-shadow: 0 4px 12px rgba(69, 105, 144, 0.15);
     }
 
-    /* Resto de estilos igual... */
     .materia-card {
         background: white;
         border-radius: 8px;
@@ -296,8 +295,6 @@
                             Ciclo Lectivo: <strong>@periodoActual.Nombre</strong>
                         </MudText>
 
-                        @* ✅ AQUI MOSTRAMOS LA FECHA DE VIGENCIA *@
-                        @* ✅ CORRECCIÓN: Usamos interpolación de strings $"" que maneja el formato automáticamente *@
                         <div class="d-flex align-center mt-1 gap-2">
                             <MudIcon Icon="@Icons.Material.Filled.DateRange" Size="Size.Small" Style="color: #FFD54F;" />
                             <MudText Typo="Typo.body2" Style="opacity: 0.9;">
@@ -404,6 +401,7 @@
                                                     @foreach (var comision in grupoMateria)
                                                     {
                                                         bool esMiComision = inscripto && miInscripcion!.ComisionCodigo == comision.Codigo;
+
                                                         <div class="comision-item @(esMiComision ? "mi-comision" : "")">
                                                             <div class="d-flex justify-space-between mb-3 align-center">
                                                                 <div style="font-weight:800; color:var(--edusys-blue); font-size: 0.9rem;">Comisión @comision.Codigo</div>
@@ -423,6 +421,17 @@
                                                                     Horario: <strong>@(string.IsNullOrEmpty(comision.Horarios) || comision.Horarios == "A confirmar" ? comision.Turno : comision.Horarios)</strong>
                                                                 </span>
                                                             </div>
+
+                                                            @if (primera.EsMateriaLibre && comision.CupoDisponible > 0 && !inscripto && primera.CumpleCorrelativas)
+                                                            {
+                                                                <div class="mb-3 px-1">
+                                                                    <MudCheckBox T="bool"
+                                                                                 Value="@(esLibreSelection.ContainsKey(comision.Id) && esLibreSelection[comision.Id])"
+                                                                                 ValueChanged="@((bool val) => esLibreSelection[comision.Id] = val)"
+                                                                                 Label="Inscribirme en condición de Libre"
+                                                                                 Color="Color.Info" Dense="true" Size="Size.Small" />
+                                                                </div>
+                                                            }
 
                                                             @if (esMiComision)
                                                             {
@@ -501,11 +510,11 @@
     private List<ComisionDTO> comisionesFiltradas = new();
     private List<InscripcionCursadaListadoDTO> misInscripciones = new();
     private Dictionary<string, bool> materiasExpandidas = new();
+    private Dictionary<int, bool> esLibreSelection = new();
 
     private bool mostrarDialogoBaja = false;
     private int idInscripcionParaBaja = 0;
     private string nombreMateriaParaBaja = "";
-
     private DialogOptions optionsBaja = new() { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true, NoHeader = true, CloseButton = false };
 
     protected override async Task OnInitializedAsync() => await CargarDatos();
@@ -517,6 +526,7 @@
         {
             var authState = await AuthStateProvider.GetAuthenticationStateAsync();
             var idUsuarioStr = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
             if (int.TryParse(idUsuarioStr, out int idUsuario))
             {
                 alumnoActual = await AlumnoService.GetByUsuarioIdAsync(idUsuario);
@@ -524,10 +534,13 @@
                 {
                     var periodos = await PeriodoService.GetAllAsync();
                     periodoActual = periodos.FirstOrDefault(p => p.Activo && p.Estado == "Abierto" && p.FechaInicio <= DateTime.Now && p.FechaFin >= DateTime.Now);
+
                     if (periodoActual != null)
                     {
-                        comisionesFiltradas = await InscripcionService.GetOfertaInscripcionAsync(alumnoActual.Id, periodoActual.Id);
+                        // AQUÍ CONECTAMOS TUS MÉTODOS A LOS NUEVOS NOMBRES
+                        comisionesFiltradas = await InscripcionService.GetOfertaParaAlumnoAsync(alumnoActual.Id, periodoActual.Id);
                         misInscripciones = await InscripcionService.GetInscripcionesAlumnoAsync(alumnoActual.Id, periodoActual.Id);
+
                         foreach (var m in comisionesFiltradas.Select(c => c.MateriaNombre).Distinct())
                             if (!materiasExpandidas.ContainsKey(m)) materiasExpandidas[m] = false;
                     }
@@ -547,7 +560,6 @@
     }
 
     private bool EstaExpandida(string m) => materiasExpandidas.TryGetValue(m, out var v) && v;
-
     private bool TodasExpandidas() => materiasExpandidas.Values.All(v => v);
 
     private void ToggleTodasLasMaterias()
@@ -560,9 +572,18 @@
     private async Task Inscribirse(ComisionDTO comision)
     {
         procesando = true;
-        // Se asume que el backend ya recibe el DTO completo
-        var req = new InscripcionCursadaRequestDTO { IdAlumno = alumnoActual!.Id, IdComision = comision.Id };
-        var res = await InscripcionService.InscribirAsync(req);
+
+        bool inscribirseComoLibre = esLibreSelection.ContainsKey(comision.Id) && esLibreSelection[comision.Id];
+
+        var req = new InscripcionCursadaRequestDTO
+        {
+            IdAlumno = alumnoActual!.Id,
+            IdComision = comision.Id,
+            EsLibre = inscribirseComoLibre
+        };
+
+        var res = await InscripcionService.InscribirAlumnoAsync(req);
+
         if (res.Exito)
         {
             Snackbar.Add("¡Inscripto!", Severity.Success);

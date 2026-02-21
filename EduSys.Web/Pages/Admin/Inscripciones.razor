@@ -119,14 +119,14 @@
     {
         var parameters = new DialogParameters
         {
-            { "IdAlumno", alumno.IdAlumno },         // ID corregido del DTO
-            { "NombreAlumno", alumno.NombreCompleto }, // Para mostrar en el título
-            { "IdSede", alumno.IdSede } // Pasamos el ID de sede (si es nullable en el DTO, asegúrate de manejarlo o castear a 0)
+            { "IdAlumno", alumno.IdAlumno },
+            { "NombreAlumno", alumno.NombreCompleto },
+            { "IdSede", alumno.IdSede },
+            { "NombreSede", alumno.NombreSede ?? "Sede Central" } // <-- CLAVE: Evita enviar un NULL
         };
 
-        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
-
-        var dialog = DialogService.Show<GestionInscripcionesDialog>("Inscripción Administrativa", parameters, options);
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var dialog = DialogService.Show<GestionInscripcionesDialog>("", parameters, options);
         var result = await dialog.Result;
 
         if (!result.Canceled)

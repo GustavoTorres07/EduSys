@@ -1,6 +1,6 @@
-﻿using EduSys.Shared.DTOs;
+﻿using System.Net.Http.Json;
+using EduSys.Shared.DTOs;
 using EduSys.Web.Services.Interfaces;
-using System.Net.Http.Json;
 
 namespace EduSys.Web.Services
 {
@@ -13,28 +13,20 @@ namespace EduSys.Web.Services
             _http = http;
         }
 
-        public async Task<ResultadoInscripcionDTO> InscribirAsync(InscripcionCursadaRequestDTO dto)
+        public async Task<ResultadoInscripcionDTO> InscribirAlumnoAsync(InscripcionCursadaRequestDTO dto)
         {
-            try
-            {
-                var response = await _http.PostAsJsonAsync("api/inscripciones/inscribir", dto);
-
-                // Leemos el resultado sea cual sea el status code (porque el BadRequest también trae el mensaje de error)
-                var resultado = await response.Content.ReadFromJsonAsync<ResultadoInscripcionDTO>();
-                return resultado ?? new ResultadoInscripcionDTO { Exito = false, Mensaje = "Error desconocido." };
-            }
-            catch (Exception ex)
-            {
-                return new ResultadoInscripcionDTO { Exito = false, Mensaje = "Error de conexión: " + ex.Message };
-            }
+            var response = await _http.PostAsJsonAsync("api/inscripciones", dto);
+            var result = await response.Content.ReadFromJsonAsync<ResultadoInscripcionDTO>();
+            return result ?? new ResultadoInscripcionDTO { Exito = false, Mensaje = "Error desconocido." };
         }
 
-        public async Task<List<InscripcionCursadaListadoDTO>> GetInscripcionesAlumnoAsync(int idAlumno, int idPeriodo)
+        public async Task<List<ComisionDTO>> GetOfertaParaAlumnoAsync(int idAlumno, int idPeriodo)
         {
-            return await _http.GetFromJsonAsync<List<InscripcionCursadaListadoDTO>>($"api/inscripciones/alumno/{idAlumno}/periodo/{idPeriodo}")
-                   ?? new List<InscripcionCursadaListadoDTO>();
+            // ✅ Correcto - idPeriodo como query string
+            var response = await _http.GetFromJsonAsync<List<ComisionDTO>>(
+                $"api/inscripciones/oferta/{idAlumno}?idPeriodo={idPeriodo}");
+            return response ?? new List<ComisionDTO>();
         }
-
 
         public async Task<bool> CancelarInscripcionAsync(int idInscripcion)
         {
@@ -42,24 +34,46 @@ namespace EduSys.Web.Services
             return response.IsSuccessStatusCode;
         }
 
-        public async Task<List<ComisionDTO>> GetOfertaInscripcionAsync(int idAlumno, int idPeriodo)
-        {
-            return await _http.GetFromJsonAsync<List<ComisionDTO>>($"api/inscripciones/oferta/{idAlumno}?idPeriodo={idPeriodo}")
-                   ?? new List<ComisionDTO>();
-        }
-
-        // Implementación en InscripcionService
-        // En InscripcionService.cs
         public async Task<ResultadoInscripcionDTO> InscribirAdminAsync(InscripcionManualDTO dto)
         {
-            var response = await _http.PostAsJsonAsync("api/inscripciones/admin/inscribir", dto);
-            // Manejar errores de conexión si es necesario
-            if (!response.IsSuccessStatusCode)
+            try
             {
-                var error = await response.Content.ReadFromJsonAsync<ResultadoInscripcionDTO>();
-                return error ?? new ResultadoInscripcionDTO { Exito = false, Mensaje = "Error en el servidor" };
+                var response = await _http.PostAsJsonAsync("api/inscripciones/admin/inscribir", dto);
+
+                // Solo intentamos leer el JSON si la respuesta fue Ok o BadRequest
+                if (response.IsSuccessStatusCode || response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+                {
+                    var result = await response.Content.ReadFromJsonAsync<ResultadoInscripcionDTO>();
+                    return result ?? new ResultadoInscripcionDTO { Exito = false, Mensaje = "Respuesta vacía del servidor." };
+                }
+
+                // Si es 500 o error de red, evitamos que Blazor crashee
+                return new ResultadoInscripcionDTO { Exito = false, Mensaje = $"Error del servidor. Código: {response.StatusCode}" };
             }
-            return await response.Content.ReadFromJsonAsync<ResultadoInscripcionDTO>();
+            catch (Exception ex)
+            {
+                return new ResultadoInscripcionDTO { Exito = false, Mensaje = $"Problema de conexión: {ex.Message}" };
+            }
+        }
+
+        public async Task<List<InscripcionCursadaListadoDTO>> GetInscripcionesAlumnoAsync(int idAlumno, int idPeriodo)
+        {
+            var response = await _http.GetFromJsonAsync<List<InscripcionCursadaListadoDTO>>($"api/inscripciones/alumno/{idAlumno}/periodo/{idPeriodo}");
+            return response ?? new List<InscripcionCursadaListadoDTO>();
+        }
+
+        public async Task<List<InscripcionCursadaListadoDTO>> GetInscripcionesByAlumnoAsync(int idAlumno)
+        {
+            try
+            {
+                var response = await _http.GetFromJsonAsync<List<InscripcionCursadaListadoDTO>>($"api/inscripciones/admin/alumno/{idAlumno}");
+                return response ?? new List<InscripcionCursadaListadoDTO>();
+            }
+            catch (Exception)
+            {
+                // Si la API falla, devolvemos una lista vacía para que no se rompa la UI
+                return new List<InscripcionCursadaListadoDTO>();
+            }
         }
     }
 }

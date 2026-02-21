@@ -7,5 +7,7 @@ namespace EduSys.Web.Services.Interfaces
         Task<List<NotificacionDTO>> GetNotificacionesAsync();
         Task MarcarLeidaAsync(int id);
         Task<List<CursadaAlumnoDTO>> GetMisCursadasAsync();
+
+        Task<AlumnoDTO> GetPerfilAsync();
     }
 }

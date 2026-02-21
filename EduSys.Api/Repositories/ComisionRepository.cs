@@ -241,46 +241,54 @@ namespace EduSys.Api.Repositories
 
         public async Task<List<ComisionDTO>> GetPorSedeAsync(int idSede)
         {
-            // Traemos las comisiones de la sede, incluyendo relaciones necesarias
-            var query = await _context.Comisions
+            // 1. Iniciamos la consulta para buscar comisiones ABIERTAS
+            // ⚠️ ATENCIÓN: Eliminamos el filtro de "Periodo Abierto" para que el 
+            // Administrador pueda inscribir alumnos fuera de término.
+            var query = _context.Comisions
                 .Include(c => c.IdPlanMateriaNavigation)
-                    .ThenInclude(pm => pm.IdMateriaNavigation) // Para sacar el nombre de la materia
-                .Include(c => c.HorarioComisions) // Para armar el string de horario
-                .Include(c => c.IdPeriodoNavigation)
-                .Where(c => c.IdSede == idSede && c.Estado == "Abierta" && c.IdPeriodoNavigation.Estado == "Abierto")
-                .ToListAsync();
+                    .ThenInclude(pm => pm.IdMateriaNavigation)
+                .Include(c => c.HorarioComisions)
+                .Where(c => c.Estado == "Abierta");
 
-            // Mapeamos a DTO
+            // 2. Salvavidas: Si el alumno no tiene sede (IdSede == 0), le mostramos TODAS 
+            // las materias de todas las sedes para que el administrador no se quede atascado.
+            if (idSede > 0)
+            {
+                query = query.Where(c => c.IdSede == idSede);
+            }
+
+            var comisiones = await query.ToListAsync();
             var resultado = new List<ComisionDTO>();
 
-            foreach (var c in query)
+            // 3. Mapeo seguro protegiendo contra valores nulos en la base de datos
+            foreach (var c in comisiones)
             {
-                // Calculamos inscriptos actuales (Cursando)
                 int inscriptos = await _context.InscripcionCursada
                     .CountAsync(i => i.IdComision == c.Id && i.Estado != "Baja");
 
-                // Formateamos horario (Ej: "Lun 18:00-22:00")
-                var horariosStr = string.Join(", ", c.HorarioComisions
-                    .Select(h => $"{h.DiaSemana} {h.HoraInicio:hh\\:mm}-{h.HoraFin:hh\\:mm}"));
+                var horariosStr = c.HorarioComisions != null && c.HorarioComisions.Any()
+                    ? string.Join(", ", c.HorarioComisions.Select(h => $"{h.DiaSemana} {h.HoraInicio:hh\\:mm}-{h.HoraFin:hh\\:mm}"))
+                    : "Sin horario asignado";
 
                 resultado.Add(new ComisionDTO
                 {
                     Id = c.Id,
-                    Codigo = c.Codigo,
+                    Codigo = c.Codigo ?? "S/C",
                     IdPlanMateria = c.IdPlanMateria,
                     IdSede = c.IdSede,
                     CupoMaximo = c.CupoMaximo,
-                    Turno = c.Turno,
+                    Turno = c.Turno ?? "N/A",
                     Estado = c.Estado,
 
-                    // PROPIEDADES EXTRA PARA EL MODAL ADMIN
-                    Materia = c.IdPlanMateriaNavigation.IdMateriaNavigation.Nombre,
+                    // Datos vitales para que el Modal del Frontend funcione:
+                    Materia = c.IdPlanMateriaNavigation?.IdMateriaNavigation?.Nombre ?? "Materia Desconocida",
                     Horario = horariosStr,
                     CupoActual = inscriptos
                 });
             }
 
-            return resultado;
+            // Ordenamos alfabéticamente para que sea más fácil buscar
+            return resultado.OrderBy(r => r.Materia).ToList();
         }
         private async Task<string?> ObtenerConflictoHorarioDocenteAsync(int idDocente, int idComisionNueva)
         {

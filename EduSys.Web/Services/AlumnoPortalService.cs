@@ -35,6 +35,19 @@ namespace EduSys.Web.Services
             }
         }
 
+        public async Task<AlumnoDTO> GetPerfilAsync()
+        {
+            try
+            {
+                // Llama al endpoint de tu backend que devuelve el perfil del alumno logueado
+                var response = await _http.GetFromJsonAsync<AlumnoDTO>("api/alumnoportal/perfil");
+                return response ?? new AlumnoDTO();
+            }
+            catch (Exception)
+            {
+                return new AlumnoDTO(); // Si hay error, devuelve un objeto vacío en lugar de romper
+            }
+        }
         public async Task MarcarLeidaAsync(int id)
         {
             await _http.PostAsync($"api/AlumnoPortal/notificaciones/leer/{id}", null);
