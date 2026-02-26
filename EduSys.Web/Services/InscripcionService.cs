@@ -15,9 +15,34 @@ namespace EduSys.Web.Services
 
         public async Task<ResultadoInscripcionDTO> InscribirAlumnoAsync(InscripcionCursadaRequestDTO dto)
         {
-            var response = await _http.PostAsJsonAsync("api/inscripciones", dto);
-            var result = await response.Content.ReadFromJsonAsync<ResultadoInscripcionDTO>();
-            return result ?? new ResultadoInscripcionDTO { Exito = false, Mensaje = "Error desconocido." };
+            try
+            {
+                // ✅ CORRECCIÓN 1: La ruta correcta es "api/inscripciones/inscribir"
+                var response = await _http.PostAsJsonAsync("api/inscripciones/inscribir", dto);
+
+                // ✅ CORRECCIÓN 2: Solo intentamos leer el JSON si la respuesta fue exitosa (200) o un error de validación (400)
+                if (response.IsSuccessStatusCode || response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+                {
+                    var result = await response.Content.ReadFromJsonAsync<ResultadoInscripcionDTO>();
+                    return result ?? new ResultadoInscripcionDTO { Exito = false, Mensaje = "Error desconocido." };
+                }
+
+                // Si responde 404 o 500, evitamos el error del JSON y devolvemos esto
+                return new ResultadoInscripcionDTO
+                {
+                    Exito = false,
+                    Mensaje = $"Error del servidor. Código: {response.StatusCode}."
+                };
+            }
+            catch (Exception ex)
+            {
+                // Si se cae la red o el backend está apagado
+                return new ResultadoInscripcionDTO
+                {
+                    Exito = false,
+                    Mensaje = $"Problema de conexión al procesar la inscripción: {ex.Message}"
+                };
+            }
         }
 
         public async Task<List<ComisionDTO>> GetOfertaParaAlumnoAsync(int idAlumno, int idPeriodo)

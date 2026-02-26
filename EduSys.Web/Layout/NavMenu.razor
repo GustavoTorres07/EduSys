@@ -335,14 +335,13 @@
 
 <div class="custom-nav-menu">
 
-    @* 1. PERFIL (ESTRUCTURA ACTUALIZADA: NOMBRE -> EMAIL -> ROL) *@
+    @* 1. PERFIL *@
     <AuthorizeView>
         <Authorized>
             <div class="nav-profile-section">
                 <MudAvatar Size="Size.Large" Elevation="2" Color="@GetAvatarColor(context.User)">
                     @if (!string.IsNullOrEmpty(FotoPerfilUsuario))
                     {
-                        // ✅ CORRECCIÓN: Estilos para que la imagen llene el avatar
                         <MudImage Src="@FotoPerfilUsuario" Style="width:100%; height:100%; object-fit:cover;" />
                     }
                     else
@@ -351,13 +350,8 @@
                     }
                 </MudAvatar>
                 <div class="profile-info">
-                    @* NOMBRE *@
                     <span class="profile-name">@NombreUsuario</span>
-
-                    @* EMAIL (Ahora aquí abajo) *@
                     <span class="profile-email">@UserEmail</span>
-
-                    @* ROL (Como badge/etiqueta al final) *@
                     <span class="profile-role-badge">@RoleFull</span>
                 </div>
             </div>
@@ -392,28 +386,33 @@
                 <div class="nav-section-header">Panel de Control</div>
                 @RenderNavLink("/Home", "Dashboard", Icons.Material.Filled.Dashboard, true)
 
-                <div class="nav-section-header">Gestión Académica</div>
+                <div class="nav-section-header">Config. Institucional</div>
                 @RenderNavLink("/carreras", "Carreras", Icons.Material.Filled.AccountBalance)
                 @RenderNavLink("/planes", "Planes de Estudio", Icons.Material.Filled.Map)
                 @RenderNavLink("/materias", "Materias", Icons.Material.Filled.Book)
                 @RenderNavLink("/sedes", "Sedes", Icons.Material.Filled.Place)
-                @* @RenderNavLink("/aulas", "Aulas", Icons.Material.Filled.MeetingRoom) *@
+                @RenderNavLink("/modalidades", "Modalidades", Icons.Material.Filled.LaptopChromebook)
+                @RenderNavLink("/regimenes", "Regímenes", Icons.Material.Filled.Rule)
 
-                <div class="nav-section-header">Ciclo Lectivo</div>
+                <div class="nav-section-header">Planificación Académica</div>
+                @RenderNavLink("/periodos", "Períodos Académicos", Icons.Material.Filled.DateRange)
+                @RenderNavLink("/calendario", "Ventanas y Calendario", Icons.Material.Filled.EventAvailable)
                 @RenderNavLink("/comisiones", "Comisiones", Icons.Material.Filled.Groups)
                 @RenderNavLink("/horarios", "Horarios", Icons.Material.Filled.AccessTime)
-                @RenderNavLink("/admin/inscripciones", "Inscripciones", Icons.Material.Filled.HowToReg)
+
+                <div class="nav-section-header">Operaciones de Cursada</div>
+                @RenderNavLink("/admin/inscripciones", "Forzar Inscripciones", Icons.Material.Filled.HowToReg)
                 @RenderNavLink("/asistencia", "Asistencias", Icons.Material.Filled.FactCheck)
 
                 <div class="nav-section-header">Evaluaciones y Actas</div>
                 @RenderNavLink("/evaluaciones", "Parciales", Icons.Material.Filled.Assignment)
                 @RenderNavLink("/notas", "Carga de Notas", Icons.Material.Filled.Grade)
                 @RenderNavLink("/admin/actas", "Libros de Actas", Icons.Material.Filled.Description)
-                @RenderNavLink("/mesas-finales", "Mesas de Finales", Icons.Material.Filled.EventAvailable)
+                @RenderNavLink("/mesas-finales", "Mesas de Finales", Icons.Material.Filled.EventSeat)
                 @RenderNavLink("/resultados-finales", "Actas de Finales", Icons.Material.Filled.EmojiEvents)
 
                 <div class="nav-section-header">Comunidad</div>
-                @RenderNavLink("/alumnos", "Alumnos", Icons.Material.Filled.Person)
+                @RenderNavLink("/alumnos", "Alumnos / Legajos", Icons.Material.Filled.Person)
                 @RenderNavLink("/docentes", "Docentes", Icons.Material.Filled.Face)
                 @RenderNavLink("/admin/solicitudes", "Solicitudes Ingreso", Icons.Material.Filled.AssignmentInd)
                 @RenderNavLink("/solicitudes/bandeja", "Mesa de Entradas", Icons.Material.Filled.Inbox)
@@ -425,7 +424,7 @@
 
                 <AuthorizeView Roles="Administrador, Secretaria Academica" Context="configAuth">
                     <Authorized>
-                        @RenderNavLink("/institucion", "Configuración", Icons.Material.Filled.Settings)
+                        @RenderNavLink("/institucion", "Configuración Base", Icons.Material.Filled.Settings)
                         <AuthorizeView Roles="Administrador" Context="secAuth">
                             <Authorized>
                                 @RenderNavLink("/usuarios", "Seguridad", Icons.Material.Filled.Security)
@@ -518,8 +517,8 @@
                              @onclick="() => ExecuteCommand(cmd)">
                             <MudIcon Icon="@cmd.Icon" Size="Size.Medium" Class="command-item-icon" />
                             <div class="command-item-content">
-                                <div class="command-item-title">@cmd.Title</div>
-                                <div class="command-item-subtitle">@cmd.Category</div>
+                                <div class="command-item-title" style="font-weight: 600;">@cmd.Title</div>
+                                <div class="command-item-subtitle" style="font-size: 0.75rem; color: #94a3b8;">@cmd.Category</div>
                             </div>
                         </div>
                     }
@@ -562,16 +561,11 @@
         if (user.Identity != null && user.Identity.IsAuthenticated)
         {
             NombreUsuario = GetFullUserName(user);
-            // Intentar varias formas de obtener el email
             UserEmail = user.FindFirst(ClaimTypes.Email)?.Value ?? user.FindFirst("email")?.Value ?? "";
-
             UserInitial = string.IsNullOrEmpty(NombreUsuario) ? "U" : NombreUsuario.Substring(0, 1).ToUpper();
             FotoPerfilUsuario = user.FindFirst("FotoPerfilUrl")?.Value ?? "";
-
-            // Obtener ID para favoritos únicos
             UserId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value ?? "";
 
-            // Asignar nombres de rol amigables
             if (user.IsInRole("Administrador")) RoleFull = "Administrador del Sistema";
             else if (user.IsInRole("Secretaria Academica")) RoleFull = "Secretaría Académica";
             else if (user.IsInRole("Coordinador")) RoleFull = "Coordinador de Carrera";
@@ -642,7 +636,6 @@
         }));
         builder.CloseComponent();
 
-        // Botón Estrella
         builder.OpenElement(12, "button");
         builder.AddAttribute(13, "class", $"favorite-star-btn {(isFav ? "active" : "")}");
         builder.AddAttribute(14, "onclick", EventCallback.Factory.Create(this, () => ToggleFavorite(href, title, icon)));
@@ -681,37 +674,37 @@
     private void InitializeCommands(ClaimsPrincipal user)
     {
         allCommands.Clear();
-        // Comunes
         allCommands.Add(new CommandItem { Title = "Mi Perfil", Category = "Cuenta", Url = "/perfil", Icon = Icons.Material.Filled.Person });
         allCommands.Add(new CommandItem { Title = "Cerrar Sesión", Category = "Cuenta", Action = CerrarSesion, Icon = Icons.Material.Filled.Logout });
 
-        // Admin
         if (user.IsInRole("Administrador") || user.IsInRole("Secretaria Academica"))
         {
             allCommands.Add(new CommandItem { Title = "Dashboard", Category = "Inicio", Url = "/Home", Icon = Icons.Material.Filled.Dashboard });
-            allCommands.Add(new CommandItem { Title = "Carreras", Category = "Académica", Url = "/carreras", Icon = Icons.Material.Filled.AccountBalance });
-            allCommands.Add(new CommandItem { Title = "Planes", Category = "Académica", Url = "/planes", Icon = Icons.Material.Filled.Map });
-            allCommands.Add(new CommandItem { Title = "Materias", Category = "Académica", Url = "/materias", Icon = Icons.Material.Filled.Book });
-            allCommands.Add(new CommandItem { Title = "Comisiones", Category = "Cursada", Url = "/comisiones", Icon = Icons.Material.Filled.Groups });
-            allCommands.Add(new CommandItem { Title = "Alumnos", Category = "Comunidad", Url = "/alumnos", Icon = Icons.Material.Filled.Person });
+            allCommands.Add(new CommandItem { Title = "Carreras", Category = "Config. Institucional", Url = "/carreras", Icon = Icons.Material.Filled.AccountBalance });
+            allCommands.Add(new CommandItem { Title = "Planes de Estudio", Category = "Config. Institucional", Url = "/planes", Icon = Icons.Material.Filled.Map });
+            allCommands.Add(new CommandItem { Title = "Materias", Category = "Config. Institucional", Url = "/materias", Icon = Icons.Material.Filled.Book });
+            allCommands.Add(new CommandItem { Title = "Sedes", Category = "Config. Institucional", Url = "/sedes", Icon = Icons.Material.Filled.Place });
+            allCommands.Add(new CommandItem { Title = "Períodos Académicos", Category = "Planificación Académica", Url = "/periodos", Icon = Icons.Material.Filled.DateRange });
+            allCommands.Add(new CommandItem { Title = "Ventanas y Calendario", Category = "Planificación Académica", Url = "/calendario", Icon = Icons.Material.Filled.EventAvailable });
+            allCommands.Add(new CommandItem { Title = "Comisiones", Category = "Planificación Académica", Url = "/comisiones", Icon = Icons.Material.Filled.Groups });
+            allCommands.Add(new CommandItem { Title = "Alumnos / Legajos", Category = "Comunidad", Url = "/alumnos", Icon = Icons.Material.Filled.Person });
             allCommands.Add(new CommandItem { Title = "Docentes", Category = "Comunidad", Url = "/docentes", Icon = Icons.Material.Filled.Face });
+            allCommands.Add(new CommandItem { Title = "Forzar Inscripciones", Category = "Operaciones", Url = "/admin/inscripciones", Icon = Icons.Material.Filled.HowToReg });
             allCommands.Add(new CommandItem { Title = "Reportes", Category = "Sistema", Url = "/reportes/operativos", Icon = Icons.Material.Filled.BarChart });
         }
 
-        // Alumno
         if (user.IsInRole("Alumno"))
         {
             allCommands.Add(new CommandItem { Title = "Mis Notas", Category = "Cursada", Url = "/alumno/dashboard", Icon = Icons.Material.Filled.Grade });
-            allCommands.Add(new CommandItem { Title = "Inscribirme", Category = "Trámites", Url = "/inscripcion-materias", Icon = Icons.Material.Filled.LibraryAdd });
+            allCommands.Add(new CommandItem { Title = "Inscribirme a Cursadas", Category = "Autogestión", Url = "/inscripcion-materias", Icon = Icons.Material.Filled.LibraryAdd });
             allCommands.Add(new CommandItem { Title = "Mis Horarios", Category = "Cursada", Url = "/horarios-alumno", Icon = Icons.Material.Filled.CalendarMonth });
         }
 
-        // Docente
         if (user.IsInRole("Docente"))
         {
             allCommands.Add(new CommandItem { Title = "Mis Comisiones", Category = "Clases", Url = "/mis-comisiones", Icon = Icons.Material.Filled.Groups });
             allCommands.Add(new CommandItem { Title = "Cargar Notas", Category = "Evaluación", Url = "/docente/cargar-notas", Icon = Icons.Material.Filled.EditNote });
-            allCommands.Add(new CommandItem { Title = "Finales", Category = "Evaluación", Url = "/docente/mesas-asignadas", Icon = Icons.Material.Filled.EventSeat });
+            allCommands.Add(new CommandItem { Title = "Mesas Asignadas", Category = "Exámenes Finales", Url = "/docente/mesas-asignadas", Icon = Icons.Material.Filled.EventSeat });
         }
 
         filteredCommands = allCommands;
@@ -740,6 +733,12 @@
         else if (e.Key == "ArrowUp") selectedCommandIndex = Math.Max(selectedCommandIndex - 1, 0);
         else if (e.Key == "Enter" && filteredCommands.Any()) ExecuteCommand(filteredCommands[selectedCommandIndex]);
         else if (e.Key == "Escape") CloseCommandPalette();
+
+        // Disparar búsqueda manual al teclear
+        if (e.Key != "ArrowDown" && e.Key != "ArrowUp" && e.Key != "Enter" && e.Key != "Escape")
+        {
+            OnCommandSearchChanged();
+        }
     }
 
     [JSInvokable] public static void OpenCommandPaletteFromJS() { /* Hook para JS global */ }

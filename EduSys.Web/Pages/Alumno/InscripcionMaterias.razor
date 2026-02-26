@@ -3,7 +3,7 @@
 @using EduSys.Web.Services.Interfaces
 @using Microsoft.AspNetCore.Components.Authorization
 @using System.Security.Claims
-
+@inject IVentanaService VentanaService
 @inject IComisionService ComisionService
 @inject IInscripcionService InscripcionService
 @inject IPeriodoService PeriodoService
@@ -297,9 +297,27 @@
 
                         <div class="d-flex align-center mt-1 gap-2">
                             <MudIcon Icon="@Icons.Material.Filled.DateRange" Size="Size.Small" Style="color: #FFD54F;" />
-                            <MudText Typo="Typo.body2" Style="opacity: 0.9;">
-                                Inscripciones abiertas del <b>@($"{periodoActual.FechaInicio:dd/MM/yyyy}")</b> al <b>@($"{periodoActual.FechaFin:dd/MM/yyyy}")</b>
-                            </MudText>
+                            @if (ventanaInscripcion != null)
+                            {
+                                @if (inscripcionesAbiertas)
+                                {
+                                    <MudText Typo="Typo.body2" Style="opacity: 0.9;">
+                                        Inscripciones abiertas del <b>@($"{ventanaInscripcion.FechaInicio:dd/MM/yyyy}")</b> al <b>@($"{ventanaInscripcion.FechaFin:dd/MM/yyyy}")</b>
+                                    </MudText>
+                                }
+                                else
+                                {
+                                    <MudText Typo="Typo.body2" Color="Color.Error" Style="font-weight: 700; opacity: 0.9;">
+                                        Inscripciones cerradas. El período fue del @($"{ventanaInscripcion.FechaInicio:dd/MM/yyyy}") al @($"{ventanaInscripcion.FechaFin:dd/MM/yyyy}")
+                                    </MudText>
+                                }
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.body2" Style="opacity: 0.9;">
+                                    Fechas de inscripción a confirmar por Secretaría.
+                                </MudText>
+                            }
                         </div>
 
                         <MudText Typo="Typo.body2" Class="mt-1" Style="opacity: 0.9;">
@@ -342,20 +360,43 @@
                         </div>
 
                         <MudGrid Class="mt-2" Spacing="3">
-                            @foreach (var grupoMateria in grupoAnio.GroupBy(c => c.MateriaNombre))
+  @foreach (var grupoMateria in grupoAnio.GroupBy(c => c.MateriaNombre))
                             {
                                 var primera = grupoMateria.First();
                                 var miInscripcion = misInscripciones.FirstOrDefault(i => i.Materia == primera.MateriaNombre);
                                 bool inscripto = miInscripcion != null;
-
                                 bool esMateriaLibre = primera.EsMateriaLibre;
-                                bool disponible = inscripto || esMateriaLibre || primera.CumpleCorrelativas;
-
-                                string estadoClass = inscripto ? "inscripto" : (disponible ? "disponible" : "bloqueado");
-                                if (esMateriaLibre) estadoClass += " libre";
-
-                                string estadoTexto = inscripto ? "INSCRIPTO" : (esMateriaLibre ? "LIBRE" : (primera.CumpleCorrelativas ? "DISPONIBLE" : "BLOQUEADO"));
                                 bool expandida = EstaExpandida(primera.MateriaNombre);
+
+                                // LÓGICA DE ESTADOS CLARA Y ORDENADA
+                                string estadoClass;
+                                string estadoTexto;
+
+                                if (inscripto)
+                                {
+                                    estadoClass = "inscripto";
+                                    estadoTexto = "INSCRIPTO";
+                                }
+                                else if (!primera.CumpleCorrelativas)
+                                {
+                                    estadoClass = "bloqueado";
+                                    estadoTexto = "BLOQUEADO";
+                                }
+                                else if (!inscripcionesAbiertas)
+                                {
+                                    estadoClass = "bloqueado"; // Usa el color gris
+                                    estadoTexto = "CERRADO";   // Etiqueta clara de fuera de término
+                                }
+                                else if (esMateriaLibre)
+                                {
+                                    estadoClass = "libre";
+                                    estadoTexto = "LIBRE";
+                                }
+                                else
+                                {
+                                    estadoClass = "disponible";
+                                    estadoTexto = "DISPONIBLE";
+                                }
 
                                 <MudItem xs="12" md="6" lg="4">
                                     <div class="materia-card">
@@ -368,13 +409,17 @@
                                                     {
                                                         <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" Style="font-size: 1rem;" />
                                                     }
-                                                    else if (esMateriaLibre)
-                                                    {
-                                                        <MudIcon Icon="@Icons.Material.Filled.LockOpen" Size="Size.Small" Style="font-size: 1rem;" />
-                                                    }
                                                     else if (!primera.CumpleCorrelativas)
                                                     {
                                                         <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" Style="font-size: 1rem;" />
+                                                    }
+                                                    else if (!inscripcionesAbiertas)
+                                                    {
+                                                        <MudIcon Icon="@Icons.Material.Filled.EventBusy" Size="Size.Small" Style="font-size: 1rem;" />
+                                                    }
+                                                    else if (esMateriaLibre)
+                                                    {
+                                                        <MudIcon Icon="@Icons.Material.Filled.LockOpen" Size="Size.Small" Style="font-size: 1rem;" />
                                                     }
                                                     <span>@estadoTexto</span>
                                                 </div>
@@ -386,7 +431,7 @@
 
                                         <div class="comisiones-container @(!expandida ? "collapsed" : "")" style="@(expandida ? "max-height: 1000px;" : "")">
                                             <div class="comisiones-inner">
-                                                @if (!disponible && !inscripto && !esMateriaLibre)
+                                                @if (!inscripto && !primera.CumpleCorrelativas)
                                                 {
                                                     <div style="background: #fff7ed; color: #c2410c; padding: 10px; border-radius: 6px; font-size: 0.85rem; border: 1px solid #ffedd5;">
                                                         <div class="d-flex align-center gap-2 mb-1">
@@ -435,13 +480,24 @@
 
                                                             @if (esMiComision)
                                                             {
-                                                                <button class="btn-desinscribir" disabled="@procesando" @onclick="@(() => AbrirModalBaja(miInscripcion!.IdInscripcion, comision.MateriaNombre))">
-                                                                    <MudIcon Icon="@Icons.Material.Filled.Close" Size="Size.Small" /> DAR DE BAJA
-                                                                </button>
+                                                                @if (inscripcionesAbiertas)
+                                                                {
+                                                                    <button class="btn-desinscribir" disabled="@procesando" @onclick="@(() => AbrirModalBaja(miInscripcion!.IdInscripcion, comision.MateriaNombre))">
+                                                                        <MudIcon Icon="@Icons.Material.Filled.Close" Size="Size.Small" /> DAR DE BAJA
+                                                                    </button>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <button class="btn-bloqueado" disabled>INSCRIPTO (NO CANCELABLE)</button>
+                                                                }
                                                             }
                                                             else if (inscripto)
                                                             {
                                                                 <button class="btn-bloqueado" disabled>YA ESTÁS INSCRIPTO</button>
+                                                            }
+                                                            else if (!inscripcionesAbiertas)
+                                                            {
+                                                                <button class="btn-bloqueado" disabled>FUERA DE TÉRMINO</button>
                                                             }
                                                             else if (comision.CupoDisponible <= 0)
                                                             {
@@ -511,6 +567,8 @@
     private List<InscripcionCursadaListadoDTO> misInscripciones = new();
     private Dictionary<string, bool> materiasExpandidas = new();
     private Dictionary<int, bool> esLibreSelection = new();
+    private VentanaOperativaDTO? ventanaInscripcion;
+    private bool inscripcionesAbiertas => ventanaInscripcion != null && ventanaInscripcion.EstaVigente;
 
     private bool mostrarDialogoBaja = false;
     private int idInscripcionParaBaja = 0;
@@ -537,7 +595,8 @@
 
                     if (periodoActual != null)
                     {
-                        // AQUÍ CONECTAMOS TUS MÉTODOS A LOS NUEVOS NOMBRES
+                        var ventanas = await VentanaService.GetAllAsync();
+                        ventanaInscripcion = ventanas.FirstOrDefault(v => v.IdPeriodo == periodoActual.Id && v.TipoAccion.Contains("INSCRIPCION_CURSADA"));
                         comisionesFiltradas = await InscripcionService.GetOfertaParaAlumnoAsync(alumnoActual.Id, periodoActual.Id);
                         misInscripciones = await InscripcionService.GetInscripcionesAlumnoAsync(alumnoActual.Id, periodoActual.Id);
 

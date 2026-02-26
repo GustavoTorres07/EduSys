@@ -33,6 +33,7 @@ namespace EduSys.Api.Repositories
             if (comision == null) return Fail("La comisión no existe.");
 
             // B. VALIDAR EL PERIODO ACADÉMICO
+            // B. VALIDAR EL PERIODO ACADÉMICO Y LA VENTANA OPERATIVA
             var periodo = comision.IdPeriodoNavigation;
 
             if (periodo.Estado != "Abierto" || (periodo.Activo.HasValue && !periodo.Activo.Value))
@@ -40,10 +41,30 @@ namespace EduSys.Api.Repositories
                 return Fail($"El periodo académico '{periodo.Nombre}' se encuentra cerrado administrativamente.");
             }
 
+            var ventana = await _context.Set<VentanaOperativa>()
+                .FirstOrDefaultAsync(v => v.IdPeriodo == comision.IdPeriodo && v.TipoAccion == "INSCRIPCION_CURSADA");
+
             var hoy = DateOnly.FromDateTime(DateTime.Now);
-            if (hoy < periodo.FechaInicio || hoy > periodo.FechaFin)
+
+            if (ventana != null)
             {
-                return Fail($"Fuera de período de inscripción. Vigencia: {periodo.FechaInicio:dd/MM} al {periodo.FechaFin:dd/MM}.");
+                // Convertimos las fechas DateTime a DateOnly para poder compararlas con 'hoy'
+                var inicioVentana = DateOnly.FromDateTime(ventana.FechaInicio);
+                var finVentana = DateOnly.FromDateTime(ventana.FechaFin);
+
+                // Validación estricta contra la Ventana Operativa
+                if (hoy < inicioVentana || hoy > finVentana)
+                {
+                    return Fail($"Fuera de término. Las inscripciones habilitadas son del {ventana.FechaInicio:dd/MM/yyyy} al {ventana.FechaFin:dd/MM/yyyy}.");
+                }
+            }
+            else
+            {
+                // Fallback: Si secretaría olvidó crear la ventana, validamos contra el periodo gigante
+                if (hoy < periodo.FechaInicio || hoy > periodo.FechaFin)
+                {
+                    return Fail($"Fuera de período lectivo. Vigencia: {periodo.FechaInicio:dd/MM} al {periodo.FechaFin:dd/MM}.");
+                }
             }
 
             // C. VALIDAR ESTADO COMISIÓN
@@ -187,6 +208,9 @@ namespace EduSys.Api.Repositories
         // ==============================================================================
         // 3. CANCELAR INSCRIPCIÓN (BAJA)
         // ==============================================================================
+        // ==============================================================================
+        // 3. CANCELAR INSCRIPCIÓN (BAJA)
+        // ==============================================================================
         public async Task<bool> CancelarInscripcionAsync(int idInscripcion)
         {
             var item = await _context.InscripcionCursada
@@ -198,8 +222,26 @@ namespace EduSys.Api.Repositories
             var periodo = item.IdComisionNavigation.IdPeriodoNavigation;
             var hoy = DateOnly.FromDateTime(DateTime.Now);
 
-            if (hoy > periodo.FechaFin)
-                throw new Exception("El periodo académico ha finalizado. No puedes darte de baja.");
+            // VERIFICAR VENTANA OPERATIVA
+            var ventana = await _context.Set<VentanaOperativa>()
+                .FirstOrDefaultAsync(v => v.IdPeriodo == item.IdComisionNavigation.IdPeriodo && v.TipoAccion == "INSCRIPCION_CURSADA");
+
+            if (ventana != null)
+            {
+                var inicioVentana = DateOnly.FromDateTime(ventana.FechaInicio);
+                var finVentana = DateOnly.FromDateTime(ventana.FechaFin);
+
+                if (hoy < inicioVentana || hoy > finVentana)
+                {
+                    throw new Exception("Fuera de término. Las bajas solo se permiten durante el período de inscripción habilitado.");
+                }
+            }
+            else
+            {
+                // Si no hay ventana, al menos validamos que el período no haya terminado
+                if (hoy > periodo.FechaFin)
+                    throw new Exception("El periodo académico ha finalizado. No puedes darte de baja.");
+            }
 
             item.Estado = "Baja";
             await _context.SaveChangesAsync();
