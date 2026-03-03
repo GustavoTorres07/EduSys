@@ -324,5 +324,31 @@ namespace EduSys.Api.Repositories
 
             return historia;
         }
+
+        public async Task<ConstanciaFinalDTO?> GetDatosConstanciaFinalAsync(int idInscripcion, int idAlumno)
+        {
+            var inscripcion = await _context.InscripcionFinals
+                .Include(i => i.IdAlumnoNavigation).ThenInclude(a => a.IdUsuarioNavigation)
+                .Include(i => i.IdAlumnoNavigation).ThenInclude(a => a.IdPlanActualNavigation).ThenInclude(p => p.IdCarreraNavigation)
+                .Include(i => i.IdMesaFinalNavigation).ThenInclude(m => m.IdPlanMateriaNavigation).ThenInclude(pm => pm.IdMateriaNavigation)
+                .Include(i => i.IdMesaFinalNavigation).ThenInclude(m => m.IdPresidenteMesaNavigation).ThenInclude(d => d.IdUsuarioNavigation)
+                .FirstOrDefaultAsync(i => i.Id == idInscripcion && i.IdAlumno == idAlumno && i.Estado != "Baja");
+
+            if (inscripcion == null) return null;
+
+            return new ConstanciaFinalDTO
+            {
+                AlumnoNombreCompleto = $"{inscripcion.IdAlumnoNavigation.IdUsuarioNavigation.Apellido}, {inscripcion.IdAlumnoNavigation.IdUsuarioNavigation.Nombre}",
+                AlumnoDNI = inscripcion.IdAlumnoNavigation.IdUsuarioNavigation.Dni,
+                AlumnoLegajo = inscripcion.IdAlumnoNavigation.Legajo,
+                CarreraNombre = inscripcion.IdAlumnoNavigation.IdPlanActualNavigation?.IdCarreraNavigation?.Nombre ?? "Sin Carrera",
+                MateriaNombre = inscripcion.IdMesaFinalNavigation.IdPlanMateriaNavigation.IdMateriaNavigation.Nombre,
+                FechaExamen = inscripcion.IdMesaFinalNavigation.FechaHora,
+                Tribunal = $"{inscripcion.IdMesaFinalNavigation.IdPresidenteMesaNavigation.IdUsuarioNavigation.Apellido} (Pres.)",
+                Condicion = inscripcion.Estado ?? "Regular",
+                FechaInscripcion = inscripcion.FechaInscripcion ?? DateTime.Now,
+                NumeroTransaccion = inscripcion.Id
+            };
+        }
     }
 }

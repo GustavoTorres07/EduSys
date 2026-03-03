@@ -18,7 +18,6 @@ namespace EduSys.Web.Services
             return await _http.GetFromJsonAsync<PlanillaNotasDTO>($"api/Notas/planilla/{idComision}");
         }
 
-        // ✅ CAMBIO: 'decimal' ahora es 'decimal?' (puede ser nulo)
         public async Task<bool> GuardarNotaAsync(int idInscripcion, int idEvaluacion, decimal? valor)
         {
             var dto = new GuardarNotaDTO
@@ -54,6 +53,12 @@ namespace EduSys.Web.Services
         public async Task<bool> ReabrirActaAsync(int idEvaluacion)
         {
             var response = await _http.PostAsync($"api/Notas/reabrir-acta/{idEvaluacion}", null);
+            return response.IsSuccessStatusCode;
+        }
+
+        public async Task<bool> CerrarCursadaAsync(CierreCursadaDTO dto)
+        {
+            var response = await _http.PostAsJsonAsync("api/notas/cerrar-cursada", dto);
             return response.IsSuccessStatusCode;
         }
     }

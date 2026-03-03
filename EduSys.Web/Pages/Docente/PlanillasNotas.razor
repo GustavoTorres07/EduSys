@@ -14,8 +14,8 @@
 
 <style>
     /* =========================================
-           ESTILOS PLANILLA (TABLA AVANZADA)
-           ========================================= */
+               ESTILOS PLANILLA (TABLA AVANZADA)
+               ========================================= */
 
     :root {
         --excel-header-bg: #f8f9fa;
@@ -267,6 +267,10 @@
 
             <div class="d-flex gap-2">
                 <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="CargarDatos">Recargar</MudButton>
+
+                @* 👇 NUEVO BOTÓN PARA CERRAR CURSADA 👇 *@
+                <MudButton Variant="Variant.Filled" Color="Color.Warning" StartIcon="@Icons.Material.Filled.FactCheck" OnClick="AbrirDialogoCierreCursada" Class="font-weight-bold">Cerrar Cursada</MudButton>
+
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.AddCircleOutline" OnClick="AbrirDialogoNuevaEvaluacion">Nueva Instancia</MudButton>
             </div>
         </div>
@@ -345,7 +349,7 @@
                                                 <MudTooltip Text="Editar">
                                                     <MudIconButton Icon="@Icons.Material.Filled.Settings" Size="Size.Small" OnClick="@(() => AbrirDialogoEditarEvaluacion(eval))" />
                                                 </MudTooltip>
-                                                <MudTooltip Text="Cerrar">
+                                                <MudTooltip Text="Cerrar Acta Parcial">
                                                     <MudIconButton Icon="@Icons.Material.Filled.LockOpen" Size="Size.Small" Color="Color.Error" OnClick="@(() => AbrirDialogoCierreActa(eval))" />
                                                 </MudTooltip>
                                             }
@@ -510,6 +514,38 @@
         {
             if (await NotasService.CerrarActaAsync(cierreDto)) { Snackbar.Add("Cerrada", Severity.Success); await CargarDatos(); }
             else Snackbar.Add("Error.", Severity.Error);
+        }
+    }
+
+    // 👇 NUEVO: Lógica para abrir el modal y llamar al Cierre de Cursada
+    private async Task AbrirDialogoCierreCursada()
+    {
+        // Reutilizamos el modal de Cierre de Acta pasándole un 0 (ya que no es un parcial específico)
+        var parameters = new DialogParameters<DialogoCierreActa> { { x => x.IdEvaluacion, 0 } };
+
+        var dialog = await DialogService.ShowAsync<DialogoCierreActa>("Cerrar Cursada Completa", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data is CierreActaDTO datosCierre)
+        {
+            // Mapeamos los datos del modal al nuevo DTO
+            var request = new CierreCursadaDTO
+            {
+                IdComision = this.IdComision,
+                Libro = datosCierre.Libro,
+                Folio = datosCierre.Folio
+            };
+
+            var exito = await NotasService.CerrarCursadaAsync(request);
+            if (exito)
+            {
+                Snackbar.Add("Cursada cerrada. Estados finales calculados y asentados.", Severity.Success);
+                await CargarDatos();
+            }
+            else
+            {
+                Snackbar.Add("Hubo un error al cerrar la cursada.", Severity.Error);
+            }
         }
     }
 

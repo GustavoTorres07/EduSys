@@ -78,5 +78,14 @@ namespace EduSys.Api.Controllers
             if (!exito) return BadRequest("No se pudo reabrir el acta o no existe.");
             return Ok();
         }
+
+        [HttpPost("cerrar-cursada")]
+        public async Task<IActionResult> CerrarCursada([FromBody] CierreCursadaDTO dto)
+        {
+            var exito = await _notasRepo.CerrarActaComisionAsync(dto.IdComision, dto.Libro, dto.Folio);
+            if (exito) return Ok(new { message = "Cursada cerrada y promedios calculados correctamente." });
+
+            return BadRequest("Error al cerrar el acta de la comisión.");
+        }
     }
 }

@@ -125,7 +125,86 @@ namespace EduSys.Api.Repositories
             return await _context.SaveChangesAsync() > 0;
         }
 
-        // ... (El resto de métodos CerrarActaAsync, EditarEvaluacionAsync, CrearEvaluacionAsync quedan igual) ...
+        // =======================================================================
+        // LÓGICA AUTOMÁTICA DE CIERRE DE CURSADA Y CÁLCULO DE CONDICIÓN FINAL
+        // =======================================================================
+        public async Task<bool> CerrarActaComisionAsync(int idComision, string libro, string folio)
+        {
+            // 1. Traemos la comisión con sus reglas (PlanMateria)
+            var comision = await _context.Comisions
+                .Include(c => c.IdPlanMateriaNavigation)
+                .FirstOrDefaultAsync(c => c.Id == idComision);
+
+            if (comision == null) return false;
+
+            var reglas = comision.IdPlanMateriaNavigation;
+
+            // 2. Traemos a todos los alumnos inscriptos con sus Notas
+            var inscripciones = await _context.InscripcionCursada
+                .Include(i => i.Nota)
+                .Where(i => i.IdComision == idComision && i.Estado != "Baja")
+                .ToListAsync();
+
+            foreach (var inscripcion in inscripciones)
+            {
+                // 3. Calculamos el promedio de las notas cargadas
+                decimal promedio = 0;
+
+                // 👇 ESTA ES LA LÍNEA CORREGIDA 👇
+                if (inscripcion.Nota != null && inscripcion.Nota.Any())
+                {
+                    // Como 'Valor' es decimal (nunca es nulo), calculamos el promedio directamente
+                    promedio = inscripcion.Nota.Average(n => n.Valor);
+                }
+
+                inscripcion.NotaFinalCursada = Math.Round(promedio, 2);
+
+                // 4. Evaluar Reglas (Asumimos Asistencia al 100% si no hay módulo de faltas)
+                decimal asistenciaDelAlumno = 100;
+
+                // Verificamos si cumple para REGULAR
+                bool cumpleAsistenciaRegular = asistenciaDelAlumno >= (reglas.PorcentajeAsistenciaRegularizar ?? 0);
+                bool cumpleNotaRegular = promedio >= (reglas.NotaMinimaRegularizar ?? 4);
+                bool quedaRegular = cumpleNotaRegular && cumpleAsistenciaRegular;
+
+                // Verificamos si cumple para PROMOCIÓN
+                bool promociona = false;
+                if (reglas.EsPromocionable == true && reglas.TieneFinalObligatorio == false)
+                {
+                    bool cumpleAsistenciaPromo = asistenciaDelAlumno >= (reglas.PorcentajeAsistenciaPromocion ?? 0);
+                    bool cumpleNotaPromo = promedio >= (reglas.NotaMinimaPromocion ?? 7);
+
+                    if (cumpleNotaPromo && cumpleAsistenciaPromo)
+                    {
+                        promociona = true;
+                    }
+                }
+
+                // 5. ASIGNAR EL VEREDICTO FINAL AUTOMÁTICAMENTE
+                if (promociona)
+                {
+                    inscripcion.CondicionFinal = "Promocionado";
+                    inscripcion.Estado = "Finalizada";
+                }
+                else if (quedaRegular)
+                {
+                    inscripcion.CondicionFinal = "Regular";
+                    inscripcion.Estado = "Finalizada";
+                }
+                else
+                {
+                    inscripcion.CondicionFinal = "Libre";
+                    inscripcion.Estado = "Finalizada";
+                }
+            }
+
+            // 6. Cambiamos el estado de la comisión
+            comision.Estado = "Cerrada";
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
         public async Task<bool> CerrarActaAsync(CierreActaDTO dto)
         {
             var evaluacion = await _context.Evaluacions.FindAsync(dto.IdEvaluacion);
