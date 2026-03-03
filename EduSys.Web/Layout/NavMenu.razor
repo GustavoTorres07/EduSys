@@ -32,7 +32,7 @@
         user-select: none;
     }
 
-    /* ===== 1. PERFIL DE USUARIO (CORREGIDO) ===== */
+    /* ===== 1. PERFIL DE USUARIO ===== */
     .nav-profile-section {
         padding: 20px 16px;
         display: flex;
@@ -61,7 +61,6 @@
         margin-bottom: 2px;
     }
 
-    /* EMAIL AHORA DEBAJO DEL NOMBRE */
     .profile-email {
         font-size: 0.75rem;
         color: var(--nav-text-muted);
@@ -82,7 +81,7 @@
         background: #f1f5f9;
         padding: 2px 6px;
         border-radius: 4px;
-        align-self: flex-start; /* Alineado a la izquierda */
+        align-self: flex-start;
         max-width: 100%;
         white-space: nowrap;
         text-overflow: ellipsis;
@@ -156,7 +155,6 @@
             margin-top: 8px;
         }
 
-    /* Links */
     .nav-link-wrapper {
         position: relative;
         margin-bottom: 2px;
@@ -196,7 +194,6 @@
         color: var(--nav-accent) !important;
     }
 
-    /* Estrella Favoritos */
     .favorite-star-btn {
         position: absolute;
         right: 8px;
@@ -448,7 +445,8 @@
 
                 <div class="nav-section-header">Autogestión</div>
                 @RenderNavLink("/inscripcion-materias", "Cursar Materias", Icons.Material.Filled.Class)
-                @RenderNavLink("/inscripcion-finales", "Rendir Finales", Icons.Material.Filled.AssignmentTurnedIn)
+                @* ✅ CORRECCIÓN DE LA RUTA: AHORA APUNTA A /alumno/inscripcion-finales *@
+                @RenderNavLink("/alumno/inscripcion-finales", "Rendir Finales", Icons.Material.Filled.AssignmentTurnedIn)
                 @RenderNavLink("/alumno/mis-inscripciones", "Comprobantes", Icons.Material.Filled.ListAlt)
 
                 <div class="nav-section-header">Trámites</div>
@@ -698,6 +696,8 @@
             allCommands.Add(new CommandItem { Title = "Mis Notas", Category = "Cursada", Url = "/alumno/dashboard", Icon = Icons.Material.Filled.Grade });
             allCommands.Add(new CommandItem { Title = "Inscribirme a Cursadas", Category = "Autogestión", Url = "/inscripcion-materias", Icon = Icons.Material.Filled.LibraryAdd });
             allCommands.Add(new CommandItem { Title = "Mis Horarios", Category = "Cursada", Url = "/horarios-alumno", Icon = Icons.Material.Filled.CalendarMonth });
+            // ✅ CORRECCIÓN EN EL COMMAND PALETTE: AHORA APUNTA A /alumno/inscripcion-finales
+            allCommands.Add(new CommandItem { Title = "Rendir Finales", Category = "Autogestión", Url = "/alumno/inscripcion-finales", Icon = Icons.Material.Filled.AssignmentTurnedIn });
         }
 
         if (user.IsInRole("Docente"))

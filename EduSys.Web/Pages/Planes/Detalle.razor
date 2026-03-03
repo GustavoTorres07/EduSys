@@ -79,7 +79,6 @@
             vertical-align: top;
         }
 
-    /* Columnas */
     .col-codigo {
         font-weight: 700;
         color: #475569;
@@ -162,19 +161,7 @@
         z-index: 2;
     }
 
-    .mud-dialog .mud-input-adornment-start .mud-icon-root,
-    .mud-dialog .mud-input-adornment-end .mud-icon-root,
-    .mud-dialog .mud-select-adornment .mud-icon-root {
-        color: #64748B !important;
-    }
-
-    .force-black-text,
-    .force-black-text input,
-    .force-black-text textarea,
-    .force-black-text .mud-input-slot,
-    .force-black-text .mud-select-input,
-    .mud-dialog .mud-input-control input,
-    .mud-dialog .mud-input-control textarea {
+    .force-black-text, .force-black-text input, .force-black-text textarea, .force-black-text .mud-input-slot, .force-black-text .mud-select-input {
         color: #1F2937 !important;
         -webkit-text-fill-color: #1F2937 !important;
         font-weight: 500;
@@ -200,12 +187,57 @@
     .correlativas-list-year {
         background-color: #F1F5F9;
         padding: 8px 12px;
-        font-weight: 700;
+        font-weight: 800;
         color: #475569;
-        font-size: 0.8rem;
+        font-size: 0.85rem;
         border-radius: 4px;
-        margin-top: 10px;
-        margin-bottom: 5px;
+        margin-top: 15px;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+    }
+
+    /* --- 4. ETIQUETAS VISUALES AGRUPADAS --- */
+    .badge-cursar {
+        background-color: #e0f2fe;
+        color: #0284c7;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 0.65rem;
+        font-weight: 800;
+        display: inline-block;
+        border: 1px solid #bae6fd;
+    }
+
+    .badge-rendir {
+        background-color: #fef3c7;
+        color: #d97706;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 0.65rem;
+        font-weight: 800;
+        display: inline-block;
+        border: 1px solid #fde68a;
+    }
+
+    .badge-ambos {
+        background-color: #f3e8ff;
+        color: #7e22ce;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 0.65rem;
+        font-weight: 800;
+        display: inline-block;
+        border: 1px solid #e9d5ff;
+    }
+
+    .mat-names {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #334155;
+        line-height: 1.4;
+        display: block;
+        margin-top: 2px;
+        margin-bottom: 8px;
     }
 </style>
 
@@ -251,7 +283,7 @@ else
                         <thead>
                             <tr>
                                 <th style="width: 80px;">Código</th>
-                                <th style="width: 250px;">Correlativas</th>
+                                <th style="width: 280px;">Correlativas</th>
                                 <th>Materia</th>
                                 <th class="col-center" style="width: 120px;">Régimen</th>
                                 <th class="col-center" style="width: 80px;">H.C.</th>
@@ -268,14 +300,51 @@ else
                                     <tr>
                                         <td class="col-codigo">@item.CodigoMateria</td>
 
-                                        <td style="color: #64748B; font-size: 0.8rem; line-height: 1.2;">
-                                            @if (!string.IsNullOrEmpty(item.CorrelativasTexto))
+                                        <td>
+                                            @if (item.CorrelativasDetalle != null && item.CorrelativasDetalle.Any())
                                             {
-                                                @item.CorrelativasTexto
+                                                var agrupadas = item.CorrelativasDetalle.GroupBy(c => c.IdPlanMateriaRequisito).ToList();
+                                                var soloCursar = new List<string>();
+                                                var soloRendir = new List<string>();
+                                                var cursarYRendir = new List<string>();
+
+                                                foreach (var g in agrupadas)
+                                                {
+                                                    var reqs = g.Select(x => x.TipoRequisito.Split('-')[0]).ToList();
+                                                    var matName = GetNombreMateria(g.Key);
+
+                                                    if (reqs.Contains("Cursar") && reqs.Contains("Rendir")) cursarYRendir.Add(matName);
+                                                    else if (reqs.Contains("Cursar")) soloCursar.Add(matName);
+                                                    else if (reqs.Contains("Rendir")) soloRendir.Add(matName);
+                                                }
+
+                                                <div class="d-flex flex-column">
+                                                    @if (cursarYRendir.Any())
+                                                    {
+                                                        <div>
+                                                            <span class="badge-ambos">PARA CURSAR Y RENDIR FINAL</span>
+                                                            <span class="mat-names">@string.Join(", ", cursarYRendir)</span>
+                                                        </div>
+                                                    }
+                                                    @if (soloCursar.Any())
+                                                    {
+                                                        <div>
+                                                            <span class="badge-cursar">PARA CURSAR</span>
+                                                            <span class="mat-names">@string.Join(", ", soloCursar)</span>
+                                                        </div>
+                                                    }
+                                                    @if (soloRendir.Any())
+                                                    {
+                                                        <div>
+                                                            <span class="badge-rendir">PARA RENDIR FINAL</span>
+                                                            <span class="mat-names">@string.Join(", ", soloRendir)</span>
+                                                        </div>
+                                                    }
+                                                </div>
                                             }
                                             else
                                             {
-                                                <span style="opacity: 0.5;">-</span>
+                                                <span style="opacity: 0.4; font-size: 0.8rem; font-style: italic;">- Sin requisitos -</span>
                                             }
                                         </td>
 
@@ -285,18 +354,14 @@ else
                                         <td class="col-center" style="font-weight: 700; font-size: 0.8rem; color: @(item.EsPromocionable ? "#166534" : "#64748B");">
                                             @(item.EsPromocionable ? "SÍ" : "NO")
                                         </td>
-
-                                        <!-- COLUMNA LIBRE -->
                                         <td class="col-libre" style="color: @(item.EsLibre ? "#9c27b0" : "#64748B"); font-weight: 700;">
                                             @(item.EsLibre ? "SÍ" : "NO")
                                         </td>
-
                                         <td class="col-actions">
                                             <MudTooltip Text="Gestionar Correlativas">
                                                 <MudIconButton Icon="@Icons.Material.Filled.Link" Size="Size.Small" Style="color: #0288D1;" OnClick="@(() => AbrirModalCorrelativas(item))" />
                                             </MudTooltip>
-
-                                            <MudTooltip Text="Editar">
+                                            <MudTooltip Text="Editar Reglas">
                                                 <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Style="color: #475569;" OnClick="@(() => AbrirModalDetalle(item))" />
                                             </MudTooltip>
                                             <MudTooltip Text="Eliminar">
@@ -312,7 +377,6 @@ else
                             }
                         </tbody>
                     </table>
-
                     <div class="btn-add-year" @onclick="@(() => AbrirModalAgregarRapido(anioActual))">+ Agregar Asignatura a @ObtenerNombreAnio(anioActual, true)</div>
                 }
             }
@@ -320,18 +384,17 @@ else
     </MudContainer>
 }
 
-<!-- MODAL AGREGAR/EDITAR -->
 <MudDialog @bind-Visible="mostrarModal" Options="dialogOptions" Class="unified-dialog-card">
     <TitleContent>
         <div class="pa-6 pb-2 d-flex justify-space-between align-center">
             <div>
                 <MudText Class="modal-title">@(esEdicion ? "Editar Asignatura" : "Nueva Asignatura")</MudText>
-                <MudText Typo="Typo.body2" Style="color: #6B7280;">@(esEdicion ? "Modifique los detalles académicos." : "Complete la información para agregar al plan.")</MudText>
+                <MudText Typo="Typo.body2" Style="color: #6B7280;">Configuración de reglas académicas y de evaluación.</MudText>
             </div>
         </div>
     </TitleContent>
     <DialogContent>
-        <div class="px-6 pb-6">
+        <div class="px-6 pb-6" style="max-height: 65vh; overflow-y: auto;">
             <EditForm Model="@materiaModel" OnValidSubmit="GuardarMateria">
                 <DataAnnotationsValidator />
 
@@ -348,11 +411,7 @@ else
                                     }
                                 </MudSelect>
                             </MudItem>
-
-                            <MudItem xs="6">
-                                <MudNumericField Label="Año de Cursada" @bind-Value="materiaModel.AnioCursada" Min="1" Max="6" Variant="Variant.Outlined" Class="force-black-text" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.CalendarToday" />
-                            </MudItem>
-
+                            <MudItem xs="6"><MudNumericField Label="Año de Cursada" @bind-Value="materiaModel.AnioCursada" Min="1" Max="6" Variant="Variant.Outlined" Class="force-black-text" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.CalendarToday" /></MudItem>
                             <MudItem xs="6">
                                 <MudSelect T="int" Label="Período/Cuatrimestre" @bind-Value="materiaModel.Cuatrimestre" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter" Class="force-black-text">
                                     <MudSelectItem Value="0">Anual / Único</MudSelectItem>
@@ -360,7 +419,6 @@ else
                                     <MudSelectItem Value="2">2º Cuatrimestre</MudSelectItem>
                                 </MudSelect>
                             </MudItem>
-
                             <MudItem xs="6">
                                 <MudSelect T="int?" Label="Régimen" @bind-Value="materiaModel.IdRegimen" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter" Class="force-black-text" AdornmentIcon="@Icons.Material.Filled.Schedule">
                                     @foreach (var reg in listaRegimenes)
@@ -369,17 +427,14 @@ else
                                     }
                                 </MudSelect>
                             </MudItem>
-                            <MudItem xs="6">
-                                <MudNumericField Label="Carga Horaria" @bind-Value="materiaModel.CargaHorariaTotal" Min="1" Variant="Variant.Outlined" Class="force-black-text" Adornment="Adornment.End" AdornmentText="Hs" />
-                            </MudItem>
+                            <MudItem xs="6"><MudNumericField Label="Carga Horaria" @bind-Value="materiaModel.CargaHorariaTotal" Min="1" Variant="Variant.Outlined" Class="force-black-text" Adornment="Adornment.End" AdornmentText="Hs" /></MudItem>
                         </MudGrid>
                     </MudTabPanel>
 
+                    @* 👇 PESTAÑA REGLAS RE-DISEÑADA PARA DEJAR SÚPER CLARO LO DEL FINAL 👇 *@
                     <MudTabPanel Text="Reglas" Icon="@Icons.Material.Filled.Gavel">
                         <MudGrid Spacing="2">
-                            <MudItem xs="12" Class="pb-0">
-                                <MudText Typo="Typo.subtitle2" Color="Color.Primary"><b>Sistema de Calificación</b></MudText>
-                            </MudItem>
+                            <MudItem xs="12" Class="pb-0"><MudText Typo="Typo.subtitle2" Color="Color.Primary"><b>Sistema de Calificación</b></MudText></MudItem>
                             <MudItem xs="12">
                                 <MudRadioGroup @bind-Value="materiaModel.TipoCalificacion">
                                     <MudRadio Value="0" Color="Color.Primary" Dense="true" Class="force-black-text">Numérica (1-10)</MudRadio>
@@ -389,55 +444,73 @@ else
 
                             @if (materiaModel.TipoCalificacion == 0)
                             {
-                                <MudItem xs="12" Class="mt-2"><MudDivider /><MudText Typo="Typo.caption" Style="color:#64748B;">CURSADA</MudText></MudItem>
-
-                                <MudItem xs="4">
-                                    <MudNumericField Label="Cant. Parciales" @bind-Value="materiaModel.CantidadParciales" Min="0" Max="10" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" />
+                                <MudItem xs="12" Class="mt-2">
+                                    <MudDivider />
+                                    <MudText Typo="Typo.caption" Style="color:#0284c7; font-weight: bold; font-size: 0.8rem;">1. REQUISITOS PARA APROBAR CURSADA (ESTADO REGULAR)</MudText>
+                                    <MudText Typo="Typo.caption" Style="display: block; color: #64748B;">Al cumplir esto, el alumno aprueba la cursada y queda automáticamente habilitado para inscribirse al Examen Final.</MudText>
                                 </MudItem>
 
-                                <MudItem xs="4">
-                                    <MudNumericField Label="Nota Regularizar" @bind-Value="materiaModel.NotaMinimaRegularizar" Min="1" Max="10" Step="0.5M" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" HelperText="Mínimo (Ej: 4)" />
+                                <MudItem xs="4"><MudNumericField Label="Cant. Parciales" @bind-Value="materiaModel.CantidadParciales" Min="0" Max="10" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" /></MudItem>
+                                <MudItem xs="4"><MudNumericField Label="Nota Mín. Cursada" @bind-Value="materiaModel.NotaMinimaRegularizar" Min="1" Max="10" Step="0.5M" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" HelperText="Ej: 4" /></MudItem>
+                                <MudItem xs="4"><MudNumericField Label="% Asistencia Mínima" @bind-Value="materiaModel.PorcentajeAsistenciaRegularizar" Min="0" Max="100" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" Adornment="Adornment.End" AdornmentText="%" /></MudItem>
+
+                                <MudItem xs="12" Class="mt-2">
+                                    <MudDivider />
+                                    <MudText Typo="Typo.caption" Style="color:#16a34a; font-weight: bold; font-size: 0.8rem;">2. RÉGIMEN DE PROMOCIÓN DIRECTA (OPCIONAL)</MudText>
                                 </MudItem>
 
-                                <MudItem xs="4">
-                                    <MudNumericField Label="% Asistencia" @bind-Value="materiaModel.PorcentajeAsistenciaRegularizar" Min="0" Max="100" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" Adornment="Adornment.End" AdornmentText="%" />
+                                <MudItem xs="12">
+                                    <MudSwitch @bind-Value="materiaModel.EsPromocionable" Color="Color.Success" Label="Materia Promocionable" Class="force-black-text" />
+                                    <MudText Typo="Typo.caption" Style="color: #64748B; display: block; margin-top: 2px; margin-left: 44px; line-height: 1.2;">
+                                        Permite aprobar la materia de forma definitiva sin rendir final si alcanza notas altas. Quienes no alcancen la promoción pero aprueben la cursada, deberán rendir examen final.
+                                    </MudText>
                                 </MudItem>
 
-                                <MudItem xs="12" Class="mt-3">
-                                    <MudSwitch @bind-Value="materiaModel.EsPromocionable" Color="Color.Success" Label="Permite Promoción" Class="force-black-text" />
-                                </MudItem>
                                 @if (materiaModel.EsPromocionable)
                                 {
-                                    <MudItem xs="6">
-                                        <MudNumericField Label="Asistencia Promoción" @bind-Value="materiaModel.PorcentajeAsistenciaPromocion" Min="0" Max="100" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" Adornment="Adornment.End" AdornmentText="%" />
-                                    </MudItem>
-                                    <MudItem xs="6">
-                                        <MudNumericField Label="Nota Promoción" @bind-Value="materiaModel.NotaMinimaPromocion" Min="1" Max="10" Step="0.5M" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" HelperText="Mínimo (Ej: 7)" />
-                                    </MudItem>
+                                    <MudItem xs="6"><MudNumericField Label="Nota para Promoción" @bind-Value="materiaModel.NotaMinimaPromocion" Min="1" Max="10" Step="0.5M" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" HelperText="Ej: 8" /></MudItem>
+                                    <MudItem xs="6"><MudNumericField Label="% Asistencia Promoción" @bind-Value="materiaModel.PorcentajeAsistenciaPromocion" Min="0" Max="100" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" Adornment="Adornment.End" AdornmentText="%" /></MudItem>
                                 }
                             }
 
-                            <MudItem xs="12" Class="mt-3"><MudDivider /><MudText Typo="Typo.caption" Style="color:#64748B;">FINAL</MudText></MudItem>
-                            <MudItem xs="6">
-                                <MudNumericField Label="Nota Aprob. Final" @bind-Value="materiaModel.NotaMinimaAprobacion" Min="1" Max="10" Step="0.5M" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" />
-                            </MudItem>
-                            <MudItem xs="6">
-                                <MudNumericField Label="Vigencia Cursada" @bind-Value="materiaModel.VigenciaCursadaAnios" Min="1" Max="10" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" Adornment="Adornment.End" AdornmentText="Años" />
+                            <MudItem xs="12" Class="mt-3">
+                                <MudDivider />
+                                <MudText Typo="Typo.caption" Style="color:#d97706; font-weight: bold; font-size: 0.8rem;">3. REGLAS DEL EXAMEN FINAL</MudText>
                             </MudItem>
 
-                            <!-- SWITCH MATERIA LIBRE -->
-                            <MudItem xs="12" Class="mt-4">
-                                <MudSwitch @bind-Value="materiaModel.EsLibre"
-                                           Color="Color.Secondary"
-                                           Label="Materia Libre (sin correlativas obligatorias)"
-                                           Class="force-black-text" />
+                            @* AVISO VISUAL CLARO PARA EL USUARIO *@
+                            <MudItem xs="12">
+                                <MudPaper Elevation="0" Class="pa-3 mb-2" Style="background-color: #fef3c7; border: 1px solid #fde68a; border-radius: 8px;">
+                                    <MudText Typo="Typo.body2" Style="color: #b45309; font-weight: 700;">Llave de acceso al Final:</MudText>
+                                    <MudText Typo="Typo.caption" Style="color: #b45309; display: block; margin-top: 2px; line-height: 1.3;">
+                                        El sistema verificará que el alumno haya cumplido la Nota (<b>@materiaModel.NotaMinimaRegularizar</b>) y Asistencia (<b>@(materiaModel.PorcentajeAsistenciaRegularizar)%</b>) estipuladas en el bloque 1 para dejarlo rendir. <br />
+                                        También verificará que posea las Correlativas Previas exigidas "Para Rendir Final" (Configurables en la 🔗).
+                                    </MudText>
+                                </MudPaper>
+                            </MudItem>
+
+                            <MudItem xs="12">
+                                <MudSwitch @bind-Value="materiaModel.TieneFinalObligatorio" Color="Color.Warning" Label="Examen Final Obligatorio Integrador" Class="force-black-text" />
+                                <MudText Typo="Typo.caption" Style="color: #64748B; display: block; margin-top: 2px; margin-left: 44px;">Si está activo, anula cualquier promoción. Todos los alumnos rinden final.</MudText>
+                            </MudItem>
+
+                            <MudItem xs="6"><MudNumericField Label="Nota para Aprobar Final" @bind-Value="materiaModel.NotaMinimaAprobacion" Min="1" Max="10" Step="0.5M" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" /></MudItem>
+                            <MudItem xs="6"><MudNumericField Label="Vigencia Cursada" @bind-Value="materiaModel.VigenciaCursadaAnios" Min="1" Max="10" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" Adornment="Adornment.End" AdornmentText="Años" /></MudItem>
+
+                            <MudItem xs="12">
+                                <MudTextField Label="Metodología de Aprobación" @bind-Value="materiaModel.CondicionesAprobacion" Variant="Variant.Outlined" Lines="2" Class="force-black-text" Placeholder="Ej: Examen oral eliminatorio con tribunal..." />
+                            </MudItem>
+
+                            <MudItem xs="12" Class="mt-3"><MudDivider /><MudText Typo="Typo.caption" Style="color:#64748B; font-weight: bold; font-size: 0.8rem;">4. ALUMNOS LIBRES</MudText></MudItem>
+                            <MudItem xs="12">
+                                <MudSwitch @bind-Value="materiaModel.EsLibre" Color="Color.Secondary" Label="Permitir Inscripción como Alumno Libre" Class="force-black-text" />
                                 <MudText Typo="Typo.caption" Style="color: #64748B; display: block; margin-top: 4px; margin-left: 44px;">
-                                    Si está activado, los alumnos podrán inscribirse sin cumplir correlativas previas.
+                                    El alumno podrá rendir el final directo sin hacer la cursada. <b>Importante:</b> El sistema igual le exigirá tener aprobadas las materias correlativas "Para Rendir".
                                 </MudText>
                             </MudItem>
 
                             <MudItem xs="12" Class="mt-3">
-                                <MudTextField Label="Reglas Especiales / Observaciones" @bind-Value="materiaModel.CondicionesCursada" Variant="Variant.Outlined" Lines="2" Class="force-black-text" Placeholder="Excepciones, entrega de TPs obligatorios, etc..." />
+                                <MudTextField Label="Reglas Especiales / Observaciones" @bind-Value="materiaModel.CondicionesCursada" Variant="Variant.Outlined" Lines="2" Class="force-black-text" Placeholder="Información extra para el alumno..." />
                             </MudItem>
                         </MudGrid>
                     </MudTabPanel>
@@ -477,28 +550,57 @@ else
     </DialogContent>
 </MudDialog>
 
-<!-- MODAL CORRELATIVAS -->
 <MudDialog @bind-Visible="mostrarModalCorrelativas" Options="dialogOptions" Class="unified-dialog-card">
     <TitleContent>
         <div class="pa-6 pb-2 d-flex justify-space-between align-center">
             <div>
-                <MudText Class="modal-title">Correlativas</MudText>
-                <MudText Typo="Typo.body2" Style="color: #6B7280;">Seleccione las materias necesarias para cursar <b>@materiaEnEdicion?.NombreMateria</b>.</MudText>
+                <MudText Class="modal-title">Reglas de Correlatividad</MudText>
+                <MudText Typo="Typo.body2" Style="color: #6B7280;">Configura los requisitos previos para <b>@materiaEnEdicion?.NombreMateria</b>.</MudText>
             </div>
         </div>
     </TitleContent>
     <DialogContent>
-        <div class="px-6 pb-6" style="max-height: 400px; overflow-y: auto;">
+        <div class="px-6 pb-6" style="max-height: 55vh; overflow-y: auto; overflow-x: hidden;">
             @if (materiasCandidatas != null && materiasCandidatas.Any())
             {
+                <MudAlert Severity="Severity.Info" Class="mb-4 text-sm">
+                    Define qué se le exige al alumno de las materias previas:<br />
+                    <span style="color: #0284c7; font-weight: bold;">[PARA CURSAR]:</span> Necesita tener la cursada previa aprobada (Regular).<br />
+                    <span style="color: #d97706; font-weight: bold;">[PARA RENDIR FINAL]:</span> Necesita tener la materia previa aprobada definitivamente (Final o Promoción).
+                </MudAlert>
+
                 @foreach (var grupo in materiasCandidatas.GroupBy(m => m.AnioCursada).OrderBy(g => g.Key))
                 {
                     <div class="correlativas-list-year">@ObtenerNombreAnio(grupo.Key)</div>
-                    <MudGrid Spacing="1">
+                    <MudGrid Spacing="2">
                         @foreach (var mat in grupo.OrderBy(m => m.CodigoMateria))
                         {
-                            <MudItem xs="12" sm="6">
-                                <MudCheckBox T="bool" Value="@correlativasSeleccionadas.Contains(mat.Id)" ValueChanged="@((bool chk) => ToggleCorrelativa(mat.Id, chk))" Label="@($"{mat.CodigoMateria} - {mat.NombreMateria}")" Color="Color.Primary" Dense="true" Class="force-black-text" />
+                            bool reqCursar = TieneRequisito(mat.Id, "Cursar");
+                            bool reqRendir = TieneRequisito(mat.Id, "Rendir");
+                            bool isSelected = reqCursar || reqRendir;
+
+                            <MudItem xs="12">
+                                <div class="pa-3 transition-all"
+                                     style="@(isSelected ? "background-color: #f0fdf4; border: 1px solid #bbf7d0; border-left: 4px solid #16a34a; border-radius: 8px;" : "background-color: white; border: 1px solid #E2E8F0; border-left: 4px solid transparent; border-radius: 8px;")">
+
+                                    <MudText Typo="Typo.body1" Style="@(isSelected ? "font-weight: 800; color: #166534; margin-bottom: 4px;" : "font-weight: 600; color: #475569; margin-bottom: 4px;")">
+                                        @mat.CodigoMateria - @mat.NombreMateria
+                                    </MudText>
+
+                                    <div class="d-flex gap-4 ml-2" style="flex-wrap: wrap;">
+                                        <MudCheckBox T="bool"
+                                                     Value="@reqCursar"
+                                                     ValueChanged="@((bool v) => ToggleRequisito(mat.Id, "Cursar", v))"
+                                                     Label="Exigir para CURSAR"
+                                                     Color="Color.Info" Dense="true" Size="Size.Small" />
+
+                                        <MudCheckBox T="bool"
+                                                     Value="@reqRendir"
+                                                     ValueChanged="@((bool v) => ToggleRequisito(mat.Id, "Rendir", v))"
+                                                     Label="Exigir para RENDIR FINAL"
+                                                     Color="Color.Warning" Dense="true" Size="Size.Small" />
+                                    </div>
+                                </div>
                             </MudItem>
                         }
                     </MudGrid>
@@ -506,17 +608,16 @@ else
             }
             else
             {
-                <div class="d-flex justify-center pa-8" style="color:#94A3B8;">No hay materias previas disponibles.</div>
+                <div class="d-flex justify-center pa-8" style="color:#94A3B8;">No hay materias previas disponibles en el plan.</div>
             }
         </div>
         <div class="d-flex justify-end gap-2 px-6 pb-6 pt-4" style="border-top: 1px solid #E5E7EB;">
             <MudButton OnClick="CerrarModales" Variant="Variant.Text" Color="Color.Default">Cancelar</MudButton>
-            <MudButton OnClick="GuardarCorrelativas" Variant="Variant.Filled" Color="Color.Primary" Class="rounded-lg px-6">Guardar Correlativas</MudButton>
+            <MudButton OnClick="GuardarCorrelativas" Variant="Variant.Filled" Color="Color.Primary" Class="rounded-lg px-6">Guardar Reglas</MudButton>
         </div>
     </DialogContent>
 </MudDialog>
 
-<!-- MODAL ELIMINAR -->
 <MudDialog @bind-Visible="mostrarDialogoEliminar" Options="dialogOptionsEliminar" Class="unified-dialog-card">
     <DialogContent>
         <div class="pa-4 text-center">
@@ -540,19 +641,19 @@ else
     private List<PlanMateriaDTO> materiasDelPlan = new List<PlanMateriaDTO>();
     private List<MateriaDTO> catalogoMaterias = new List<MateriaDTO>();
     private List<RegimenDTO> listaRegimenes = new List<RegimenDTO>();
-
     private PlanMateriaDTO materiaModel = new PlanMateriaDTO();
     private PlanMateriaDTO materiaParaEliminar;
     private PlanMateriaDTO materiaEnEdicion;
+
+    // Diccionario para guardar "IdMateria_Momento" -> "Condición"
+    private Dictionary<string, string> correlativasDict = new Dictionary<string, string>();
     private List<PlanMateriaDTO> materiasCandidatas = new List<PlanMateriaDTO>();
-    private HashSet<int> correlativasSeleccionadas = new HashSet<int>();
 
     private bool loading = true;
     private bool mostrarModal = false;
     private bool mostrarModalCorrelativas = false;
     private bool mostrarDialogoEliminar = false;
     private bool esEdicion = false;
-
     private DialogOptions dialogOptions = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true };
     private DialogOptions dialogOptionsEliminar = new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true, CloseButton = false };
 
@@ -569,70 +670,100 @@ else
             var t4 = RegimenService.GetAllAsync();
 
             await Task.WhenAll(t1, t2, t3, t4);
-
             var p = await t1; if (p != null) plan = p;
             materiasDelPlan = await t2 ?? new List<PlanMateriaDTO>();
             catalogoMaterias = await t3 ?? new List<MateriaDTO>();
             listaRegimenes = await t4 ?? new List<RegimenDTO>();
         }
-        catch (Exception ex) { Snackbar.Add("Error al cargar datos: " + ex.Message, Severity.Error); }
+        catch (Exception ex) { Snackbar.Add("Error al cargar datos.", Severity.Error); }
         finally { loading = false; }
     }
 
+    private string GetNombreMateria(int idReq)
+    {
+        var mat = materiasDelPlan.FirstOrDefault(m => m.Id == idReq);
+        return mat != null ? mat.NombreMateria : "Materia Previa";
+    }
+
+    // --- LÓGICA DE CORRELATIVAS (LA CADENA) ---
     private void AbrirModalCorrelativas(PlanMateriaDTO item)
     {
         materiaEnEdicion = item;
-        materiasCandidatas = materiasDelPlan.Where(m => m.Id != item.Id).ToList();
-        correlativasSeleccionadas = new HashSet<int>(item.IdsCorrelativas);
+        materiasCandidatas = materiasDelPlan.Where(m => m.Id != item.Id && m.AnioCursada <= item.AnioCursada).ToList();
+
+        correlativasDict.Clear();
+
+        if (item.CorrelativasDetalle != null)
+        {
+            foreach (var c in item.CorrelativasDetalle)
+            {
+                var partes = c.TipoRequisito.Split('-');
+                if (partes.Length == 2)
+                {
+                    string momento = partes[0];
+                    string condicion = partes[1];
+                    correlativasDict[$"{c.IdPlanMateriaRequisito}_{momento}"] = condicion;
+                }
+            }
+        }
+
         mostrarModalCorrelativas = true;
     }
 
-    private void ToggleCorrelativa(int id, bool check)
+    private bool TieneRequisito(int idMateria, string momento)
     {
-        if (check) correlativasSeleccionadas.Add(id); else correlativasSeleccionadas.Remove(id);
+        return correlativasDict.ContainsKey($"{idMateria}_{momento}");
+    }
+
+    private void ToggleRequisito(int idMateria, string momento, bool check)
+    {
+        var key = $"{idMateria}_{momento}";
+
+        if (check)
+        {
+            correlativasDict[key] = momento == "Cursar" ? "Regular" : "Aprobada";
+        }
+        else
+        {
+            correlativasDict.Remove(key);
+        }
     }
 
     private async Task GuardarCorrelativas()
     {
-        var exito = await PlanService.ActualizarCorrelativasAsync(materiaEnEdicion.Id, correlativasSeleccionadas.ToList());
-        if (exito) { Snackbar.Add("Correlativas actualizadas", Severity.Success); mostrarModalCorrelativas = false; await CargarDatos(); }
-        else { Snackbar.Add("Error al guardar correlativas", Severity.Error); }
+        var listaCorrelativas = new List<CorrelativaItemDTO>();
+
+        foreach (var kv in correlativasDict)
+        {
+            var partesKey = kv.Key.Split('_');
+            int idRequisito = int.Parse(partesKey[0]);
+            string momento = partesKey[1];
+            string condicion = kv.Value;
+
+            listaCorrelativas.Add(new CorrelativaItemDTO
+            {
+                IdPlanMateriaRequisito = idRequisito,
+                TipoRequisito = $"{momento}-{condicion}"
+            });
+        }
+
+        var exito = await PlanService.ActualizarCorrelativasAsync(materiaEnEdicion.Id, listaCorrelativas);
+
+        if (exito) { Snackbar.Add("Reglas de correlatividad guardadas.", Severity.Success); mostrarModalCorrelativas = false; await CargarDatos(); }
+        else { Snackbar.Add("Error al guardar reglas.", Severity.Error); }
     }
 
+    // --- LÓGICA DE MATERIAS (EL LÁPIZ) ---
     private void AbrirModalAgregar()
     {
-        materiaModel = new PlanMateriaDTO
-        {
-            IdPlan = Id,
-            AnioCursada = 1,
-            NotaMinimaAprobacion = 6,
-            CargaHorariaTotal = 64,
-            EsPromocionable = true,
-            NotaMinimaRegularizar = 4,
-            CantidadParciales = 2,
-            PorcentajeAsistenciaRegularizar = 60,
-            EsLibre = false  // Valor bool directo
-        };
-        esEdicion = false;
-        mostrarModal = true;
+        materiaModel = new PlanMateriaDTO { IdPlan = Id, AnioCursada = 1, NotaMinimaAprobacion = 6, CargaHorariaTotal = 64, EsPromocionable = true, NotaMinimaRegularizar = 4, CantidadParciales = 2, PorcentajeAsistenciaRegularizar = 60, EsLibre = false, TieneFinalObligatorio = false };
+        esEdicion = false; mostrarModal = true;
     }
 
     private void AbrirModalAgregarRapido(int anio)
     {
-        materiaModel = new PlanMateriaDTO
-        {
-            IdPlan = Id,
-            AnioCursada = anio,
-            NotaMinimaAprobacion = 6,
-            CargaHorariaTotal = 64,
-            EsPromocionable = true,
-            NotaMinimaRegularizar = 4,
-            CantidadParciales = 2,
-            PorcentajeAsistenciaRegularizar = 60,
-            EsLibre = false  // Valor bool directo
-        };
-        esEdicion = false;
-        mostrarModal = true;
+        materiaModel = new PlanMateriaDTO { IdPlan = Id, AnioCursada = anio, NotaMinimaAprobacion = 6, CargaHorariaTotal = 64, EsPromocionable = true, NotaMinimaRegularizar = 4, CantidadParciales = 2, PorcentajeAsistenciaRegularizar = 60, EsLibre = false, TieneFinalObligatorio = false };
+        esEdicion = false; mostrarModal = true;
     }
 
     private void AbrirModalDetalle(PlanMateriaDTO item)
@@ -654,7 +785,6 @@ else
             DescripcionProyecto = item.DescripcionProyecto,
             CondicionesCursada = item.CondicionesCursada,
             CondicionesAprobacion = item.CondicionesAprobacion,
-
             TipoCalificacion = item.TipoCalificacion,
             NotaMinimaRegularizar = item.NotaMinimaRegularizar,
             NotaMinimaPromocion = item.NotaMinimaPromocion,
@@ -662,75 +792,31 @@ else
             PorcentajeAsistenciaPromocion = item.PorcentajeAsistenciaPromocion,
             VigenciaCursadaAnios = item.VigenciaCursadaAnios,
             CantidadParciales = item.CantidadParciales,
-
-            EsLibre = item.EsLibre  // Asignación directa (bool → bool)
+            EsLibre = item.EsLibre,
+            TieneFinalObligatorio = item.TieneFinalObligatorio
         };
-        esEdicion = true;
-        mostrarModal = true;
+        esEdicion = true; mostrarModal = true;
     }
 
     private async Task GuardarMateria()
     {
-        if (materiaModel.IdMateria == 0 || materiaModel.IdRegimen == null)
-        {
-            Snackbar.Add("Complete campos obligatorios", Severity.Warning);
-            return;
-        }
+        if (materiaModel.IdMateria == 0 || materiaModel.IdRegimen == null) { Snackbar.Add("Complete campos obligatorios", Severity.Warning); return; }
 
-        bool exito;
-        if (esEdicion) exito = await PlanService.EditarMateriaAsync(materiaModel);
-        else exito = await PlanService.AgregarMateriaAsync(materiaModel);
-
-        if (exito)
-        {
-            Snackbar.Add("Guardado correctamente", Severity.Success);
-            mostrarModal = false;
-            await CargarDatos();
-        }
+        bool exito = esEdicion ? await PlanService.EditarMateriaAsync(materiaModel) : await PlanService.AgregarMateriaAsync(materiaModel);
+        if (exito) { Snackbar.Add("Guardado correctamente", Severity.Success); mostrarModal = false; await CargarDatos(); }
         else Snackbar.Add("Error al guardar.", Severity.Error);
     }
 
-    private void AbrirModalEliminar(PlanMateriaDTO item)
-    {
-        materiaParaEliminar = item;
-        mostrarDialogoEliminar = true;
-    }
-
+    private void AbrirModalEliminar(PlanMateriaDTO item) { materiaParaEliminar = item; mostrarDialogoEliminar = true; }
     private async Task ConfirmarEliminar()
     {
-        if (await PlanService.QuitarMateriaAsync(materiaParaEliminar.Id))
-        {
-            Snackbar.Add("Eliminado", Severity.Success);
-            await CargarDatos();
-        }
+        if (await PlanService.QuitarMateriaAsync(materiaParaEliminar.Id)) { Snackbar.Add("Eliminado", Severity.Success); await CargarDatos(); }
         else Snackbar.Add("Error", Severity.Error);
         mostrarDialogoEliminar = false;
     }
 
-    private void CerrarModales()
-    {
-        mostrarModal = false;
-        mostrarDialogoEliminar = false;
-        mostrarModalCorrelativas = false;
-    }
-
-    private int ObtenerNumeroCodigo(string codigo)
-    {
-        if (string.IsNullOrEmpty(codigo)) return 999;
-        if (codigo.Contains("-") && codigo.Split('-').Length > 1 && int.TryParse(codigo.Split('-')[1], out int num)) return num;
-        if (int.TryParse(codigo, out int n)) return n;
-        return 999;
-    }
-
+    private void CerrarModales() { mostrarModal = false; mostrarDialogoEliminar = false; mostrarModalCorrelativas = false; }
+    private int ObtenerNumeroCodigo(string codigo) { if (string.IsNullOrEmpty(codigo)) return 999; if (codigo.Contains("-") && codigo.Split('-').Length > 1 && int.TryParse(codigo.Split('-')[1], out int num)) return num; if (int.TryParse(codigo, out int n)) return n; return 999; }
     private int ObtenerMaximoAnio() => materiasDelPlan.Any() ? materiasDelPlan.Max(m => m.AnioCursada) : 3;
-
-    private string ObtenerNombreAnio(int anio, bool corto = false) => anio switch
-    {
-        1 => corto ? "1º Año" : "PRIMER AÑO",
-        2 => corto ? "2º Año" : "SEGUNDO AÑO",
-        3 => corto ? "3º Año" : "TERCER AÑO",
-        4 => corto ? "4º Año" : "CUARTO AÑO",
-        5 => corto ? "5º Año" : "QUINTO AÑO",
-        _ => $"{anio}º AÑO"
-    };
+    private string ObtenerNombreAnio(int anio, bool corto = false) => anio switch { 1 => corto ? "1º Año" : "PRIMER AÑO", 2 => corto ? "2º Año" : "SEGUNDO AÑO", 3 => corto ? "3º Año" : "TERCER AÑO", 4 => corto ? "4º Año" : "CUARTO AÑO", 5 => corto ? "5º Año" : "QUINTO AÑO", _ => $"{anio}º AÑO" };
 }

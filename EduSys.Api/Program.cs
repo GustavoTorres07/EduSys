@@ -77,6 +77,8 @@ builder.Services.AddScoped<IHistorialAcademicoRepository, HistorialAcademicoRepo
 builder.Services.AddScoped<INotasRepository, NotasRepository>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IAlumnoPortalRepository, AlumnoPortalRepository>();
+builder.Services.AddScoped<IMesaFinalRepository, MesaFinalRepository>();
+builder.Services.AddScoped<IInscripcionFinalRepository, InscripcionFinalRepository>();
 
 builder.Services.AddControllers();
 

@@ -1,0 +1,114 @@
+﻿@page "/mesas-finales"
+@using EduSys.Shared.DTOs
+@using EduSys.Web.Services.Interfaces
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Administrador, Secretaria Academica, Coordinador")]
+
+@inject IMesaFinalService MesaFinalService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <div class="d-flex justify-space-between align-center mb-4">
+        <div>
+            <MudText Typo="Typo.h5" Color="Color.Primary"><b>Gestión de Mesas Finales</b></MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">Administra los tribunales y fechas de exámenes.</MudText>
+        </div>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="AbrirModalNuevo">
+            Nueva Mesa
+        </MudButton>
+    </div>
+
+    <MudTable Items="@mesas" Hover="true" Loading="@loading" Elevation="2" Class="rounded-lg">
+        <HeaderContent>
+            <MudTh>Fecha y Hora</MudTh>
+            <MudTh>Materia</MudTh>
+            <MudTh>Carrera</MudTh>
+            <MudTh>Tribunal (Presidente)</MudTh>
+            <MudTh>Inscriptos</MudTh>
+            <MudTh>Estado</MudTh>
+            <MudTh Style="text-align:center">Acciones</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>
+                <MudText Typo="Typo.body2" Style="font-weight:600">@context.FechaHora.ToString("dd/MM/yyyy")</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">@context.FechaHora.ToString("HH:mm") hs</MudText>
+            </MudTd>
+            <MudTd><b>@context.MateriaNombre</b></MudTd>
+            <MudTd>@context.CarreraNombre</MudTd>
+            <MudTd>
+                <MudIcon Icon="@Icons.Material.Filled.Gavel" Size="Size.Small" Class="mr-1" /> @context.PresidenteNombre
+            </MudTd>
+            <MudTd>
+                <MudChip T="string" Size="Size.Small" Color="@(context.CantidadInscriptos > 0 ? Color.Info : Color.Default)">
+                    @context.CantidadInscriptos alumnos
+                </MudChip>
+            </MudTd>
+            <MudTd>
+                @if (context.Estado == "Abierta")
+                {
+                    <MudChip T="string" Color="Color.Success" Size="Size.Small">Abierta</MudChip>
+                }
+                else
+                {
+
+                    <MudChip T="string" Color="Color.Error" Size="Size.Small">Cerrada</MudChip>
+                }
+            </MudTd>
+            <MudTd Style="text-align:center">
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" OnClick="@(() => AbrirModalEditar(context))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => Eliminar(context.Id))" />
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText Class="pa-4">No hay mesas finales registradas.</MudText>
+        </NoRecordsContent>
+    </MudTable>
+</MudContainer>
+
+@code {
+    private bool loading = true;
+    private List<MesaFinalDTO> mesas = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarDatos();
+    }
+
+    private async Task CargarDatos()
+    {
+        loading = true;
+        mesas = await MesaFinalService.GetAllAsync();
+        loading = false;
+    }
+
+    private async Task AbrirModalNuevo()
+    {
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, NoHeader = true }; 
+        var dialog = await DialogService.ShowAsync<DialogoMesaFinal>("Nueva Mesa de Examen", options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled) await CargarDatos();
+    }
+
+    private async Task AbrirModalEditar(MesaFinalDTO mesa)
+    {
+        var parameters = new DialogParameters { ["MesaAEditar"] = mesa };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, NoHeader = true };
+        var dialog = await DialogService.ShowAsync<DialogoMesaFinal>("Editar Mesa de Examen", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled) await CargarDatos();
+    }
+
+    private async Task Eliminar(int id)
+    {
+        bool? confirm = await DialogService.ShowMessageBox("Confirmar", "¿Eliminar esta mesa final?", yesText: "Eliminar", cancelText: "Cancelar");
+        if (confirm == true)
+        {
+            var res = await MesaFinalService.DeleteAsync(id);
+            if (res.Exito) { Snackbar.Add("Mesa eliminada", Severity.Success); await CargarDatos(); }
+            else { Snackbar.Add(res.Mensaje, Severity.Error); }
+        }
+    }
+}

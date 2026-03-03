@@ -13,7 +13,7 @@ namespace EduSys.Web.Services.Interfaces
         Task<bool> AgregarMateriaAsync(PlanMateriaDTO planMateria);
         Task<bool> QuitarMateriaAsync(int idPlanMateria);
 
-        Task<bool> ActualizarCorrelativasAsync(int idPlanMateria, List<int> idsCorrelativas);
+        Task<bool> ActualizarCorrelativasAsync(int idPlanMateria, List<CorrelativaItemDTO> correlativas);
         Task<bool> EditarMateriaAsync(PlanMateriaDTO planMateria);
         Task<List<PlanMateriaDTO>> GetAllMateriasAsync();
         Task<List<PlanMateriaDTO>> GetMateriasPorSedeAsync(int idCarrera, int idSede);

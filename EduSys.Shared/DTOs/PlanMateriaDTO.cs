@@ -14,32 +14,29 @@
         public int CargaHorariaTotal { get; set; }
         public bool EsLibre { get; set; } = false;
 
-        // --- NUEVAS REGLAS ESTRUCTURADAS ---
-        public int TipoCalificacion { get; set; } = 0; // 0: Numérica, 1: Conceptual
-
-        // Notas Decimales (Usamos decimal? para evitar errores de conversión)
+        public int TipoCalificacion { get; set; } = 0;
         public decimal? NotaMinimaRegularizar { get; set; } = 4;
         public decimal? NotaMinimaAprobacion { get; set; } = 6;
-
         public bool EsPromocionable { get; set; } = true;
         public decimal? NotaMinimaPromocion { get; set; }
         public int? PorcentajeAsistenciaPromocion { get; set; }
-
         public int? PorcentajeAsistenciaRegularizar { get; set; }
         public int VigenciaCursadaAnios { get; set; } = 3;
-        public bool TieneFinalObligatorio { get; set; } = false;
 
-        // Textos
+        // 👇 REGLAS DE FINAL Y PROYECTO
+        public bool TieneFinalObligatorio { get; set; } = false;
+        public bool TieneProyecto { get; set; }
         public string? CondicionesCursada { get; set; }
         public string? CondicionesAprobacion { get; set; }
         public string? Objetivos { get; set; }
         public string? ContenidosMinimos { get; set; }
-        public bool TieneProyecto { get; set; }
         public string? DescripcionProyecto { get; set; }
         public int CantidadParciales { get; set; } = 2;
 
-        // Correlativas
         public string CorrelativasTexto { get; set; } = "";
         public List<int> IdsCorrelativas { get; set; } = new List<int>();
+
+        // 👇 NUEVO: Lista con el detalle de si es Regular o Aprobada
+        public List<CorrelativaItemDTO> CorrelativasDetalle { get; set; } = new List<CorrelativaItemDTO>();
     }
 }

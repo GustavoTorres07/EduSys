@@ -52,7 +52,8 @@ builder.Services.AddScoped<IReportesService, ReportesService>();
 builder.Services.AddScoped<IHistorialService, HistorialService>();
 builder.Services.AddScoped<INotasService, NotasService>();
 builder.Services.AddScoped<IAlumnoPortalService, AlumnoPortalService>();
-
+builder.Services.AddScoped<IMesaFinalService, MesaFinalService>();
+builder.Services.AddScoped<IInscripcionFinalService, InscripcionFinalService>();
 
 Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 

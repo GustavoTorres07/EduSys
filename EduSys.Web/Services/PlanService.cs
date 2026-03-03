@@ -67,11 +67,9 @@ namespace EduSys.Web.Services
             return response.IsSuccessStatusCode;
         }
 
-        public async Task<bool> ActualizarCorrelativasAsync(int idPlanMateria, List<int> idsCorrelativas)
+        public async Task<bool> ActualizarCorrelativasAsync(int idPlanMateria, List<CorrelativaItemDTO> correlativas)
         {
-            // Llama al endpoint: POST api/planes/materias/{id}/correlativas
-            var response = await _http.PostAsJsonAsync($"api/planes/materias/{idPlanMateria}/correlativas", idsCorrelativas);
-
+            var response = await _http.PutAsJsonAsync($"api/planes/materia/{idPlanMateria}/correlativas", correlativas);
             return response.IsSuccessStatusCode;
         }
 
