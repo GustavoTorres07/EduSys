@@ -4,6 +4,7 @@
 @inject IPlanService PlanService
 @inject IMateriaService MateriaService
 @inject IRegimenService RegimenService
+@inject IEstadoMateriaService EstadoMateriaService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
@@ -351,8 +352,8 @@ else
                                         <td class="col-materia">@item.NombreMateria</td>
                                         <td class="col-center" style="font-weight: 600; font-size: 0.75rem; text-transform: uppercase;">@item.NombreRegimen</td>
                                         <td class="col-center" style="font-weight: 700;">@item.CargaHorariaTotal</td>
-                                        <td class="col-center" style="font-weight: 700; font-size: 0.8rem; color: @(item.EsPromocionable ? "#166534" : "#64748B");">
-                                            @(item.EsPromocionable ? "SÍ" : "NO")
+                                        <td class="col-center" style="font-weight: 700; font-size: 0.8rem; color: @(item.EsPromocionable == true ? "#166534" : "#64748B");">
+                                            @(item.EsPromocionable == true ? "SÍ" : "NO")
                                         </td>
                                         <td class="col-libre" style="color: @(item.EsLibre ? "#9c27b0" : "#64748B"); font-weight: 700;">
                                             @(item.EsLibre ? "SÍ" : "NO")
@@ -431,87 +432,116 @@ else
                         </MudGrid>
                     </MudTabPanel>
 
-                    @* 👇 PESTAÑA REGLAS RE-DISEÑADA PARA DEJAR SÚPER CLARO LO DEL FINAL 👇 *@
-                    <MudTabPanel Text="Reglas" Icon="@Icons.Material.Filled.Gavel">
+                    <MudTabPanel Text="Reglas Académicas" Icon="@Icons.Material.Filled.Gavel">
                         <MudGrid Spacing="2">
-                            <MudItem xs="12" Class="pb-0"><MudText Typo="Typo.subtitle2" Color="Color.Primary"><b>Sistema de Calificación</b></MudText></MudItem>
-                            <MudItem xs="12">
-                                <MudRadioGroup @bind-Value="materiaModel.TipoCalificacion">
-                                    <MudRadio Value="0" Color="Color.Primary" Dense="true" Class="force-black-text">Numérica (1-10)</MudRadio>
-                                    <MudRadio Value="1" Color="Color.Secondary" Dense="true" Class="force-black-text">Conceptual (Aprobado/Desaprobado)</MudRadio>
-                                </MudRadioGroup>
+
+                            <MudItem xs="12" Class="mt-2">
+                                <MudText Typo="Typo.caption" Style="color:#0284c7; font-weight: bold; font-size: 0.8rem;">1. REQUISITOS PARA APROBAR CURSADA (ESTADO REGULAR)</MudText>
+                                <MudText Typo="Typo.caption" Style="display: block; color: #64748B;">Configura cómo el sistema determina si un alumno cumple las condiciones mínimas.</MudText>
                             </MudItem>
 
-                            @if (materiaModel.TipoCalificacion == 0)
+                            <MudItem xs="12">
+                                <MudSelect T="int" Label="Modo de Aprobación de Exámenes" @bind-Value="materiaModel.ModoAprobacionCursada" Variant="Variant.Outlined" Margin="Margin.Dense" AnchorOrigin="Origin.BottomCenter" Class="force-black-text">
+                                    <MudSelectItem T="int" Value="0">Por Promedio (La suma divide y da el resultado)</MudSelectItem>
+                                    <MudSelectItem T="int" Value="1">Instancia a Instancia (Debe aprobar TODOS los parciales/recuperatorios)</MudSelectItem>
+                                </MudSelect>
+                            </MudItem>
+
+                            <MudItem xs="4"><MudNumericField Label="Cant. Parciales (Exigidos)" @bind-Value="materiaModel.CantidadParciales" Min="0" Max="10" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" /></MudItem>
+                            <MudItem xs="4"><MudNumericField Label="Nota Mín. para Aprobar" @bind-Value="materiaModel.PromedioMinimoAprobacion" Min="1" Max="10" Step="0.5M" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" HelperText="Ej: 4 o 6" /></MudItem>
+                            <MudItem xs="4"><MudNumericField Label="% Asistencia Mínima" @bind-Value="materiaModel.PorcentajeAsistenciaRegularizar" Min="0" Max="100" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" Adornment="Adornment.End" AdornmentText="%" /></MudItem>
+
+                            <MudItem xs="12">
+                                <MudSelect T="int?" Label="Estado si CUMPLE estas condiciones" @bind-Value="materiaModel.IdEstadoRegular" Variant="Variant.Outlined" Margin="Margin.Dense" AnchorOrigin="Origin.BottomCenter" Class="force-black-text" HelperText="Ej: Regular">
+                                    <MudSelectItem T="int?" Value="null">-- Usar defecto --</MudSelectItem>
+                                    @foreach (var est in listaEstados)
+                                    {
+                                        <MudSelectItem T="int?" Value="@est.Id">@est.Nombre</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            </MudItem>
+
+                            <MudItem xs="12" Class="mt-2">
+                                <MudDivider />
+                                <MudText Typo="Typo.caption" Style="color:#d32f2f; font-weight: bold; font-size: 0.8rem;">2. REGLAS DE DESAPROBACIÓN Y ABANDONO (ESTADO LIBRE)</MudText>
+                            </MudItem>
+
+                            <MudItem xs="6">
+                                <MudNumericField Label="Nota Eliminatoria (Muerte Súbita)" @bind-Value="materiaModel.NotaEliminatoria" Min="1" Max="10" Step="0.5M" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" HelperText="Ej: Si saca menos de 3, queda libre sin recuperatorio." />
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudNumericField Label="Límite de Aplazos" @bind-Value="materiaModel.CantidadAplazosParaLibre" Min="0" Max="10" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" HelperText="Ej: Si reprueba 2 veces, queda libre." />
+                            </MudItem>
+
+                            <MudItem xs="6">
+                                <MudSelect T="int?" Label="Estado si NO alcanza Promedio/Aplazos" @bind-Value="materiaModel.IdEstadoSiDesaprueba" Variant="Variant.Outlined" Margin="Margin.Dense" AnchorOrigin="Origin.BottomCenter" Class="force-black-text" HelperText="Ej: Desaprobado">
+                                    <MudSelectItem T="int?" Value="null">-- Usar defecto --</MudSelectItem>
+                                    @foreach (var est in listaEstados)
+                                    {
+                                        <MudSelectItem T="int?" Value="@est.Id">@est.Nombre</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            </MudItem>
+
+                            <MudItem xs="6">
+                                <MudSelect T="int?" Label="Estado si NO alcanza Asistencia/Muerte Súbita" @bind-Value="materiaModel.IdEstadoSiFaltaAsistencia" Variant="Variant.Outlined" Margin="Margin.Dense" AnchorOrigin="Origin.BottomCenter" Class="force-black-text" HelperText="Ej: Libre">
+                                    <MudSelectItem T="int?" Value="null">-- Usar defecto --</MudSelectItem>
+                                    @foreach (var est in listaEstados)
+                                    {
+                                        <MudSelectItem T="int?" Value="@est.Id">@est.Nombre</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            </MudItem>
+
+                            <MudItem xs="12" Class="mt-2">
+                                <MudDivider />
+                                <MudText Typo="Typo.caption" Style="color:#16a34a; font-weight: bold; font-size: 0.8rem;">3. RÉGIMEN DE PROMOCIÓN DIRECTA (OPCIONAL)</MudText>
+                            </MudItem>
+
+                            <MudItem xs="12">
+                                <MudSwitch @bind-Value="materiaModel.EsPromocionable" Color="Color.Success" Label="Materia Promocionable" Class="force-black-text" />
+                                <MudText Typo="Typo.caption" Style="color: #64748B; display: block; margin-top: 2px; margin-left: 44px; line-height: 1.2;">
+                                    Permite aprobar la materia de forma definitiva sin rendir final si alcanza notas altas.
+                                </MudText>
+                            </MudItem>
+
+                            @if (materiaModel.EsPromocionable == true)
                             {
-                                <MudItem xs="12" Class="mt-2">
-                                    <MudDivider />
-                                    <MudText Typo="Typo.caption" Style="color:#0284c7; font-weight: bold; font-size: 0.8rem;">1. REQUISITOS PARA APROBAR CURSADA (ESTADO REGULAR)</MudText>
-                                    <MudText Typo="Typo.caption" Style="display: block; color: #64748B;">Al cumplir esto, el alumno aprueba la cursada y queda automáticamente habilitado para inscribirse al Examen Final.</MudText>
-                                </MudItem>
-
-                                <MudItem xs="4"><MudNumericField Label="Cant. Parciales" @bind-Value="materiaModel.CantidadParciales" Min="0" Max="10" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" /></MudItem>
-                                <MudItem xs="4"><MudNumericField Label="Nota Mín. Cursada" @bind-Value="materiaModel.NotaMinimaRegularizar" Min="1" Max="10" Step="0.5M" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" HelperText="Ej: 4" /></MudItem>
-                                <MudItem xs="4"><MudNumericField Label="% Asistencia Mínima" @bind-Value="materiaModel.PorcentajeAsistenciaRegularizar" Min="0" Max="100" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" Adornment="Adornment.End" AdornmentText="%" /></MudItem>
-
-                                <MudItem xs="12" Class="mt-2">
-                                    <MudDivider />
-                                    <MudText Typo="Typo.caption" Style="color:#16a34a; font-weight: bold; font-size: 0.8rem;">2. RÉGIMEN DE PROMOCIÓN DIRECTA (OPCIONAL)</MudText>
-                                </MudItem>
+                                <MudItem xs="6"><MudNumericField Label="Promedio Mínimo para Promoción" @bind-Value="materiaModel.NotaMinimaPromocion" Min="1" Max="10" Step="0.5M" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" HelperText="Ej: 7 u 8" /></MudItem>
+                                <MudItem xs="6"><MudNumericField Label="% Asistencia Promoción" @bind-Value="materiaModel.PorcentajeAsistenciaPromocion" Min="0" Max="100" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" Adornment="Adornment.End" AdornmentText="%" /></MudItem>
 
                                 <MudItem xs="12">
-                                    <MudSwitch @bind-Value="materiaModel.EsPromocionable" Color="Color.Success" Label="Materia Promocionable" Class="force-black-text" />
-                                    <MudText Typo="Typo.caption" Style="color: #64748B; display: block; margin-top: 2px; margin-left: 44px; line-height: 1.2;">
-                                        Permite aprobar la materia de forma definitiva sin rendir final si alcanza notas altas. Quienes no alcancen la promoción pero aprueben la cursada, deberán rendir examen final.
-                                    </MudText>
+                                    <MudSelect T="int?" Label="Estado si PROMOCIONA" @bind-Value="materiaModel.IdEstadoPromocion" Variant="Variant.Outlined" Margin="Margin.Dense" AnchorOrigin="Origin.BottomCenter" Class="force-black-text" HelperText="Estado definitivo (Ej: Promocionado)">
+                                        <MudSelectItem T="int?" Value="null">-- Usar defecto --</MudSelectItem>
+                                        @foreach (var est in listaEstados)
+                                        {
+                                            <MudSelectItem T="int?" Value="@est.Id">@est.Nombre</MudSelectItem>
+                                        }
+                                    </MudSelect>
                                 </MudItem>
-
-                                @if (materiaModel.EsPromocionable)
-                                {
-                                    <MudItem xs="6"><MudNumericField Label="Nota para Promoción" @bind-Value="materiaModel.NotaMinimaPromocion" Min="1" Max="10" Step="0.5M" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" HelperText="Ej: 8" /></MudItem>
-                                    <MudItem xs="6"><MudNumericField Label="% Asistencia Promoción" @bind-Value="materiaModel.PorcentajeAsistenciaPromocion" Min="0" Max="100" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" Adornment="Adornment.End" AdornmentText="%" /></MudItem>
-                                }
                             }
 
                             <MudItem xs="12" Class="mt-3">
                                 <MudDivider />
-                                <MudText Typo="Typo.caption" Style="color:#d97706; font-weight: bold; font-size: 0.8rem;">3. REGLAS DEL EXAMEN FINAL</MudText>
-                            </MudItem>
-
-                            @* AVISO VISUAL CLARO PARA EL USUARIO *@
-                            <MudItem xs="12">
-                                <MudPaper Elevation="0" Class="pa-3 mb-2" Style="background-color: #fef3c7; border: 1px solid #fde68a; border-radius: 8px;">
-                                    <MudText Typo="Typo.body2" Style="color: #b45309; font-weight: 700;">Llave de acceso al Final:</MudText>
-                                    <MudText Typo="Typo.caption" Style="color: #b45309; display: block; margin-top: 2px; line-height: 1.3;">
-                                        El sistema verificará que el alumno haya cumplido la Nota (<b>@materiaModel.NotaMinimaRegularizar</b>) y Asistencia (<b>@(materiaModel.PorcentajeAsistenciaRegularizar)%</b>) estipuladas en el bloque 1 para dejarlo rendir. <br />
-                                        También verificará que posea las Correlativas Previas exigidas "Para Rendir Final" (Configurables en la 🔗).
-                                    </MudText>
-                                </MudPaper>
+                                <MudText Typo="Typo.caption" Style="color:#d97706; font-weight: bold; font-size: 0.8rem;">4. REGLAS DEL EXAMEN FINAL</MudText>
                             </MudItem>
 
                             <MudItem xs="12">
                                 <MudSwitch @bind-Value="materiaModel.TieneFinalObligatorio" Color="Color.Warning" Label="Examen Final Obligatorio Integrador" Class="force-black-text" />
-                                <MudText Typo="Typo.caption" Style="color: #64748B; display: block; margin-top: 2px; margin-left: 44px;">Si está activo, anula cualquier promoción. Todos los alumnos rinden final.</MudText>
                             </MudItem>
 
                             <MudItem xs="6"><MudNumericField Label="Nota para Aprobar Final" @bind-Value="materiaModel.NotaMinimaAprobacion" Min="1" Max="10" Step="0.5M" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" /></MudItem>
                             <MudItem xs="6"><MudNumericField Label="Vigencia Cursada" @bind-Value="materiaModel.VigenciaCursadaAnios" Min="1" Max="10" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text" Adornment="Adornment.End" AdornmentText="Años" /></MudItem>
 
                             <MudItem xs="12">
-                                <MudTextField Label="Metodología de Aprobación" @bind-Value="materiaModel.CondicionesAprobacion" Variant="Variant.Outlined" Lines="2" Class="force-black-text" Placeholder="Ej: Examen oral eliminatorio con tribunal..." />
+                                <MudTextField Label="Metodología de Aprobación" @bind-Value="materiaModel.CondicionesAprobacion" Variant="Variant.Outlined" Lines="2" Class="force-black-text" Placeholder="Ej: Examen oral eliminatorio..." />
                             </MudItem>
 
-                            <MudItem xs="12" Class="mt-3"><MudDivider /><MudText Typo="Typo.caption" Style="color:#64748B; font-weight: bold; font-size: 0.8rem;">4. ALUMNOS LIBRES</MudText></MudItem>
+                            <MudItem xs="12" Class="mt-3"><MudDivider /><MudText Typo="Typo.caption" Style="color:#64748B; font-weight: bold; font-size: 0.8rem;">5. ALUMNOS LIBRES</MudText></MudItem>
                             <MudItem xs="12">
                                 <MudSwitch @bind-Value="materiaModel.EsLibre" Color="Color.Secondary" Label="Permitir Inscripción como Alumno Libre" Class="force-black-text" />
-                                <MudText Typo="Typo.caption" Style="color: #64748B; display: block; margin-top: 4px; margin-left: 44px;">
-                                    El alumno podrá rendir el final directo sin hacer la cursada. <b>Importante:</b> El sistema igual le exigirá tener aprobadas las materias correlativas "Para Rendir".
-                                </MudText>
                             </MudItem>
 
-                            <MudItem xs="12" Class="mt-3">
-                                <MudTextField Label="Reglas Especiales / Observaciones" @bind-Value="materiaModel.CondicionesCursada" Variant="Variant.Outlined" Lines="2" Class="force-black-text" Placeholder="Información extra para el alumno..." />
-                            </MudItem>
                         </MudGrid>
                     </MudTabPanel>
 
@@ -525,7 +555,7 @@ else
                     <MudTabPanel Text="Proyecto" Icon="@Icons.Material.Filled.WorkOutline">
                         <MudGrid Spacing="2">
                             <MudItem xs="12"><MudSwitch @bind-Value="materiaModel.TieneProyecto" Color="Color.Primary" Label="Requiere Proyecto Integrador" Class="force-black-text" /></MudItem>
-                            @if (materiaModel.TieneProyecto)
+                            @if (materiaModel.TieneProyecto == true)
                             {
                                 <MudItem xs="12"><MudTextField Label="Descripción del Proyecto" @bind-Value="materiaModel.DescripcionProyecto" Variant="Variant.Outlined" Lines="6" Class="force-black-text" Placeholder="Detalles sobre el trabajo práctico final..." /></MudItem>
                             }
@@ -641,11 +671,12 @@ else
     private List<PlanMateriaDTO> materiasDelPlan = new List<PlanMateriaDTO>();
     private List<MateriaDTO> catalogoMaterias = new List<MateriaDTO>();
     private List<RegimenDTO> listaRegimenes = new List<RegimenDTO>();
+    private List<EstadoMateriaDTO> listaEstados = new List<EstadoMateriaDTO>();
+
     private PlanMateriaDTO materiaModel = new PlanMateriaDTO();
     private PlanMateriaDTO materiaParaEliminar;
     private PlanMateriaDTO materiaEnEdicion;
 
-    // Diccionario para guardar "IdMateria_Momento" -> "Condición"
     private Dictionary<string, string> correlativasDict = new Dictionary<string, string>();
     private List<PlanMateriaDTO> materiasCandidatas = new List<PlanMateriaDTO>();
 
@@ -668,12 +699,15 @@ else
             var t2 = PlanService.GetMateriasByPlanAsync(Id);
             var t3 = MateriaService.GetAllAsync();
             var t4 = RegimenService.GetAllAsync();
+            var t5 = EstadoMateriaService.GetEstadosAsync();
 
-            await Task.WhenAll(t1, t2, t3, t4);
+            await Task.WhenAll(t1, t2, t3, t4, t5);
+
             var p = await t1; if (p != null) plan = p;
             materiasDelPlan = await t2 ?? new List<PlanMateriaDTO>();
             catalogoMaterias = await t3 ?? new List<MateriaDTO>();
             listaRegimenes = await t4 ?? new List<RegimenDTO>();
+            listaEstados = await t5 ?? new List<EstadoMateriaDTO>();
         }
         catch (Exception ex) { Snackbar.Add("Error al cargar datos.", Severity.Error); }
         finally { loading = false; }
@@ -685,7 +719,6 @@ else
         return mat != null ? mat.NombreMateria : "Materia Previa";
     }
 
-    // --- LÓGICA DE CORRELATIVAS (LA CADENA) ---
     private void AbrirModalCorrelativas(PlanMateriaDTO item)
     {
         materiaEnEdicion = item;
@@ -718,15 +751,8 @@ else
     private void ToggleRequisito(int idMateria, string momento, bool check)
     {
         var key = $"{idMateria}_{momento}";
-
-        if (check)
-        {
-            correlativasDict[key] = momento == "Cursar" ? "Regular" : "Aprobada";
-        }
-        else
-        {
-            correlativasDict.Remove(key);
-        }
+        if (check) correlativasDict[key] = momento == "Cursar" ? "Regular" : "Aprobada";
+        else correlativasDict.Remove(key);
     }
 
     private async Task GuardarCorrelativas()
@@ -753,16 +779,43 @@ else
         else { Snackbar.Add("Error al guardar reglas.", Severity.Error); }
     }
 
-    // --- LÓGICA DE MATERIAS (EL LÁPIZ) ---
     private void AbrirModalAgregar()
     {
-        materiaModel = new PlanMateriaDTO { IdPlan = Id, AnioCursada = 1, NotaMinimaAprobacion = 6, CargaHorariaTotal = 64, EsPromocionable = true, NotaMinimaRegularizar = 4, CantidadParciales = 2, PorcentajeAsistenciaRegularizar = 60, EsLibre = false, TieneFinalObligatorio = false };
+        materiaModel = new PlanMateriaDTO
+        {
+            IdPlan = Id,
+            AnioCursada = 1,
+            NotaMinimaAprobacion = 6,
+            CargaHorariaTotal = 64,
+            EsPromocionable = true,
+            PromedioMinimoAprobacion = 4,
+            CantidadParciales = 2,
+            CantidadAplazosParaLibre = 1,
+            PorcentajeAsistenciaRegularizar = 60,
+            EsLibre = false,
+            TieneFinalObligatorio = false,
+            ModoAprobacionCursada = 0
+        };
         esEdicion = false; mostrarModal = true;
     }
 
     private void AbrirModalAgregarRapido(int anio)
     {
-        materiaModel = new PlanMateriaDTO { IdPlan = Id, AnioCursada = anio, NotaMinimaAprobacion = 6, CargaHorariaTotal = 64, EsPromocionable = true, NotaMinimaRegularizar = 4, CantidadParciales = 2, PorcentajeAsistenciaRegularizar = 60, EsLibre = false, TieneFinalObligatorio = false };
+        materiaModel = new PlanMateriaDTO
+        {
+            IdPlan = Id,
+            AnioCursada = anio,
+            NotaMinimaAprobacion = 6,
+            CargaHorariaTotal = 64,
+            EsPromocionable = true,
+            PromedioMinimoAprobacion = 4,
+            CantidadParciales = 2,
+            CantidadAplazosParaLibre = 1,
+            PorcentajeAsistenciaRegularizar = 60,
+            EsLibre = false,
+            TieneFinalObligatorio = false,
+            ModoAprobacionCursada = 0
+        };
         esEdicion = false; mostrarModal = true;
     }
 
@@ -786,6 +839,12 @@ else
             CondicionesCursada = item.CondicionesCursada,
             CondicionesAprobacion = item.CondicionesAprobacion,
             TipoCalificacion = item.TipoCalificacion,
+
+            ModoAprobacionCursada = item.ModoAprobacionCursada,
+            NotaEliminatoria = item.NotaEliminatoria,
+            PromedioMinimoAprobacion = item.PromedioMinimoAprobacion ?? item.NotaMinimaRegularizar,
+            CantidadAplazosParaLibre = item.CantidadAplazosParaLibre,
+
             NotaMinimaRegularizar = item.NotaMinimaRegularizar,
             NotaMinimaPromocion = item.NotaMinimaPromocion,
             PorcentajeAsistenciaRegularizar = item.PorcentajeAsistenciaRegularizar,
@@ -793,7 +852,12 @@ else
             VigenciaCursadaAnios = item.VigenciaCursadaAnios,
             CantidadParciales = item.CantidadParciales,
             EsLibre = item.EsLibre,
-            TieneFinalObligatorio = item.TieneFinalObligatorio
+            TieneFinalObligatorio = item.TieneFinalObligatorio,
+
+            IdEstadoPromocion = item.IdEstadoPromocion,
+            IdEstadoRegular = item.IdEstadoRegular,
+            IdEstadoSiDesaprueba = item.IdEstadoSiDesaprueba,  // Corrección clave
+            IdEstadoSiFaltaAsistencia = item.IdEstadoSiFaltaAsistencia // Corrección clave
         };
         esEdicion = true; mostrarModal = true;
     }

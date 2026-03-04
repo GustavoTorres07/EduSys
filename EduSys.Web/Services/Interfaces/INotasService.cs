@@ -17,5 +17,9 @@ namespace EduSys.Web.Services.Interfaces
         Task<bool> ReabrirActaAsync(int idEvaluacion);
 
         Task<bool> CerrarCursadaAsync(CierreCursadaDTO dto);
+
+        Task<bool> EliminarEvaluacionAsync(int idEvaluacion);
+        Task<bool> ToggleCierreIndividualAsync(int idInscripcion);
+        Task<bool> ReabrirComisionAsync(int idComision);
     }
 }

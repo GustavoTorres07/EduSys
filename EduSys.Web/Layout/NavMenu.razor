@@ -387,6 +387,7 @@
                 @RenderNavLink("/carreras", "Carreras", Icons.Material.Filled.AccountBalance)
                 @RenderNavLink("/planes", "Planes de Estudio", Icons.Material.Filled.Map)
                 @RenderNavLink("/materias", "Materias", Icons.Material.Filled.Book)
+                @RenderNavLink("/admin/estados-materia", "Estados de Materia", Icons.Material.Filled.RuleFolder)
                 @RenderNavLink("/sedes", "Sedes", Icons.Material.Filled.Place)
                 @RenderNavLink("/modalidades", "Modalidades", Icons.Material.Filled.LaptopChromebook)
                 @RenderNavLink("/regimenes", "Regímenes", Icons.Material.Filled.Rule)
@@ -687,6 +688,7 @@
             allCommands.Add(new CommandItem { Title = "Forzar Inscripciones", Category = "Operaciones", Url = "/admin/inscripciones", Icon = Icons.Material.Filled.HowToReg });
             allCommands.Add(new CommandItem { Title = "Reportes", Category = "Sistema", Url = "/reportes/operativos", Icon = Icons.Material.Filled.BarChart });
             allCommands.Add(new CommandItem { Title = "Mesas Asignadas", Category = "Exámenes Finales", Url = "/docente/mesas-asignadas", Icon = Icons.Material.Filled.EventSeat });
+            allCommands.Add(new CommandItem { Title = "Estados de Materia", Category = "Config. Institucional", Url = "/admin/estados-materia", Icon = Icons.Material.Filled.RuleFolder });
         }
 
         if (user.IsInRole("Alumno"))

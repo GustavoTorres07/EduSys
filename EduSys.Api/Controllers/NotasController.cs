@@ -87,5 +87,29 @@ namespace EduSys.Api.Controllers
 
             return BadRequest("Error al cerrar el acta de la comisión.");
         }
+
+        [HttpDelete("evaluacion/{id}")]
+        public async Task<IActionResult> EliminarEvaluacion(int id)
+        {
+            var result = await _notasRepo.EliminarEvaluacionAsync(id);
+            if (!result) return BadRequest("No se puede eliminar la evaluación.");
+            return Ok();
+        }
+
+        [HttpPost("inscripcion/{id}/toggle-cierre")]
+        public async Task<IActionResult> ToggleCierreIndividual(int id)
+        {
+            var result = await _notasRepo.ToggleCierreCursadaIndividualAsync(id);
+            if (!result) return NotFound();
+            return Ok();
+        }
+
+        [HttpPost("comision/{idComision}/reabrir")]
+        public async Task<IActionResult> ReabrirComision(int idComision)
+        {
+            var result = await _notasRepo.ReabrirActaComisionAsync(idComision);
+            if (!result) return NotFound();
+            return Ok();
+        }
     }
 }

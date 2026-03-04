@@ -54,6 +54,7 @@ builder.Services.AddScoped<INotasService, NotasService>();
 builder.Services.AddScoped<IAlumnoPortalService, AlumnoPortalService>();
 builder.Services.AddScoped<IMesaFinalService, MesaFinalService>();
 builder.Services.AddScoped<IInscripcionFinalService, InscripcionFinalService>();
+builder.Services.AddScoped<IEstadoMateriaService, EstadoMateriaService>();
 
 Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 

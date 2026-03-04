@@ -8,7 +8,7 @@
 
         // Diccionario <IdEvaluacion, Nota>
         public Dictionary<int, decimal?> Notas { get; set; } = new();
-
+        public bool CursadaCerrada { get; set; }
         public decimal? Promedio { get; set; }
         public string Estado { get; set; } = "Cursando";
     }

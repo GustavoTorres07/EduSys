@@ -50,6 +50,20 @@ public partial class PlanMateria
 
     public bool? TieneFinalObligatorio { get; set; }
 
+    // =========================================================
+    // NUEVAS REGLAS ACADÉMICAS COMBINADAS
+    // =========================================================
+    public int? CantidadAplazosParaLibre { get; set; }
+    public decimal? PromedioMinimoAprobacion { get; set; }
+
+    // =========================================================
+    // MAPEOS DE ESTADOS DINÁMICOS
+    // =========================================================
+    public int? IdEstadoPromocion { get; set; }
+    public int? IdEstadoRegular { get; set; }
+    public int? IdEstadoDesaprobado { get; set; }
+    public int? IdEstadoLibre { get; set; }
+
     // --- IMPORTANTE: Esta es la colección que faltaba y causaba el error 500 ---
     public virtual ICollection<Comision> Comisions { get; set; } = new List<Comision>();
     // -------------------------------------------------------------------------
@@ -59,10 +73,29 @@ public partial class PlanMateria
     public virtual ICollection<Correlatividad> CorrelatividadIdPlanMateriaRequisitoNavigations { get; set; } = new List<Correlatividad>();
 
     public virtual Materia IdMateriaNavigation { get; set; } = null!;
-
+    // ... debajo de tus otras propiedades
+    public int ModoAprobacionCursada { get; set; } = 0;
+    public decimal? NotaEliminatoria { get; set; }
     public virtual PlanEstudio IdPlanNavigation { get; set; } = null!;
 
     public virtual Regimen? IdRegimenNavigation { get; set; }
 
     public virtual ICollection<MesaFinal> MesaFinals { get; set; } = new List<MesaFinal>();
+
+    // =========================================================
+    // MAPEOS DE ESTADOS DINÁMICOS
+    // =========================================================
+
+    // ESTOS DOS NOMBRES DEBEN COINCIDIR EXACTAMENTE CON SQL SERVER
+    public int? IdEstadoSiDesaprueba { get; set; }
+    public int? IdEstadoSiFaltaAsistencia { get; set; }
+
+    // --- IMPORTANTE: Esta es la colección que faltaba y causaba el error 500 ---
+    // -------------------------------------------------------------------------
+
+    // --- PROPIEDADES DE NAVEGACIÓN PARA LOS ESTADOS ---
+    public virtual EstadoMateria? IdEstadoPromocionNavigation { get; set; }
+    public virtual EstadoMateria? IdEstadoRegularNavigation { get; set; }
+    public virtual EstadoMateria? IdEstadoDesaprobadoNavigation { get; set; }
+    public virtual EstadoMateria? IdEstadoLibreNavigation { get; set; }
 }

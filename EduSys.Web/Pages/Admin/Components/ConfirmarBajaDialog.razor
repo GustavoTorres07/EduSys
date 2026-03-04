@@ -47,7 +47,7 @@
             @* CABECERA DE ALERTA *@
             <div class="dialog-header-danger">
                 <div class="d-flex align-center">
-                    <MudIcon Icon="@Icons.Material.Filled.PersonOff" Class="mr-3" />
+                    <MudIcon Icon="@Icons.Material.Filled.Warning" Class="mr-3" />
                     <MudText Typo="Typo.h6" Style="font-weight: 700; letter-spacing: 0.5px;">Confirmar Baja</MudText>
                 </div>
                 <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" OnClick="Cancel" Size="Size.Small" />
@@ -55,15 +55,15 @@
 
             @* CUERPO DEL MENSAJE *@
             <div class="dialog-body">
-                <MudText Typo="Typo.body1" Class="mb-2">¿Está seguro que desea dar de baja al docente?</MudText>
+                <MudText Typo="Typo.body1" Class="mb-2">@MensajePrincipal</MudText>
 
                 <div class="d-flex align-center mt-4 pa-3 rounded" style="background-color: #FEF2F2; border: 1px solid #FECACA;">
                     <MudAvatar Color="Color.Error" Size="Size.Medium" Variant="Variant.Outlined" Class="mr-3">
-                        @(string.IsNullOrEmpty(NombreEntidad) ? "?" : NombreEntidad.Substring(0, 1))
+                        @(string.IsNullOrEmpty(NombreEntidad) ? "?" : NombreEntidad.Substring(0, 1).ToUpper())
                     </MudAvatar>
                     <div>
                         <MudText Typo="Typo.subtitle2" Color="Color.Error" Style="font-weight: 700;">@NombreEntidad</MudText>
-                        <MudText Typo="Typo.caption" Color="Color.Default">El usuario perderá el acceso al sistema.</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Default">@MensajeSecundario</MudText>
                     </div>
                 </div>
             </div>
@@ -71,7 +71,7 @@
             @* FOOTER *@
             <div class="actions-footer">
                 <MudButton OnClick="Cancel" Variant="Variant.Outlined" Color="Color.Default">Cancelar</MudButton>
-                <MudButton OnClick="Submit" Variant="Variant.Filled" Color="Color.Error" StartIcon="@Icons.Material.Filled.PersonOff">Confirmar Baja</MudButton>
+                <MudButton OnClick="Submit" Variant="Variant.Filled" Color="Color.Error" StartIcon="@Icons.Material.Filled.DeleteForever">Confirmar Baja</MudButton>
             </div>
 
         </div>
@@ -79,9 +79,13 @@
 </MudDialog>
 
 @code {
-    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = null!;
 
     [Parameter] public string NombreEntidad { get; set; } = "";
+
+    // Parámetros dinámicos con valores por defecto genéricos
+    [Parameter] public string MensajePrincipal { get; set; } = "¿Está seguro que desea dar de baja este registro?";
+    [Parameter] public string MensajeSecundario { get; set; } = "El registro quedará inactivo en el sistema.";
 
     private void Submit() => MudDialog.Close(DialogResult.Ok(true));
     private void Cancel() => MudDialog.Cancel();

@@ -7,6 +7,9 @@
         public DateTime Fecha { get; set; }
         public bool EsRecuperatorio { get; set; }
 
+        // ✅ NUEVO: Permite enlazar un recuperatorio con su parcial original
+        public int? IdEvaluacionPadre { get; set; }
+
         // Lógica de asignación UI
         public bool AsignarATodos { get; set; } = true;
         public List<int> IdsInscripcionesSeleccionadas { get; set; } = new();

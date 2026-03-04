@@ -1,0 +1,202 @@
+﻿@page "/admin/estados-materia"
+@using EduSys.Shared.DTOs
+@using EduSys.Web.Services.Interfaces
+@using EduSys.Web.Pages.Admin.Components
+@using Microsoft.AspNetCore.Authorization
+
+@inject IEstadoMateriaService EstadoMateriaService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+@attribute [Authorize(Roles = "Administrador, Secretaria Academica")]
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-6 mb-10">
+    <div class="d-flex align-center justify-space-between mb-6">
+        <div>
+            <MudText Typo="Typo.h5" Style="font-weight: 800; color: #1e3a58;">Estados de Materia</MudText>
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">Gestión de condiciones académicas (Regular, Promocionado, Libre, etc.)</MudText>
+        </div>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="AbrirDialogoCrear">
+            Nuevo Estado
+        </MudButton>
+    </div>
+
+    <MudTable Items="@listaEstados" Dense="true" Hover="true" Bordered="true" Striped="true"
+              Filter="new Func<EstadoMateriaDTO, bool>(FilterFunc1)"
+              Loading="@cargando" LoadingProgressColor="Color.Info"
+              Elevation="1" Class="rounded-lg">
+
+        <ToolBarContent>
+            <MudTextField @bind-Value="searchString" Placeholder="Buscar estado..." Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0" />
+        </ToolBarContent>
+
+        <HeaderContent>
+            <MudTh Style="font-weight: bold; background-color: #f8f9fa;">ID</MudTh>
+            <MudTh Style="font-weight: bold; background-color: #f8f9fa;">Nombre</MudTh>
+            <MudTh Style="font-weight: bold; background-color: #f8f9fa; text-align: center;">Aprueba</MudTh>
+            <MudTh Style="font-weight: bold; background-color: #f8f9fa; text-align: center;">Habilita Final</MudTh>
+            <MudTh Style="font-weight: bold; background-color: #f8f9fa; text-align: center;">Estado</MudTh>
+            <MudTh Style="font-weight: bold; background-color: #f8f9fa; text-align: center;">Acciones</MudTh>
+        </HeaderContent>
+
+        <RowTemplate>
+            <MudTd DataLabel="ID">@context.Id</MudTd>
+            <MudTd DataLabel="Nombre" Style="font-weight: 600;">@context.Nombre.ToUpper()</MudTd>
+
+            <MudTd DataLabel="Aprueba" Style="text-align: center;">
+                @if (context.EsAprobatoria)
+                {
+                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" />
+                }
+                else
+                {
+                    <MudIcon Icon="@Icons.Material.Filled.Cancel" Color="Color.Default" />
+                }
+            </MudTd>
+
+            <MudTd DataLabel="Habilita Final" Style="text-align: center;">
+                @if (context.HabilitaFinal)
+                {
+                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Info" />
+                }
+                else
+                {
+                    <MudIcon Icon="@Icons.Material.Filled.Cancel" Color="Color.Default" />
+                }
+            </MudTd>
+
+            <MudTd DataLabel="Estado" Style="text-align: center;">
+                @if (context.Activo)
+                {
+                    <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Filled">Activo</MudChip>
+                }
+                else
+                {
+                    <MudChip T="string" Color="Color.Error" Size="Size.Small" Variant="Variant.Outlined">Inactivo</MudChip>
+                }
+            </MudTd>
+
+            <MudTd DataLabel="Acciones" Style="text-align: center;">
+                <MudTooltip Text="Editar">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" OnClick="@(() => AbrirDialogoEditar(context))" />
+                </MudTooltip>
+                <MudTooltip Text="Eliminar">
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => ConfirmarEliminacion(context))" />
+                </MudTooltip>
+            </MudTd>
+        </RowTemplate>
+        <PagerContent>
+            <MudTablePager RowsPerPageString="Filas por página:" InfoFormat="{first_item}-{last_item} de {all_items}" />
+        </PagerContent>
+    </MudTable>
+</MudContainer>
+
+@code {
+    private List<EstadoMateriaDTO> listaEstados = new();
+    private bool cargando = true;
+    private string searchString = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarDatos();
+    }
+
+    private async Task CargarDatos()
+    {
+        cargando = true;
+        listaEstados = await EstadoMateriaService.GetEstadosAsync();
+        cargando = false;
+    }
+
+    private bool FilterFunc1(EstadoMateriaDTO element) => FilterFunc(element, searchString);
+
+    private bool FilterFunc(EstadoMateriaDTO element, string searchString)
+    {
+        if (string.IsNullOrWhiteSpace(searchString)) return true;
+        if (element.Nombre.Contains(searchString, StringComparison.OrdinalIgnoreCase)) return true;
+        return false;
+    }
+
+    private async Task AbrirDialogoCrear()
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<CrearEditarEstadoMateriaDialog>("Crear Estado", options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data is EstadoMateriaDTO nuevoEstado)
+        {
+            var exito = await EstadoMateriaService.CrearEstadoAsync(nuevoEstado);
+            if (exito)
+            {
+                Snackbar.Add("Estado creado correctamente", Severity.Success);
+                await CargarDatos();
+            }
+            else
+            {
+                Snackbar.Add("Error al crear el estado", Severity.Error);
+            }
+        }
+    }
+
+    private async Task AbrirDialogoEditar(EstadoMateriaDTO estado)
+    {
+        // Clonamos el objeto
+        var estadoClone = new EstadoMateriaDTO
+        {
+            Id = estado.Id,
+            Nombre = estado.Nombre,
+            EsAprobatoria = estado.EsAprobatoria,
+            HabilitaFinal = estado.HabilitaFinal,
+            Activo = estado.Activo
+        };
+
+        // CORRECCIÓN: Usamos la sintaxis segura de diccionario
+        var parameters = new DialogParameters { ["Estado"] = estadoClone };
+
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+
+        var dialog = await DialogService.ShowAsync<CrearEditarEstadoMateriaDialog>("Editar Estado", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data is EstadoMateriaDTO estadoEditado)
+        {
+            var exito = await EstadoMateriaService.EditarEstadoAsync(estadoEditado.Id, estadoEditado);
+            if (exito)
+            {
+                Snackbar.Add("Estado actualizado correctamente", Severity.Success);
+                await CargarDatos();
+            }
+            else
+            {
+                Snackbar.Add("Error al actualizar el estado", Severity.Error);
+            }
+        }
+    }
+
+    private async Task ConfirmarEliminacion(EstadoMateriaDTO estado)
+    {
+        // CORRECCIÓN: Sintaxis segura de diccionario
+        var parameters = new DialogParameters { ["NombreEntidad"] = estado.Nombre };
+
+        // CORRECCIÓN: Se reemplaza DisableBackdropClick por BackdropClick = false
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true, BackdropClick = false };
+
+        var dialog = await DialogService.ShowAsync<ConfirmarBajaDialog>("Confirmar Baja", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            var exito = await EstadoMateriaService.EliminarEstadoAsync(estado.Id);
+            if (exito)
+            {
+                Snackbar.Add("Estado dado de baja", Severity.Success);
+                await CargarDatos();
+            }
+            else
+            {
+                Snackbar.Add("Error al dar de baja", Severity.Error);
+            }
+        }
+    }
+}

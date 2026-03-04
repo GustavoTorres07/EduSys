@@ -46,7 +46,8 @@ public partial class EduSysDbContext : DbContext
     public virtual DbSet<CarreraModalidad> CarreraModalidads { get; set; }
     public virtual DbSet<PlanEstudioSede> PlanEstudioSedes { get; set; }
     public virtual DbSet<SolicitudIngreso> SolicitudIngresos { get; set; }
-    public virtual DbSet<Notificacion> Notificacions { get; set; } 
+    public virtual DbSet<Notificacion> Notificacions { get; set; }
+    public virtual DbSet<EstadoMateria> EstadoMaterias { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -108,6 +109,11 @@ public partial class EduSysDbContext : DbContext
             entity.Property(e => e.TipoCalificacion).HasDefaultValue(0);
             entity.Property(e => e.CantidadParciales).HasDefaultValue(2);
             entity.Property(e => e.VigenciaCursadaAnios).HasDefaultValue(3);
+
+            entity.HasOne(d => d.IdEstadoPromocionNavigation).WithMany().HasForeignKey(d => d.IdEstadoPromocion);
+            entity.HasOne(d => d.IdEstadoRegularNavigation).WithMany().HasForeignKey(d => d.IdEstadoRegular);
+            entity.HasOne(d => d.IdEstadoDesaprobadoNavigation).WithMany().HasForeignKey(d => d.IdEstadoSiDesaprueba); // Mapeo a columna DB
+            entity.HasOne(d => d.IdEstadoLibreNavigation).WithMany().HasForeignKey(d => d.IdEstadoSiFaltaAsistencia); // Mapeo a columna DB
 
             entity.HasOne(d => d.IdMateriaNavigation).WithMany(p => p.PlanMateria)
                 .HasForeignKey(d => d.IdMateria)
@@ -258,7 +264,6 @@ public partial class EduSysDbContext : DbContext
             entity.Property(e => e.Nombre).HasMaxLength(100);
             entity.Property(e => e.Ponderacion).HasDefaultValue(0m).HasColumnType("decimal(5, 2)");
 
-            // ✅ AGREGAR ESTO: Configuración de nuevos campos de Acta y Confirmación
             entity.Property(e => e.EstadoActa).HasMaxLength(20).HasDefaultValue("Abierta");
             entity.Property(e => e.FechaCierre).HasColumnType("datetime");
             entity.Property(e => e.Libro).HasMaxLength(20);
@@ -267,7 +272,14 @@ public partial class EduSysDbContext : DbContext
             entity.Property(e => e.RequiereConfirmacion).HasDefaultValue(false);
             entity.Property(e => e.HorasAnticipacionConfirmar).HasDefaultValue(72);
             entity.Property(e => e.HorasAnticipacionBaja).HasDefaultValue(48);
-            // -------------------------------------------------------------------
+
+            // ==============================================================
+            // ✅ AQUÍ ESTÁ LA SOLUCIÓN: MAPEO DE LA RELACIÓN PADRE-HIJO
+            // ==============================================================
+            entity.HasOne(d => d.IdEvaluacionPadreNavigation)
+                .WithMany(p => p.InverseIdEvaluacionPadreNavigation)
+                .HasForeignKey(d => d.IdEvaluacionPadre)
+                .HasConstraintName("FK_Evaluacion_Padre");
 
             entity.HasOne(d => d.IdComisionNavigation).WithMany(p => p.Evaluacions)
                 .HasForeignKey(d => d.IdComision)
@@ -293,14 +305,18 @@ public partial class EduSysDbContext : DbContext
         {
             entity.HasKey(e => e.Id).HasName("PK__Inscripc__3214EC078AE1CC7D");
 
-            // ✅ AGREGAR ESTA LÍNEA (Índice Único Compuesto)
-            // Evita que un alumno se inscriba dos veces a la misma comisión a nivel base de datos
             entity.HasIndex(e => new { e.IdAlumno, e.IdComision }, "UQ_Inscripcion_Alumno_Comision").IsUnique();
 
+            entity.Property(e => e.CursadaCerrada).HasDefaultValueSql("((0))");
             entity.Property(e => e.CondicionFinal).HasMaxLength(20);
             entity.Property(e => e.Estado).HasMaxLength(20);
             entity.Property(e => e.FechaInscripcion).HasDefaultValueSql("(getdate())").HasColumnType("datetime");
             entity.Property(e => e.NotaFinalCursada).HasColumnType("decimal(4, 2)");
+
+            entity.HasOne(d => d.IdEstadoMateriaNavigation)
+            .WithMany(p => p.InscripcionCursadas)
+            .HasForeignKey(d => d.IdEstadoMateria)
+            .HasConstraintName("FK_InsCursada_Estado");
 
             entity.HasOne(d => d.IdAlumnoNavigation).WithMany(p => p.InscripcionCursada)
                 .HasForeignKey(d => d.IdAlumno)
@@ -372,7 +388,6 @@ public partial class EduSysDbContext : DbContext
             entity.Property(e => e.Nombre).HasMaxLength(100);
         });
 
-        // ✅ AGREGAR ESTO: Configuración de la tabla Notificacion
         modelBuilder.Entity<Notificacion>(entity =>
         {
             entity.ToTable("Notificacion");
@@ -385,7 +400,7 @@ public partial class EduSysDbContext : DbContext
             entity.Property(e => e.Tipo).HasMaxLength(50);
 
             entity.HasOne(d => d.IdUsuarioNavigation)
-                .WithMany() // No es necesario mapear la colección inversa en Usuario por ahora
+                .WithMany()
                 .HasForeignKey(d => d.IdUsuario)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_Notificacion_Usuario");
@@ -479,7 +494,7 @@ public partial class EduSysDbContext : DbContext
         modelBuilder.Entity<PlanEstudioSede>(entity =>
         {
             entity.ToTable("PlanEstudioSede");
-            entity.HasKey(e => new { e.IdPlan, e.IdSede }); // Clave compuesta
+            entity.HasKey(e => new { e.IdPlan, e.IdSede });
 
             entity.HasOne(d => d.IdPlanNavigation)
                 .WithMany(p => p.PlanEstudioSedes)
@@ -501,6 +516,21 @@ public partial class EduSysDbContext : DbContext
             entity.Property(e => e.CodigoPostal).HasMaxLength(20);
             entity.Property(e => e.Direccion).HasMaxLength(200);
             entity.Property(e => e.Nombre).HasMaxLength(100);
+        });
+
+        modelBuilder.Entity<EstadoMateria>(entity =>
+        {
+            entity.ToTable("EstadoMateria");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Nombre)
+                .IsRequired()
+                .HasMaxLength(50);
+
+            entity.Property(e => e.Activo).HasDefaultValueSql("((1))");
+            entity.Property(e => e.EsAprobatoria).HasDefaultValueSql("((0))");
+            entity.Property(e => e.HabilitaFinal).HasDefaultValueSql("((0))");
         });
 
         modelBuilder.Entity<Usuario>(entity =>
@@ -586,7 +616,6 @@ public partial class EduSysDbContext : DbContext
                 .HasConstraintName("FK_CarreraModalidad_Modalidad");
         });
 
-        // --- CORRECCIÓN: CONFIGURACIÓN SOLICITUD INGRESO ---
         modelBuilder.Entity<SolicitudIngreso>(entity =>
         {
             entity.ToTable("SolicitudIngreso");
@@ -612,18 +641,16 @@ public partial class EduSysDbContext : DbContext
             entity.Property(e => e.ObservacionAdmin).HasColumnType("nvarchar(max)");
             entity.Property(e => e.FechaNacimiento).HasColumnType("date");
 
-            // Relación con Carrera
             entity.HasOne(d => d.IdCarreraInteresNavigation)
                   .WithMany()
                   .HasForeignKey(d => d.IdCarreraInteres)
                   .OnDelete(DeleteBehavior.ClientSetNull)
                   .HasConstraintName("FK_SolicitudIngreso_Carrera");
 
-            // ✅ AGREGAR ESTO: Relación con Sede
             entity.HasOne(d => d.IdSedeNavigation)
                   .WithMany()
                   .HasForeignKey(d => d.IdSede)
-                  .OnDelete(DeleteBehavior.ClientSetNull) // O .SetNull si prefieres
+                  .OnDelete(DeleteBehavior.ClientSetNull)
                   .HasConstraintName("FK_SolicitudIngreso_Sede");
         });
 

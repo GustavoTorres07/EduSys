@@ -24,4 +24,10 @@ public partial class InscripcionCursada
     public virtual Comision IdComisionNavigation { get; set; } = null!;
 
     public virtual ICollection<Nota> Nota { get; set; } = new List<Nota>();
+
+    public int? IdEstadoMateria { get; set; }
+
+    public bool CursadaCerrada { get; set; }
+
+    public virtual EstadoMateria? IdEstadoMateriaNavigation { get; set; }
 }

@@ -106,7 +106,6 @@ namespace EduSys.Api.Repositories
 
         public async Task<List<PlanMateriaDTO>> GetMateriasByPlanAsync(int idPlan)
         {
-            // Traemos las materias
             var materias = await _context.PlanMateria
                 .Include(pm => pm.IdMateriaNavigation)
                 .Include(pm => pm.IdRegimenNavigation)
@@ -116,7 +115,6 @@ namespace EduSys.Api.Repositories
 
             var idsMaterias = materias.Select(m => m.Id).ToList();
 
-            // Traemos las reglas de correlatividad para estas materias
             var correlativas = await _context.Correlatividads
                 .Include(c => c.IdPlanMateriaRequisitoNavigation)
                     .ThenInclude(req => req.IdMateriaNavigation)
@@ -156,10 +154,21 @@ namespace EduSys.Api.Repositories
                     Objetivos = pm.Objetivos,
                     ContenidosMinimos = pm.ContenidosMinimos,
                     DescripcionProyecto = pm.DescripcionProyecto,
-                    CantidadParciales = pm.CantidadParciales ?? 2
+                    CantidadParciales = pm.CantidadParciales ?? 2,
+
+                    // ✅ MAPEO DE NUEVOS CAMPOS: Reglas Avanzadas y Estados
+                    ModoAprobacionCursada = pm.ModoAprobacionCursada,
+                    NotaEliminatoria = pm.NotaEliminatoria,
+                    PromedioMinimoAprobacion = pm.PromedioMinimoAprobacion,
+                    CantidadAplazosParaLibre = pm.CantidadAplazosParaLibre,
+
+                    IdEstadoPromocion = pm.IdEstadoPromocion,
+                    IdEstadoRegular = pm.IdEstadoRegular,
+                    IdEstadoDesaprobado = pm.IdEstadoDesaprobado,
+                    IdEstadoLibre = pm.IdEstadoLibre
                 };
 
-                // Asignamos las correlativas a la materia (Y EL DTO DEL DETALLE)
+                // Asignamos las correlativas a la materia
                 var misCorrelativas = correlativas.Where(c => c.IdPlanMateriaOrigen == pm.Id).ToList();
 
                 dto.CorrelativasDetalle = misCorrelativas.Select(c => new CorrelativaItemDTO
@@ -199,7 +208,7 @@ namespace EduSys.Api.Repositories
             existente.CargaHorariaTotal = pm.CargaHorariaTotal;
             existente.EsLibre = pm.EsLibre;
 
-            // Actualizamos las Reglas Académicas (Nuevos campos)
+            // Actualizamos las Reglas Académicas y Nuevos Campos
             existente.TipoCalificacion = pm.TipoCalificacion;
             existente.NotaMinimaRegularizar = pm.NotaMinimaRegularizar;
             existente.NotaMinimaAprobacion = pm.NotaMinimaAprobacion;
@@ -210,6 +219,17 @@ namespace EduSys.Api.Repositories
             existente.CantidadParciales = pm.CantidadParciales;
             existente.VigenciaCursadaAnios = pm.VigenciaCursadaAnios;
             existente.TieneFinalObligatorio = pm.TieneFinalObligatorio;
+
+            // ✅ ACTUALIZACIÓN DE NUEVOS CAMPOS: Reglas Avanzadas y Estados
+            existente.ModoAprobacionCursada = pm.ModoAprobacionCursada;
+            existente.NotaEliminatoria = pm.NotaEliminatoria;
+            existente.PromedioMinimoAprobacion = pm.PromedioMinimoAprobacion;
+            existente.CantidadAplazosParaLibre = pm.CantidadAplazosParaLibre;
+
+            existente.IdEstadoPromocion = pm.IdEstadoPromocion;
+            existente.IdEstadoRegular = pm.IdEstadoRegular;
+            existente.IdEstadoDesaprobado = pm.IdEstadoDesaprobado;
+            existente.IdEstadoLibre = pm.IdEstadoLibre;
 
             // Actualizamos Textos y Proyecto
             existente.Objetivos = pm.Objetivos;
@@ -232,7 +252,7 @@ namespace EduSys.Api.Repositories
             var item = await _context.PlanMateria.FindAsync(idPlanMateria);
             if (item == null) return false;
 
-            // Primero borramos las reglas correlativas que involucren a esta materia para que no salte error de base de datos
+            // Primero borramos las reglas correlativas que involucren a esta materia
             var reglas = _context.Correlatividads.Where(c => c.IdPlanMateriaOrigen == idPlanMateria || c.IdPlanMateriaRequisito == idPlanMateria);
             _context.Correlatividads.RemoveRange(reglas);
 
@@ -254,7 +274,7 @@ namespace EduSys.Api.Repositories
                 {
                     IdPlanMateriaOrigen = idPlanMateria,
                     IdPlanMateriaRequisito = item.IdPlanMateriaRequisito,
-                    TipoRequisito = item.TipoRequisito // Aquí guarda "Cursar-Regular" o "Rendir-Aprobada"
+                    TipoRequisito = item.TipoRequisito
                 });
             }
 
@@ -266,7 +286,7 @@ namespace EduSys.Api.Repositories
         {
             return await _context.PlanMateria
                 .Include(pm => pm.IdMateriaNavigation)
-                .Include(pm => pm.IdPlanNavigation) // Para saber de qué plan es
+                .Include(pm => pm.IdPlanNavigation)
                 .OrderBy(pm => pm.IdMateriaNavigation.Nombre)
                 .ToListAsync();
         }

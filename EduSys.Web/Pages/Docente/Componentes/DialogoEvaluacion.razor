@@ -97,6 +97,14 @@
         background: #cbd5e1;
         border-radius: 10px;
     }
+
+    .recuperatorio-box {
+        background-color: #FFFBEB;
+        border: 1px solid #FDE68A;
+        border-radius: 8px;
+        padding: 12px;
+        margin-top: 8px;
+    }
 </style>
 
 <MudDialog DisableSidePadding="true" Class="rounded-lg overflow-hidden">
@@ -145,6 +153,38 @@
                                            Variant="Variant.Outlined"
                                            DateFormat="dd/MM/yyyy"
                                            Class="force-black-text custom-input-borde" />
+                        </MudItem>
+
+                        @* NUEVO: Lógica de Recuperatorios *@
+                        <MudItem xs="12">
+                            <MudSwitch @bind-Value="model.EsRecuperatorio" Color="Color.Warning" Label="Esta evaluación es un Recuperatorio" Class="force-black-text font-weight-bold" />
+
+                            @if (model.EsRecuperatorio)
+                            {
+                                <div class="recuperatorio-box">
+                                    <MudSelect T="int?" Label="¿De qué examen original es recuperatorio?"
+                                               @bind-Value="model.IdEvaluacionPadre"
+                                               Variant="Variant.Outlined"
+                                               Margin="Margin.Dense"
+                                               Class="force-black-text bg-white"
+                                               Required="true" RequiredError="Debe seleccionar el examen original">
+                                        @if (EvaluacionesAnteriores != null && EvaluacionesAnteriores.Any())
+                                        {
+                                            @foreach (var eval in EvaluacionesAnteriores.Where(e => !e.EsRecuperatorio))
+                                            {
+                                                <MudSelectItem T="int?" Value="@eval.IdEvaluacion">@eval.Nombre (@eval.Fecha.ToString("dd/MM/yyyy"))</MudSelectItem>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <MudSelectItem T="int?" Value="null" Disabled="true">No hay exámenes previos</MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                    <MudText Typo="Typo.caption" Style="color: #B45309; display: block; margin-top: 4px;">
+                                        El sistema tomará la nota más alta entre el examen original y este recuperatorio para calcular el estado del alumno.
+                                    </MudText>
+                                </div>
+                            }
                         </MudItem>
 
                         @* Solo mostramos el método de asignación si es una evaluación nueva *@
@@ -212,7 +252,7 @@
             <div class="actions-footer">
                 <MudButton OnClick="Cancel" Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg">Cancelar</MudButton>
                 <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit"
-                           Disabled="@(!success || (model.IdEvaluacion == 0 && !model.AsignarATodos && !model.IdsInscripcionesSeleccionadas.Any()))"
+                           Disabled="@(!success || (model.IdEvaluacion == 0 && !model.AsignarATodos && !model.IdsInscripcionesSeleccionadas.Any()) || (model.EsRecuperatorio && model.IdEvaluacionPadre == null))"
                            Class="rounded-lg" StartIcon="@Icons.Material.Filled.Save">
                     @(model.IdEvaluacion == 0 ? "Crear Evaluación" : "Guardar Cambios")
                 </MudButton>
@@ -223,9 +263,12 @@
 
 @code {
     [CascadingParameter] MudDialogInstance MudDialog { get; set; } = null!;
+
     [Parameter] public List<NotaAlumnoDTO> ListaAlumnos { get; set; } = new();
 
-    // ✅ Cambiado a parámetro público para recibir datos al editar
+    // NUEVO PARÁMETRO: Para listar los parciales y enlazarlos al recuperatorio
+    [Parameter] public List<EvaluacionDTO> EvaluacionesAnteriores { get; set; } = new();
+
     [Parameter] public EvaluacionDTO model { get; set; } = new() { Fecha = DateTime.Today, AsignarATodos = true };
 
     private MudForm form = null!;

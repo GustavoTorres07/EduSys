@@ -61,5 +61,23 @@ namespace EduSys.Web.Services
             var response = await _http.PostAsJsonAsync("api/notas/cerrar-cursada", dto);
             return response.IsSuccessStatusCode;
         }
+
+        public async Task<bool> EliminarEvaluacionAsync(int idEvaluacion)
+        {
+            var res = await _http.DeleteAsync($"api/notas/evaluacion/{idEvaluacion}");
+            return res.IsSuccessStatusCode;
+        }
+
+        public async Task<bool> ToggleCierreIndividualAsync(int idInscripcion)
+        {
+            var res = await _http.PostAsync($"api/notas/inscripcion/{idInscripcion}/toggle-cierre", null);
+            return res.IsSuccessStatusCode;
+        }
+
+        public async Task<bool> ReabrirComisionAsync(int idComision)
+        {
+            var res = await _http.PostAsync($"api/notas/comision/{idComision}/reabrir", null);
+            return res.IsSuccessStatusCode;
+        }
     }
 }

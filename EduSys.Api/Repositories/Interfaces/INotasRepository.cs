@@ -20,5 +20,9 @@ namespace EduSys.Api.Repositories.Interfaces
         Task<bool> ReabrirActaAsync(int idEvaluacion);
 
         Task<bool> CerrarActaComisionAsync(int idComision, string libro, string folio);
+
+        Task<bool> EliminarEvaluacionAsync(int idEvaluacion);
+        Task<bool> ToggleCierreCursadaIndividualAsync(int idInscripcion);
+        Task<bool> ReabrirActaComisionAsync(int idComision);
     }
 }

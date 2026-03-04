@@ -32,11 +32,23 @@
         public string? ContenidosMinimos { get; set; }
         public string? DescripcionProyecto { get; set; }
         public int CantidadParciales { get; set; } = 2;
-
+        public int? IdEstadoPromocion { get; set; }
+        public int? IdEstadoRegular { get; set; }
+        public int? IdEstadoDesaprobado { get; set; }
+        public int? IdEstadoLibre { get; set; }
         public string CorrelativasTexto { get; set; } = "";
         public List<int> IdsCorrelativas { get; set; } = new List<int>();
+        public int? IdEstadoSiDesaprueba { get; set; } // Nuevo
+        public int? IdEstadoSiFaltaAsistencia { get; set; } // Nuevo
+
+        public int ModoAprobacionCursada { get; set; } = 0;
+        public decimal? NotaEliminatoria { get; set; }
+        public int? CantidadAplazosParaLibre { get; set; } // Nuevo
+        public decimal? PromedioMinimoAprobacion { get; set; } // Reemplaza o complementa NotaMinimaRegularizar
 
         // 👇 NUEVO: Lista con el detalle de si es Regular o Aprobada
         public List<CorrelativaItemDTO> CorrelativasDetalle { get; set; } = new List<CorrelativaItemDTO>();
+
+
     }
 }

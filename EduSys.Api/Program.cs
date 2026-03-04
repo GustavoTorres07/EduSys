@@ -80,7 +80,7 @@ builder.Services.AddScoped<IAlumnoPortalRepository, AlumnoPortalRepository>();
 builder.Services.AddScoped<IMesaFinalRepository, MesaFinalRepository>();
 builder.Services.AddScoped<IInscripcionFinalRepository, InscripcionFinalRepository>();
 builder.Services.AddScoped<IPdfReportService, PdfReportService>();
-
+builder.Services.AddScoped<IEstadoMateriaRepository, EstadoMateriaRepository>();
 
 builder.Services.AddControllers();
 

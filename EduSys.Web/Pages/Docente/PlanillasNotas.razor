@@ -14,8 +14,8 @@
 
 <style>
     /* =========================================
-               ESTILOS PLANILLA (TABLA AVANZADA)
-               ========================================= */
+                           ESTILOS PLANILLA (TABLA AVANZADA)
+                           ========================================= */
 
     :root {
         --excel-header-bg: #f8f9fa;
@@ -268,10 +268,16 @@
             <div class="d-flex gap-2">
                 <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="CargarDatos">Recargar</MudButton>
 
-                @* 👇 NUEVO BOTÓN PARA CERRAR CURSADA 👇 *@
-                <MudButton Variant="Variant.Filled" Color="Color.Warning" StartIcon="@Icons.Material.Filled.FactCheck" OnClick="AbrirDialogoCierreCursada" Class="font-weight-bold">Cerrar Cursada</MudButton>
+                @if (planilla.ComisionEstado == "Cerrada")
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Warning" StartIcon="@Icons.Material.Filled.LockOpen" OnClick="ReabrirCursadaGlobal" Class="font-weight-bold">Reabrir Cursada</MudButton>
+                }
+                else
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Error" StartIcon="@Icons.Material.Filled.Lock" OnClick="AbrirDialogoCierreCursada" Class="font-weight-bold">Cerrar Cursada</MudButton>
+                }
 
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.AddCircleOutline" OnClick="AbrirDialogoNuevaEvaluacion">Nueva Instancia</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.AddCircleOutline" OnClick="AbrirDialogoNuevaEvaluacion" Disabled="@(planilla.ComisionEstado == "Cerrada")">Nueva Instancia</MudButton>
             </div>
         </div>
 
@@ -316,6 +322,8 @@
 
                         <th class="th-group" rowspan="2" style="background-color: #e0f2fe !important;">PROMEDIO</th>
                         <th class="th-group" rowspan="2">ESTADO</th>
+
+                        <th class="th-group" rowspan="2">ACCIÓN</th>
                     </tr>
 
                     <tr>
@@ -325,7 +333,13 @@
                             {
                                 <th class="th-detail">
                                     <div class="d-flex flex-column align-center justify-space-between h-100">
-                                        <span style="font-weight: 800; color: #1e3a58; text-transform: uppercase;">@eval.Nombre</span>
+                                        <span style="font-weight: 800; color: #1e3a58; text-transform: uppercase;">
+                                            @if (eval.EsRecuperatorio)
+                                            {
+                                                <MudIcon Icon="@Icons.Material.Filled.Autorenew" Size="Size.Small" Color="Color.Warning" Class="mr-1" />
+                                            }
+                                            @eval.Nombre
+                                        </span>
                                         <span class="eval-date">@eval.Fecha.ToString("dd/MM")</span>
 
                                         <div class="d-flex align-center gap-1 mt-2">
@@ -341,16 +355,23 @@
                                             @if (eval.EstaCerrada)
                                             {
                                                 <MudTooltip Text="Reabrir">
-                                                    <MudIconButton Icon="@Icons.Material.Filled.LockReset" Size="Size.Small" Color="Color.Warning" OnClick="@(() => ReabrirActa(eval))" />
+                                                    <MudIconButton Icon="@Icons.Material.Filled.LockReset" Size="Size.Small" Color="Color.Warning" OnClick="@(() => ReabrirActa(eval))" Disabled="@(planilla.ComisionEstado == "Cerrada")" />
                                                 </MudTooltip>
                                             }
                                             else
                                             {
                                                 <MudTooltip Text="Editar">
-                                                    <MudIconButton Icon="@Icons.Material.Filled.Settings" Size="Size.Small" OnClick="@(() => AbrirDialogoEditarEvaluacion(eval))" />
+                                                    <MudIconButton Icon="@Icons.Material.Filled.Settings" Size="Size.Small" OnClick="@(() => AbrirDialogoEditarEvaluacion(eval))" Disabled="@(planilla.ComisionEstado == "Cerrada")" />
                                                 </MudTooltip>
                                                 <MudTooltip Text="Cerrar Acta Parcial">
-                                                    <MudIconButton Icon="@Icons.Material.Filled.LockOpen" Size="Size.Small" Color="Color.Error" OnClick="@(() => AbrirDialogoCierreActa(eval))" />
+                                                    <MudIconButton Icon="@Icons.Material.Filled.LockOpen" Size="Size.Small" Color="Color.Success" OnClick="@(() => AbrirDialogoCierreActa(eval))" Disabled="@(planilla.ComisionEstado == "Cerrada")" />
+                                                </MudTooltip>
+                                            }
+
+                                            @if (!eval.EstaCerrada && planilla.ComisionEstado != "Cerrada")
+                                            {
+                                                <MudTooltip Text="Eliminar Examen">
+                                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => EliminarExamen(eval))" />
                                                 </MudTooltip>
                                             }
                                         </div>
@@ -379,7 +400,7 @@
                                     var notaActual = alumno.Notas.ContainsKey(eval.IdEvaluacion) ? alumno.Notas[eval.IdEvaluacion] : null;
 
                                     <td>
-                                        @if (eval.EstaCerrada)
+                                        @if (eval.EstaCerrada || alumno.CursadaCerrada || planilla.ComisionEstado == "Cerrada")
                                         {
                                             <div class="grade-readonly">
                                                 @(notaActual?.ToString("0.##") ?? "-")
@@ -418,6 +439,21 @@
                                 <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="@GetEstadoColor(alumno.Estado)" Style="font-weight: 700; font-size: 0.7rem;">
                                     @alumno.Estado.ToUpper()
                                 </MudChip>
+                            </td>
+
+                            <td class="text-center">
+                                @if (alumno.CursadaCerrada)
+                                {
+                                    <MudTooltip Text="Reabrir Alumno">
+                                        <MudIconButton Icon="@Icons.Material.Filled.LockOpen" Size="Size.Small" Color="Color.Warning" OnClick="@(() => ToggleCierreFila(alumno.IdInscripcion))" Disabled="@(planilla.ComisionEstado == "Cerrada")" />
+                                    </MudTooltip>
+                                }
+                                else
+                                {
+                                    <MudTooltip Text="Cerrar Alumno (Bloquear Fila)">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Lock" Size="Size.Small" Color="Color.Success" OnClick="@(() => ToggleCierreFila(alumno.IdInscripcion))" Disabled="@(planilla.ComisionEstado == "Cerrada")" />
+                                    </MudTooltip>
+                                }
                             </td>
                         </tr>
                     }
@@ -460,21 +496,21 @@
     private async Task GuardarNota(NotaAlumnoDTO alumno, int idEvaluacion, decimal? nuevoValor)
     {
         alumno.Notas[idEvaluacion] = nuevoValor;
-        RecalcularPromedioAlumno(alumno);
+        // Quitamos RecalcularPromedioAlumno() porque ahora el servidor calcula todo y nos devuelve el estado y nota correctos.
         var exito = await NotasService.GuardarNotaAsync(alumno.IdInscripcion, idEvaluacion, nuevoValor);
-        if (!exito) { Snackbar.Add("Error al guardar.", Severity.Error); await CargarDatos(); }
-    }
 
-    private void RecalcularPromedioAlumno(NotaAlumnoDTO alumno)
-    {
-        var notasValidas = alumno.Notas.Values.Where(v => v.HasValue).Select(v => v!.Value).ToList();
-        if (notasValidas.Any()) alumno.Promedio = Math.Round(notasValidas.Average(), 2);
-        else alumno.Promedio = null;
+        if (!exito)
+        {
+            Snackbar.Add("Error al guardar.", Severity.Error);
+        }
+
+        // Recargamos los datos para obtener el estado calculado por el servidor
+        await CargarDatos();
     }
 
     private async Task ReabrirActa(EvaluacionDTO eval)
     {
-        var confirm = await DialogService.ShowMessageBox("Reabrir Acta", $"Se reabrirá el acta '{eval.Nombre}'.", yesText: "Confirmar", cancelText: "Cancelar");
+        bool? confirm = await DialogService.ShowMessageBox("Reabrir Acta", $"Se reabrirá el acta '{eval.Nombre}'.", yesText: "Confirmar", cancelText: "Cancelar");
         if (confirm == true)
         {
             if (await NotasService.ReabrirActaAsync(eval.IdEvaluacion)) { Snackbar.Add("Reabierta.", Severity.Success); await CargarDatos(); }
@@ -484,7 +520,13 @@
 
     private async Task AbrirDialogoNuevaEvaluacion()
     {
-        var parameters = new DialogParameters<DialogoEvaluacion> { { x => x.ListaAlumnos, planilla?.Alumnos ?? new() } };
+        // ✅ PASAMOS LAS EVALUACIONES ANTERIORES PARA EL DESPLEGABLE DE RECUPERATORIO
+        var parameters = new DialogParameters<DialogoEvaluacion>
+        {
+            { x => x.ListaAlumnos, planilla?.Alumnos ?? new() },
+            { x => x.EvaluacionesAnteriores, planilla?.Evaluaciones ?? new() }
+        };
+
         var dialog = await DialogService.ShowAsync<DialogoEvaluacion>("Nueva Evaluación", parameters, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
         var result = await dialog.Result;
         if (!result.Canceled && result.Data is EvaluacionDTO nuevaEval)
@@ -495,8 +537,22 @@
 
     private async Task AbrirDialogoEditarEvaluacion(EvaluacionDTO evaluacion)
     {
-        var evalClone = new EvaluacionDTO { IdEvaluacion = evaluacion.IdEvaluacion, Nombre = evaluacion.Nombre, Fecha = evaluacion.Fecha, EsRecuperatorio = evaluacion.EsRecuperatorio };
-        var parameters = new DialogParameters<DialogoEvaluacion> { { x => x.model, evalClone } };
+        var evalClone = new EvaluacionDTO
+        {
+            IdEvaluacion = evaluacion.IdEvaluacion,
+            Nombre = evaluacion.Nombre,
+            Fecha = evaluacion.Fecha,
+            EsRecuperatorio = evaluacion.EsRecuperatorio,
+            IdEvaluacionPadre = evaluacion.IdEvaluacionPadre // Importante pasar esto
+        };
+
+        // ✅ PASAMOS LAS EVALUACIONES ANTERIORES PARA EL DESPLEGABLE DE RECUPERATORIO
+        var parameters = new DialogParameters<DialogoEvaluacion>
+        {
+            { x => x.model, evalClone },
+            { x => x.EvaluacionesAnteriores, planilla?.Evaluaciones ?? new() }
+        };
+
         var dialog = await DialogService.ShowAsync<DialogoEvaluacion>("Editar Evaluación", parameters);
         var result = await dialog.Result;
         if (!result.Canceled && result.Data is EvaluacionDTO evalEditada)
@@ -517,18 +573,40 @@
         }
     }
 
-    // 👇 NUEVO: Lógica para abrir el modal y llamar al Cierre de Cursada
+    private async Task EliminarExamen(EvaluacionDTO eval)
+    {
+        bool? confirm = await DialogService.ShowMessageBox(
+            "Eliminar Examen",
+            $"¿Seguro que deseas eliminar '{eval.Nombre}'? Se borrarán TODAS las notas cargadas.",
+            yesText: "Eliminar", cancelText: "Cancelar");
+
+        if (confirm == true)
+        {
+            var exito = await NotasService.EliminarEvaluacionAsync(eval.IdEvaluacion);
+            if (exito) { Snackbar.Add("Examen eliminado.", Severity.Success); await CargarDatos(); }
+            else { Snackbar.Add("Error al eliminar (Verifique que el acta no esté cerrada).", Severity.Error); }
+        }
+    }
+
+    private async Task ToggleCierreFila(int idInscripcion)
+    {
+        var exito = await NotasService.ToggleCierreIndividualAsync(idInscripcion);
+        if (exito)
+        {
+            Snackbar.Add("Estado del alumno actualizado.", Severity.Success);
+            await CargarDatos();
+        }
+        else { Snackbar.Add("Error al actualizar el estado del alumno.", Severity.Error); }
+    }
+
     private async Task AbrirDialogoCierreCursada()
     {
-        // Reutilizamos el modal de Cierre de Acta pasándole un 0 (ya que no es un parcial específico)
         var parameters = new DialogParameters<DialogoCierreActa> { { x => x.IdEvaluacion, 0 } };
-
         var dialog = await DialogService.ShowAsync<DialogoCierreActa>("Cerrar Cursada Completa", parameters);
         var result = await dialog.Result;
 
         if (!result.Canceled && result.Data is CierreActaDTO datosCierre)
         {
-            // Mapeamos los datos del modal al nuevo DTO
             var request = new CierreCursadaDTO
             {
                 IdComision = this.IdComision,
@@ -542,10 +620,22 @@
                 Snackbar.Add("Cursada cerrada. Estados finales calculados y asentados.", Severity.Success);
                 await CargarDatos();
             }
-            else
-            {
-                Snackbar.Add("Hubo un error al cerrar la cursada.", Severity.Error);
-            }
+            else { Snackbar.Add("Hubo un error al cerrar la cursada.", Severity.Error); }
+        }
+    }
+
+    private async Task ReabrirCursadaGlobal()
+    {
+        bool? confirm = await DialogService.ShowMessageBox(
+            "Reabrir Cursada",
+            "¿Deseas reabrir la cursada de esta comisión? Esto habilitará la edición de notas nuevamente para todos los alumnos.",
+            yesText: "Reabrir", cancelText: "Cancelar");
+
+        if (confirm == true)
+        {
+            var exito = await NotasService.ReabrirComisionAsync(IdComision);
+            if (exito) { Snackbar.Add("Cursada reabierta.", Severity.Success); await CargarDatos(); }
+            else { Snackbar.Add("Error al reabrir la cursada.", Severity.Error); }
         }
     }
 
@@ -553,6 +643,7 @@
     {
         "Promocionado" => Color.Success,
         "Regular" => Color.Info,
+        "Desaprobado" => Color.Warning,
         "Libre" => Color.Error,
         _ => Color.Default
     };
