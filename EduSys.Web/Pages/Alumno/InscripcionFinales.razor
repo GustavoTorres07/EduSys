@@ -6,6 +6,8 @@
 @using System.Security.Claims
 @attribute [Authorize(Roles = "Alumno")]
 
+@inject IReportesService ReportesService
+@inject IJSRuntime JS
 @inject IAlumnoService AlumnoService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IInscripcionFinalService InscripcionFinalService
@@ -239,7 +241,8 @@
                                         </MudButton>
                                         <MudSpacer />
                                         @* AQUÍ PONDREMOS EL BOTÓN DE DESCARGAR CONSTANCIA EN EL PRÓXIMO PASO *@
-                                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.PictureAsPdf" Disabled="true">
+                                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.PictureAsPdf"
+                                                   OnClick="@(() => DescargarConstanciaPDF(mesa.IdInscripcionFinal!.Value, mesa.MateriaNombre))" Disabled="procesando">
                                             Constancia
                                         </MudButton>
                                     }
@@ -363,6 +366,35 @@
             {
                 Snackbar.Add(res.Mensaje, Severity.Error);
             }
+            procesando = false;
+        }
+    }
+
+    // ✅ DESCARGA CONSTANCIA DE INSCRIPCIÓN A FINAL (DESDE LA TARJETA)
+    private async Task DescargarConstanciaPDF(int idInscripcion, string materia)
+    {
+        procesando = true;
+        try
+        {
+            Snackbar.Add("Generando constancia...", Severity.Info);
+
+            var pdfBytes = await ReportesService.DescargarConstanciaFinalAsync(idInscripcion);
+
+            // Reutilizamos la función de JS para descargar el archivo
+            using var stream = new MemoryStream(pdfBytes);
+            using var streamRef = new DotNetStreamReference(stream);
+            string fileName = $"Constancia_Examen_{materia.Replace(" ", "_")}.pdf";
+
+            await JS.InvokeVoidAsync("downloadFileFromStream", fileName, streamRef);
+
+            Snackbar.Add("Constancia descargada exitosamente.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("No se pudo generar la constancia.", Severity.Error);
+        }
+        finally
+        {
             procesando = false;
         }
     }

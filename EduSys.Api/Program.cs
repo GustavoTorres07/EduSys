@@ -79,6 +79,8 @@ builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IAlumnoPortalRepository, AlumnoPortalRepository>();
 builder.Services.AddScoped<IMesaFinalRepository, MesaFinalRepository>();
 builder.Services.AddScoped<IInscripcionFinalRepository, InscripcionFinalRepository>();
+builder.Services.AddScoped<IPdfReportService, PdfReportService>();
+
 
 builder.Services.AddControllers();
 
@@ -86,6 +88,9 @@ builder.Services.AddControllers();
 // 2. CONSTRUCCIÓN DE LA APLICACIÓN
 // ==================================================================
 var app = builder.Build();
+
+// 1. Agrega esto justo después de "var app = builder.Build();" o después de "var builder = WebApplication.CreateBuilder(args);"
+QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 
 // ==================================================================
 // 3. PIPELINE DE MIDDLEWARE (ORDEN ES CRÍTICO)

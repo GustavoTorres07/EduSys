@@ -10,5 +10,8 @@ namespace EduSys.Api.Repositories.Interfaces
         Task<ResultadoOperacionDTO> CreateAsync(MesaFinalRequestDTO dto);
         Task<ResultadoOperacionDTO> UpdateAsync(MesaFinalRequestDTO dto);
         Task<ResultadoOperacionDTO> DeleteAsync(int id);
+        Task<ActaMesaFinalDTO?> GetActaMesaFinalAsync(int idMesaFinal);
+        Task<bool> GuardarNotaFinalAsync(int idInscripcion, decimal? nota);
+        Task<bool> CerrarActaFinalAsync(int idMesaFinal, string libro, string folio);
     }
 }

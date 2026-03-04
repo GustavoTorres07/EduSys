@@ -476,8 +476,6 @@
 
                 <div class="nav-section-header">Exámenes Finales</div>
                 @RenderNavLink("/docente/mesas-asignadas", "Mesas Asignadas", Icons.Material.Filled.EventSeat)
-                @RenderNavLink("/docente/cargar-finales", "Notas de Finales", Icons.Material.Filled.EmojiEvents)
-                @RenderNavLink("/docente/actas-finales", "Actas de Finales", Icons.Material.Filled.MenuBook)
 
                 <div class="nav-section-header">Ayuda</div>
                 @RenderNavLink("/soporte/nuevo-ticket", "Soporte Técnico", Icons.Material.Filled.SupportAgent)
@@ -646,7 +644,6 @@
         builder.CloseElement();
     };
 
-    // --- Lógica de Favoritos ---
     private async Task LoadFavorites()
     {
         try
@@ -689,6 +686,7 @@
             allCommands.Add(new CommandItem { Title = "Docentes", Category = "Comunidad", Url = "/docentes", Icon = Icons.Material.Filled.Face });
             allCommands.Add(new CommandItem { Title = "Forzar Inscripciones", Category = "Operaciones", Url = "/admin/inscripciones", Icon = Icons.Material.Filled.HowToReg });
             allCommands.Add(new CommandItem { Title = "Reportes", Category = "Sistema", Url = "/reportes/operativos", Icon = Icons.Material.Filled.BarChart });
+            allCommands.Add(new CommandItem { Title = "Mesas Asignadas", Category = "Exámenes Finales", Url = "/docente/mesas-asignadas", Icon = Icons.Material.Filled.EventSeat });
         }
 
         if (user.IsInRole("Alumno"))
@@ -696,7 +694,6 @@
             allCommands.Add(new CommandItem { Title = "Mis Notas", Category = "Cursada", Url = "/alumno/dashboard", Icon = Icons.Material.Filled.Grade });
             allCommands.Add(new CommandItem { Title = "Inscribirme a Cursadas", Category = "Autogestión", Url = "/inscripcion-materias", Icon = Icons.Material.Filled.LibraryAdd });
             allCommands.Add(new CommandItem { Title = "Mis Horarios", Category = "Cursada", Url = "/horarios-alumno", Icon = Icons.Material.Filled.CalendarMonth });
-            // ✅ CORRECCIÓN EN EL COMMAND PALETTE: AHORA APUNTA A /alumno/inscripcion-finales
             allCommands.Add(new CommandItem { Title = "Rendir Finales", Category = "Autogestión", Url = "/alumno/inscripcion-finales", Icon = Icons.Material.Filled.AssignmentTurnedIn });
         }
 

@@ -56,5 +56,33 @@ namespace EduSys.Api.Controllers
             if (result.Exito) return Ok(result);
             return BadRequest(result);
         }
+
+        // ==================================================================
+        // ENDPOINTS DE CALIFICACIONES Y ACTAS
+        // ==================================================================
+
+        [HttpGet("{idMesa}/acta")]
+        public async Task<IActionResult> GetActaMesaFinal(int idMesa)
+        {
+            var acta = await _repo.GetActaMesaFinalAsync(idMesa);
+            if (acta == null) return NotFound("La mesa no existe.");
+            return Ok(acta);
+        }
+
+        [HttpPut("inscripcion/{idInscripcion}/nota")]
+        public async Task<IActionResult> GuardarNotaFinal(int idInscripcion, [FromBody] decimal? nota)
+        {
+            var exito = await _repo.GuardarNotaFinalAsync(idInscripcion, nota);
+            if (exito) return Ok();
+            return BadRequest("No se pudo guardar la nota.");
+        }
+
+        [HttpPost("{idMesa}/cerrar-acta")]
+        public async Task<IActionResult> CerrarActaFinal(int idMesa, [FromBody] CierreActaDTO dto) // Reutilizamos tu CierreActaDTO
+        {
+            var exito = await _repo.CerrarActaFinalAsync(idMesa, dto.Libro, dto.Folio);
+            if (exito) return Ok(new { message = "Acta cerrada exitosamente." });
+            return BadRequest("No se pudo cerrar el acta. Verifica que no esté cerrada previamente.");
+        }
     }
 }

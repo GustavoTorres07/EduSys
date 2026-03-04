@@ -10,14 +10,15 @@
 
 @inject IPeriodoService PeriodoService
 @inject IAlumnoService AlumnoService
-@inject IReportesService ReportesService // 👈 CAMBIO: Inyectamos el servicio de reportes
+@inject IReportesService ReportesService 
+@inject IInscripcionFinalService InscripcionFinalService 
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 
 <style>
     .tramites-container {
-        max-width: 1000px;
+        max-width: 1200px;
         margin: 0 auto;
         padding: 2rem;
     }
@@ -60,13 +61,13 @@
     else
     {
         <MudGrid>
-            @* 1. CONSTANCIA DE INSCRIPCIÓN *@
+            @* 1. CONSTANCIA DE INSCRIPCIÓN A CURSADA *@
             <MudItem xs="12" sm="6" md="4">
                 <div class="doc-card pa-6">
                     <div class="doc-icon-box" style="background-color: #e0f2fe;">
                         <MudIcon Icon="@Icons.Material.Filled.AssignmentInd" Size="Size.Large" Style="color: #0284c7;" />
                     </div>
-                    <MudText Typo="Typo.h6" Style="font-weight: 700;">Constancia de Inscripción</MudText>
+                    <MudText Typo="Typo.h6" Style="font-weight: 700;">Constancia de Cursada</MudText>
                     <MudText Typo="Typo.body2" Class="mt-2 mb-4" Style="color: #64748b;">
                         Documento que acredita las materias que estás cursando actualmente en el ciclo <strong>@periodoActual?.Nombre</strong>.
                     </MudText>
@@ -102,7 +103,58 @@
                 </div>
             </MudItem>
 
-            @* 3. HISTORIA ACADÉMICA (Placeholder) *@
+            @* 3. CONSTANCIA DE EXAMEN FINAL (¡NUEVO!) *@
+            <MudItem xs="12" sm="6" md="4">
+                <div class="doc-card pa-6">
+                    <div class="doc-icon-box" style="background-color: #f3e8ff;">
+                        <MudIcon Icon="@Icons.Material.Filled.FactCheck" Size="Size.Large" Style="color: #9333ea;" />
+                    </div>
+                    <MudText Typo="Typo.h6" Style="font-weight: 700;">Constancia Examen Final</MudText>
+                    <MudText Typo="Typo.body2" Class="mt-2 mb-2" Style="color: #64748b;">
+                        Comprobante oficial de tu turno para rendir.
+                    </MudText>
+                    @if (misInscripcionesAFinales != null && misInscripcionesAFinales.Any())
+                    {
+                        <div class="mb-4">
+                            <MudSelect T="int" @bind-Value="idFinalSeleccionado"
+                                       Label="Seleccione un Final"
+                                       Variant="Variant.Outlined"
+                                       AnchorOrigin="Origin.BottomCenter"
+                                       Margin="Margin.Dense"
+                                       Style="background-color: white; border-color: #456990;"
+                                       Class="rounded-lg">
+                                <MudSelectItem Value="0">
+                                    <span style="color: #94a3b8; font-style: italic;">-- Elija un Final --</span>
+                                </MudSelectItem>
+                                @foreach (var final in misInscripcionesAFinales)
+                                {
+                                    <MudSelectItem Value="@final.IdInscripcionFinal!.Value">
+                                        <span style="font-weight: 600; color: #1e293b;">@final.MateriaNombre</span>
+                                        <span style="font-size: 0.8rem; color: #64748b;">(@final.FechaHora.ToString("dd/MM/yyyy"))</span>
+                                    </MudSelectItem>
+                                }
+                            </MudSelect>
+                        </div>
+                    }
+                    else
+                    {
+                        <MudAlert Severity="Severity.Normal" Class="mb-4 py-2" Style="font-size:0.8rem; background-color: #f8fafc; border: 1px dashed #cbd5e1;">
+                            No tienes finales inscriptos vigentes.
+                        </MudAlert>
+                    }
+
+                    <div class="mt-auto">
+                        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" FullWidth="true"
+                                   StartIcon="@Icons.Material.Filled.PictureAsPdf"
+                                   OnClick="DescargarConstanciaExamenFinal"
+                                   Disabled="@(idFinalSeleccionado == 0 || procesando)">
+                            Generar PDF
+                        </MudButton>
+                    </div>
+                </div>
+            </MudItem>
+
+            @* 4. HISTORIA ACADÉMICA (Placeholder) *@
             <MudItem xs="12" sm="6" md="4">
                 <div class="doc-card pa-6">
                     <div class="doc-icon-box" style="background-color: #fff7ed;">
@@ -115,8 +167,9 @@
                     <div class="mt-auto">
                         <MudButton Variant="Variant.Outlined" Color="Color.Warning" FullWidth="true"
                                    StartIcon="@Icons.Material.Filled.Download"
-                                   Disabled="true">
-                            Próximamente
+                                   OnClick="DescargarAnalitico"
+                                   Disabled="procesando">
+                            Generar Analítico
                         </MudButton>
                     </div>
                 </div>
@@ -131,6 +184,10 @@
     private AlumnoDTO? alumnoActual;
     private PeriodoAcademicoDTO? periodoActual;
 
+    // Variables para la Constancia de Finales
+    private List<MesaFinalOfertaDTO> misInscripcionesAFinales = new();
+    private int idFinalSeleccionado = 0;
+
     protected override async Task OnInitializedAsync()
     {
         loading = true;
@@ -143,10 +200,17 @@
             {
                 alumnoActual = await AlumnoService.GetByUsuarioIdAsync(idUsuario);
 
-                // Buscamos el periodo actual para la constancia automática
                 var periodos = await PeriodoService.GetAllAsync();
                 periodoActual = periodos.FirstOrDefault(p => p.Activo && p.Estado == "Abierto"
                                                         && p.FechaInicio <= DateTime.Now && p.FechaFin >= DateTime.Now);
+
+                // Si hay periodo, buscamos sus inscripciones a finales
+                if (alumnoActual != null && periodoActual != null)
+                {
+                    // Llamamos al servicio que devuelve la oferta y filtramos los que ya está inscripto
+                    var oferta = await InscripcionFinalService.GetOfertaAsync(alumnoActual.Id, periodoActual.Id);
+                    misInscripcionesAFinales = oferta.Where(o => o.YaInscripto).ToList();
+                }
             }
         }
         catch (Exception ex)
@@ -159,7 +223,38 @@
         }
     }
 
-    // ✅ DESCARGA CONSTANCIA DE INSCRIPCIÓN
+    // ✅ DESCARGA CONSTANCIA DE EXAMEN FINAL
+    private async Task DescargarConstanciaExamenFinal()
+    {
+        if (idFinalSeleccionado == 0) return;
+
+        procesando = true;
+        try
+        {
+            Snackbar.Add("Generando comprobante de mesa...", Severity.Info);
+
+            var pdfBytes = await ReportesService.DescargarConstanciaFinalAsync(idFinalSeleccionado);
+            var nombreMateria = misInscripcionesAFinales.First(m => m.IdInscripcionFinal == idFinalSeleccionado).MateriaNombre;
+            var fileName = $"Constancia_Examen_{nombreMateria.Replace(" ", "_")}.pdf";
+
+            using var stream = new MemoryStream(pdfBytes);
+            using var streamRef = new DotNetStreamReference(stream);
+            await JS.InvokeVoidAsync("downloadFileFromStream", fileName, streamRef);
+
+            Snackbar.Add("Descarga finalizada.", Severity.Success);
+            idFinalSeleccionado = 0; // Reiniciamos el combo
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Error al generar la constancia de examen.", Severity.Error);
+        }
+        finally
+        {
+            procesando = false;
+        }
+    }
+
+    // ✅ DESCARGA CONSTANCIA DE INSCRIPCIÓN (CURSADA)
     private async Task DescargarConstanciaInscripcion()
     {
         if (!ValidarRequisitos()) return;
@@ -168,13 +263,9 @@
         try
         {
             Snackbar.Add("Generando constancia...", Severity.Info);
-
-            // Usamos el nuevo servicio ReportesService
             var pdfBytes = await ReportesService.DescargarConstanciaInscripcionPdfAsync(alumnoActual!.Id, periodoActual!.Id);
-
             var fileName = $"Constancia_Inscripcion_{DateTime.Now:yyyy}.pdf";
 
-            // Descarga JS
             using var stream = new MemoryStream(pdfBytes);
             using var streamRef = new DotNetStreamReference(stream);
             await JS.InvokeVoidAsync("downloadFileFromStream", fileName, streamRef);
@@ -183,7 +274,34 @@
         }
         catch (Exception ex)
         {
-            Snackbar.Add("Error al descargar: " + ex.Message, Severity.Error);
+            // Ahora mostrará el mensaje real: "No tienes materias inscriptas..."
+            Snackbar.Add(ex.Message, Severity.Warning);
+        }
+        finally
+        {
+            procesando = false;
+        }
+    }
+
+    // ✅ DESCARGA ANALÍTICO PROVISORIO
+    private async Task DescargarAnalitico()
+    {
+        procesando = true;
+        try
+        {
+            Snackbar.Add("Compilando historia académica...", Severity.Info);
+            var pdfBytes = await ReportesService.DescargarAnaliticoProvisorioAsync();
+            var fileName = $"Analitico_Provisorio_{DateTime.Now:yyyyMMdd}.pdf";
+
+            using var stream = new MemoryStream(pdfBytes);
+            using var streamRef = new DotNetStreamReference(stream);
+            await JS.InvokeVoidAsync("downloadFileFromStream", fileName, streamRef);
+
+            Snackbar.Add("Analítico generado exitosamente.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
         }
         finally
         {
@@ -200,20 +318,16 @@
         try
         {
             Snackbar.Add("Generando certificado...", Severity.Info);
-
-            // Usamos el nuevo servicio ReportesService
             var pdfBytes = await ReportesService.DescargarCertificadoRegularPdfAsync(alumnoActual!.Id, periodoActual!.Id);
-
             var fileName = $"Certificado_Regular_{DateTime.Now:yyyy}.pdf";
 
-            // Descarga JS
             using var stream = new MemoryStream(pdfBytes);
             using var streamRef = new DotNetStreamReference(stream);
             await JS.InvokeVoidAsync("downloadFileFromStream", fileName, streamRef);
 
             Snackbar.Add("Descarga finalizada.", Severity.Success);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             Snackbar.Add("No se pudo generar el certificado. Verifica que tengas inscripciones activas.", Severity.Warning);
         }

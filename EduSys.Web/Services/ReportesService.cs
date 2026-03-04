@@ -37,13 +37,16 @@ namespace EduSys.Web.Services
 
         public async Task<byte[]> DescargarConstanciaInscripcionPdfAsync(int idAlumno, int idPeriodo)
         {
-            var url = $"api/reportes/constancia-inscripcion-descargar?idAlumno={idAlumno}&idPeriodo={idPeriodo}";
-            var response = await _http.GetAsync(url);
+            var response = await _http.GetAsync($"api/Reportes/constancia-inscripcion?idAlumno={idAlumno}&idPeriodo={idPeriodo}");
 
-            if (response.IsSuccessStatusCode)
-                return await response.Content.ReadAsByteArrayAsync();
+            if (!response.IsSuccessStatusCode)
+            {
+                // Leemos el motivo del rechazo desde la API
+                var errorMsg = await response.Content.ReadAsStringAsync();
+                throw new Exception(errorMsg);
+            }
 
-            throw new Exception("Error al descargar la constancia.");
+            return await response.Content.ReadAsByteArrayAsync();
         }
 
         public async Task<byte[]> DescargarHorarioPdfAsync(int idPeriodo, int idCarrera, int idSede)
@@ -77,6 +80,24 @@ namespace EduSys.Web.Services
         {
             var url = $"api/reportes/historia-academica?idAlumno={idAlumno}";
             return await _http.GetFromJsonAsync<HistoriaAcademicaDTO>(url);
+        }
+
+        public async Task<byte[]> DescargarConstanciaFinalAsync(int idInscripcion)
+        {
+            return await _http.GetByteArrayAsync($"api/Reportes/constancia-final/{idInscripcion}");
+        }
+
+        public async Task<byte[]> DescargarAnaliticoProvisorioAsync()
+        {
+            var response = await _http.GetAsync("api/Reportes/analitico-provisorio");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorMsg = await response.Content.ReadAsStringAsync();
+                throw new Exception(errorMsg);
+            }
+
+            return await response.Content.ReadAsByteArrayAsync();
         }
     }
 }

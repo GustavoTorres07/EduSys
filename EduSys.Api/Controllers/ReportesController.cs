@@ -1,15 +1,20 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using EduSys.Api.Data;
+using EduSys.Api.Repositories.Interfaces;
+using EduSys.Api.Services.Interfaces; // <-- NECESARIO PARA EL PDF SERVICE
+using EduSys.Shared.DTOs;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
-using EduSys.Shared.DTOs;
 using System;
-using System.Linq;
-using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.IO;
-using EduSys.Api.Repositories.Interfaces;
+using System.Linq;
+using System.Security.Claims; // <-- NECESARIO PARA LEER EL TOKEN
+using System.Threading.Tasks;
 
 // Alias
 using Document = QuestPDF.Fluent.Document;
@@ -38,21 +43,27 @@ namespace EduSys.Server.Controllers
         private const float BORDE = 2.0f;
         private const float BORDE_MATERIA = 2.0f;
 
-        // Repositorios
+        // Repositorios y Servicios (AQUÍ INYECTAMOS LO QUE FALTABA)
         private readonly IInscripcionRepository _inscripcionRepo;
         private readonly IHorarioRepository _horarioRepo;
-        private readonly IReportesRepository _reporteRepo; // Nuevo
+        private readonly IReportesRepository _reporteRepo;
+        private readonly IPdfReportService _pdfService; // <-- NUEVO
+        private readonly EduSysDbContext _context; // <-- NUEVO
         private readonly IWebHostEnvironment _env;
 
         public ReportesController(
             IInscripcionRepository inscripcionRepo,
             IHorarioRepository horarioRepo,
             IReportesRepository reporteRepo,
+            IPdfReportService pdfService, // <-- NUEVO EN EL CONSTRUCTOR
+            EduSysDbContext context,      // <-- NUEVO EN EL CONSTRUCTOR
             IWebHostEnvironment env)
         {
             _inscripcionRepo = inscripcionRepo;
             _horarioRepo = horarioRepo;
             _reporteRepo = reporteRepo;
+            _pdfService = pdfService; // <-- NUEVO
+            _context = context;       // <-- NUEVO
             _env = env;
         }
 
@@ -106,34 +117,14 @@ namespace EduSys.Server.Controllers
             {
                 var datos = await _reporteRepo.GetDatosConstanciaAsync(idAlumno, idPeriodo);
 
+                // Validamos que el alumno tenga al menos 1 materia
                 if (datos == null || !datos.Materias.Any())
-                    return BadRequest("No se encontraron inscripciones para generar la constancia.");
+                    return BadRequest("No tienes materias inscriptas en el ciclo activo para generar la constancia.");
 
-                QuestPDF.Settings.License = LicenseType.Community;
+                // Usamos el servicio PDF centralizado
+                var pdfBytes = _pdfService.GenerarConstanciaInscripcion(datos);
 
-                var pdf = Document.Create(container =>
-                {
-                    container.Page(page =>
-                    {
-                        page.Size(PageSizes.A4);
-                        page.Margin(1.2f, Unit.Centimetre);
-                        page.PageColor(Colors.White);
-                        page.DefaultTextStyle(x => x.FontSize(9).FontFamily("Arial").FontColor(Colors.Black));
-
-                        // Header
-                        page.Header().Element(c => HeaderConstancia(c, datos));
-
-                        // Body
-                        page.Content().PaddingVertical(5).Element(c => BodyConstancia(c, datos, _env.WebRootPath));
-
-                        // Footer
-                        page.Footer().Element(c => FooterConstancia(c));
-                    });
-                });
-
-                var pdfBytes = pdf.GeneratePdf();
-                var nombreArchivo = $"Constancia_{datos.Legajo}_{DateTime.Now:yyyyMMdd}.pdf";
-
+                var nombreArchivo = $"Constancia_Cursada_{datos.Legajo}_{DateTime.Now:yyyyMMdd}.pdf";
                 return File(pdfBytes, "application/pdf", nombreArchivo);
             }
             catch (Exception ex)
@@ -294,6 +285,41 @@ namespace EduSys.Server.Controllers
                     c.Item().Text(data.RectorCargo).FontSize(8).Italic();
                 });
             });
+        }
+
+        // =====================================================
+        // ANALÍTICO PROVISORIO (HISTORIA ACADÉMICA)
+        // =====================================================
+        [HttpGet("analitico-provisorio")]
+        [Authorize(Roles = "Alumno")]
+        public async Task<IActionResult> DescargarAnaliticoProvisorio()
+        {
+            try
+            {
+                // Obtenemos al alumno logueado
+                var idUsuarioClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                if (!int.TryParse(idUsuarioClaim, out int idUsuario)) return Unauthorized();
+
+                var alumno = await _context.Alumnos.FirstOrDefaultAsync(a => a.IdUsuario == idUsuario);
+                if (alumno == null) return Unauthorized();
+
+                // Reutilizamos el método que ya tenías para traer la historia
+                var historia = await _reporteRepo.GetHistoriaAcademicaAsync(alumno.Id);
+
+                // 👇 CORRECCIÓN: Usamos .Detalle en lugar de .Materias 👇
+                if (historia == null || !historia.Detalle.Any())
+                    return BadRequest("No tienes historial académico registrado para generar el analítico.");
+
+                // Generamos el PDF
+                var pdfBytes = _pdfService.GenerarAnaliticoProvisorio(historia);
+
+                var nombreArchivo = $"Analitico_{historia.Legajo}_{DateTime.Now:yyyyMMdd}.pdf";
+                return File(pdfBytes, "application/pdf", nombreArchivo);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error generando Analítico PDF: {ex.Message}");
+            }
         }
 
         // ---------------- HELPERS VISUALES CONSTANCIA ----------------
@@ -484,6 +510,29 @@ namespace EduSys.Server.Controllers
             string ruta = Path.Combine(_env.WebRootPath ?? "wwwroot", "images", "sello_edusys.png");
             if (!System.IO.File.Exists(ruta)) ruta = Path.Combine(AppContext.BaseDirectory, "wwwroot", "images", "sello_edusys.png");
             return ruta;
+        }
+
+        // =====================================================
+        // CONSTANCIA DE INSCRIPCIÓN A FINAL
+        // =====================================================
+        [HttpGet("constancia-final/{idInscripcion}")]
+        [Authorize(Roles = "Alumno")]
+        public async Task<IActionResult> DescargarConstanciaFinal(int idInscripcion)
+        {
+            // Verificamos que el alumno logueado solo pueda descargar SU constancia
+            var idUsuarioClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(idUsuarioClaim, out int idUsuario)) return Unauthorized();
+
+            var alumno = await _context.Alumnos.FirstOrDefaultAsync(a => a.IdUsuario == idUsuario);
+            if (alumno == null) return Unauthorized();
+
+            // Usamos la variable que ya estaba inyectada (_reporteRepo sin la s)
+            var datos = await _reporteRepo.GetDatosConstanciaFinalAsync(idInscripcion, alumno.Id);
+            if (datos == null) return NotFound("Inscripción no encontrada o dada de baja.");
+
+            var pdfBytes = _pdfService.GenerarConstanciaInscripcionFinal(datos);
+
+            return File(pdfBytes, "application/pdf", $"Constancia_Final_{datos.MateriaNombre.Replace(" ", "_")}.pdf");
         }
     }
 }
