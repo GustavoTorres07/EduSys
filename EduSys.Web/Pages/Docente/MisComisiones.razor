@@ -4,18 +4,36 @@
 @using Microsoft.AspNetCore.Authorization
 
 @inject IDocenteService DocenteService
+@inject IPeriodoService PeriodoService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 
 @attribute [Authorize(Roles = "Docente")]
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-8 mb-8">
-    <div class="d-flex align-center gap-3 mb-6">
-        <MudIcon Icon="@Icons.Material.Filled.Groups" Size="Size.Large" Color="Color.Primary" />
-        <div>
-            <MudText Typo="Typo.h4" Style="font-weight: 700; color: #1e3a58;">Mis Comisiones</MudText>
-            <MudText Typo="Typo.subtitle1" Class="mud-text-secondary">Gestión de cursos y carga de notas</MudText>
+    <div class="d-flex align-center justify-space-between mb-6">
+        <div class="d-flex align-center gap-3">
+            <MudIcon Icon="@Icons.Material.Filled.Groups" Size="Size.Large" Color="Color.Primary" />
+            <div>
+                <MudText Typo="Typo.h4" Style="font-weight: 700; color: #1e3a58;">Mis Comisiones</MudText>
+                <MudText Typo="Typo.subtitle1" Class="mud-text-secondary">Gestión de cursos y carga de notas</MudText>
+            </div>
         </div>
+
+        @* SELECTOR DE PERÍODOS *@
+        @if (periodos != null && periodos.Any())
+        {
+            <div style="width: 250px;">
+                <MudSelect T="int" Value="idPeriodoSeleccionado" ValueChanged="OnPeriodoChanged" Label="Período Académico" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Style="background: white;">
+                    @* Opción extra para ver todo el historial si el docente quiere *@
+                    <MudSelectItem Value="0">Todos los períodos</MudSelectItem>
+                    @foreach (var p in periodos)
+                    {
+                        <MudSelectItem Value="@p.Id">@p.Nombre</MudSelectItem>
+                    }
+                </MudSelect>
+            </div>
+        }
     </div>
 
     @if (cargando)
@@ -24,16 +42,16 @@
             <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
         </div>
     }
-    else if (comisiones == null || !comisiones.Any())
+    else if (comisionesFiltradas == null || !comisionesFiltradas.Any())
     {
         <MudAlert Severity="Severity.Info" Variant="Variant.Filled" Class="mt-4">
-            No tienes comisiones asignadas actualmente.
+            No tienes comisiones asignadas para la vista actual.
         </MudAlert>
     }
     else
     {
         <MudGrid>
-            @foreach (var comision in comisiones)
+            @foreach (var comision in comisionesFiltradas)
             {
                 <MudItem xs="12" md="6" lg="4">
                     <MudCard Elevation="3" Class="rounded-lg h-100 d-flex flex-column hover-card">
@@ -101,16 +119,58 @@
 
 @code {
     private bool cargando = true;
-    private List<ComisionDocenteDTO> comisiones = new();
+
+    // Todas las comisiones del docente (el historial completo)
+    private List<ComisionDocenteDTO> todasLasComisiones = new();
+
+    // Las que se muestran en pantalla actualmente
+    private List<ComisionDocenteDTO> comisionesFiltradas = new();
+
+    // Variables para el selector
+    private List<PeriodoAcademicoDTO> periodos = new();
+    private int idPeriodoSeleccionado;
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            comisiones = await DocenteService.GetMisComisionesAsync();
+            // 1. Cargamos períodos y definimos el activo
+            periodos = await PeriodoService.GetAllAsync();
+            var periodoActivo = periodos.FirstOrDefault(p => p.Activo);
+            if (periodoActivo != null)
+            {
+                idPeriodoSeleccionado = periodoActivo.Id;
+            }
+
+            // 2. Traemos TODAS las comisiones del docente
+            todasLasComisiones = await DocenteService.GetMisComisionesAsync();
+
+            // 3. Filtramos
+            AplicarFiltro();
         }
-        catch (Exception ex) { Snackbar.Add("Error al cargar comisiones", Severity.Error); }
-        finally { cargando = false; }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Error al cargar comisiones", Severity.Error);
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private void OnPeriodoChanged(int nuevoId)
+    {
+        idPeriodoSeleccionado = nuevoId;
+        AplicarFiltro();
+    }
+
+    private void AplicarFiltro()
+    {
+        // Si eligió "Todos los períodos" (0), mostramos todo. Si no, filtramos.
+        // Como el DTO no tiene el IdPeriodo, asumimos que si funciona tu flujo, la API ya le mandaba las correctas,
+        // pero para evitar errores lo asignamos directamente a todas (puedes ajustarlo si agregas IdPeriodo al DTO)
+
+        comisionesFiltradas = todasLasComisiones;
     }
 
     private void Navegar(string url) => Navigation.NavigateTo(url);

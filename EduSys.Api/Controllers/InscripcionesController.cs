@@ -70,8 +70,9 @@ namespace EduSys.Api.Controllers
             var result = lista.Select(i => new InscripcionCursadaListadoDTO
             {
                 IdInscripcion = i.Id,
-                Materia = i.IdComisionNavigation.IdPlanMateriaNavigation.IdMateriaNavigation.Nombre,
-                ComisionCodigo = i.IdComisionNavigation.Codigo,
+                // Agregamos "?" para evitar crasheos si falta alguna relación
+                Materia = i.IdComisionNavigation?.IdPlanMateriaNavigation?.IdMateriaNavigation?.Nombre ?? "Materia sin nombre",
+                ComisionCodigo = i.IdComisionNavigation?.Codigo ?? "S/C",
                 Estado = i.Estado,
                 Fecha = i.FechaInscripcion ?? DateTime.Now
             }).ToList();

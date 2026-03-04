@@ -360,10 +360,14 @@
                         </div>
 
                         <MudGrid Class="mt-2" Spacing="3">
-  @foreach (var grupoMateria in grupoAnio.GroupBy(c => c.MateriaNombre))
+                            @foreach (var grupoMateria in grupoAnio.GroupBy(c => c.MateriaNombre))
                             {
                                 var primera = grupoMateria.First();
-                                var miInscripcion = misInscripciones.FirstOrDefault(i => i.Materia == primera.MateriaNombre);
+
+                                // CORRECCIÓN CLAVE: Comparación robusta ignorando espacios y mayúsculas
+                                var miInscripcion = misInscripciones.FirstOrDefault(i =>
+                                i.Materia.Trim().Equals(primera.MateriaNombre.Trim(), StringComparison.OrdinalIgnoreCase));
+
                                 bool inscripto = miInscripcion != null;
                                 bool esMateriaLibre = primera.EsMateriaLibre;
                                 bool expandida = EstaExpandida(primera.MateriaNombre);
@@ -445,7 +449,9 @@
                                                 {
                                                     @foreach (var comision in grupoMateria)
                                                     {
-                                                        bool esMiComision = inscripto && miInscripcion!.ComisionCodigo == comision.Codigo;
+                                                        // CORRECCIÓN CLAVE: Comparación robusta para la comisión
+                                                        bool esMiComision = inscripto &&
+                                                        miInscripcion!.ComisionCodigo.Trim().Equals(comision.Codigo.Trim(), StringComparison.OrdinalIgnoreCase);
 
                                                         <div class="comision-item @(esMiComision ? "mi-comision" : "")">
                                                             <div class="d-flex justify-space-between mb-3 align-center">

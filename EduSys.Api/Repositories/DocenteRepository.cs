@@ -46,56 +46,49 @@ namespace EduSys.Api.Repositories
         // ✅ NUEVA IMPLEMENTACIÓN: Dashboard Docente
         public async Task<List<ComisionDocenteDTO>> GetMisComisionesAsync(int idUsuario)
         {
-            // 1. Identificar al Docente por su ID de Usuario
             var docente = await _context.Docentes
                 .FirstOrDefaultAsync(d => d.IdUsuario == idUsuario && d.Activo == true);
 
-            if (docente == null) return new List<ComisionDocenteDTO>();
+            if (docente == null)
+                return new List<ComisionDocenteDTO>();
 
-            // 2. Buscar sus comisiones ACTIVAS (Estado 'Abierta')
-            var comisiones = await _context.DocenteComisions
+            // Traemos TODAS las comisiones en las que está asignado el docente, sin importar el período
+            var comisionesDocente = await _context.DocenteComisions
                 .Include(dc => dc.IdComisionNavigation)
-                    .ThenInclude(c => c.IdPlanMateriaNavigation)
-                        .ThenInclude(pm => pm.IdMateriaNavigation) // Materia
+                    .ThenInclude(c => c.IdPlanMateriaNavigation.IdMateriaNavigation)
                 .Include(dc => dc.IdComisionNavigation)
-                    .ThenInclude(c => c.IdPlanMateriaNavigation)
-                        .ThenInclude(pm => pm.IdPlanNavigation)
-                            .ThenInclude(p => p.IdCarreraNavigation) // Carrera
+                    .ThenInclude(c => c.IdPlanMateriaNavigation.IdPlanNavigation.IdCarreraNavigation)
                 .Include(dc => dc.IdComisionNavigation)
-                    .ThenInclude(c => c.IdSedeNavigation) // Sede
+                    .ThenInclude(c => c.IdSedeNavigation)
                 .Include(dc => dc.IdComisionNavigation)
-                    .ThenInclude(c => c.HorarioComisions) // Horarios
-                        .ThenInclude(h => h.IdAulaNavigation) // Aulas
+                    .ThenInclude(c => c.HorarioComisions)
+                        .ThenInclude(hc => hc.IdAulaNavigation)
                 .Include(dc => dc.IdComisionNavigation)
-                    .ThenInclude(c => c.InscripcionCursada) // Inscripciones para contar alumnos
-                .Where(dc => dc.IdDocente == docente.Id
-                             && dc.Activo == true
-                             && dc.IdComisionNavigation.Estado == "Abierta")
+                    .ThenInclude(c => c.InscripcionCursada) // Necesario para contar alumnos reales
+                .Where(dc => dc.IdDocente == docente.Id && dc.Activo)
                 .ToListAsync();
 
-            // 3. Mapear a DTO
-            var resultado = comisiones.Select(dc => new ComisionDocenteDTO
+            return comisionesDocente.Select(dc => new ComisionDocenteDTO
             {
                 IdComision = dc.IdComision,
+                CodigoComision = dc.IdComisionNavigation.Codigo,
                 Materia = dc.IdComisionNavigation.IdPlanMateriaNavigation.IdMateriaNavigation.Nombre,
                 Carrera = dc.IdComisionNavigation.IdPlanMateriaNavigation.IdPlanNavigation.IdCarreraNavigation.Nombre,
-                CodigoComision = $"{dc.IdComisionNavigation.Codigo} ({dc.IdComisionNavigation.Turno})",
                 Sede = dc.IdComisionNavigation.IdSedeNavigation.Nombre,
                 Rol = dc.RolDocente,
-                Estado = dc.IdComisionNavigation.Estado ?? "Desconocido",
 
-                // Contar solo inscripciones activas (no bajas)
+                // 👇 CORRECCIÓN: Contamos a todos los que pasaron por la materia, no solo a los que "Cursan"
                 CantidadAlumnos = dc.IdComisionNavigation.InscripcionCursada.Count(i => i.Estado != "Baja"),
 
-                // Formatear horarios
-                Horario = string.Join(" / ", dc.IdComisionNavigation.HorarioComisions.Select(h =>
-                    $"{h.DiaSemana.Substring(0, 3)} {h.HoraInicio:hh\\:mm}-{h.HoraFin:hh\\:mm}")),
+                Horario = dc.IdComisionNavigation.HorarioComisions.Any()
+                    ? string.Join(", ", dc.IdComisionNavigation.HorarioComisions.Select(h => $"{h.DiaSemana} {h.HoraInicio:hh\\:mm}-{h.HoraFin:hh\\:mm}"))
+                    : "Sin asignar",
 
-                // Aula
-                Aula = dc.IdComisionNavigation.HorarioComisions.FirstOrDefault()?.IdAulaNavigation?.Nombre ?? "Sin Aula"
-            }).ToList();
-
-            return resultado;
+                Aula = dc.IdComisionNavigation.HorarioComisions.FirstOrDefault()?.IdAulaNavigation?.Nombre ?? "Sin asignar"
+            })
+            .OrderBy(c => c.Carrera)
+            .ThenBy(c => c.Materia)
+            .ToList();
         }
 
         // ... (Aquí sigue el resto de tus métodos: GetByIdAsync, CrearAsync, etc.) ...

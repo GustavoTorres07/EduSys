@@ -255,8 +255,11 @@ namespace EduSys.Api.Repositories
         public async Task<List<InscripcionCursada>> GetInscripcionesPorAlumnoAsync(int idAlumno, int idPeriodo)
         {
             return await _context.InscripcionCursada
-                .Include(i => i.IdComisionNavigation.IdPlanMateriaNavigation.IdMateriaNavigation)
-                .Include(i => i.IdComisionNavigation.IdSedeNavigation)
+                .Include(i => i.IdComisionNavigation)
+                    .ThenInclude(c => c.IdPlanMateriaNavigation)
+                    .ThenInclude(pm => pm.IdMateriaNavigation)
+                .Include(i => i.IdComisionNavigation)
+                    .ThenInclude(c => c.IdSedeNavigation)
                 .Where(i => i.IdAlumno == idAlumno &&
                             i.IdComisionNavigation.IdPeriodo == idPeriodo &&
                             i.Estado != "Baja")
