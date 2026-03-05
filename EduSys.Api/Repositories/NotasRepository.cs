@@ -116,105 +116,157 @@ namespace EduSys.Api.Repositories
         // =======================================================================
         // MOTOR DE REGLAS ACADÉMICAS - ENCAPSULADO Y REUTILIZABLE
         // =======================================================================
-        private (int IdEstado, decimal? NotaFinal) CalcularEstadoYNotaDefinitiva(PlanMateria plan, List<Nota> notasAlumno, List<Evaluacion> evaluacionesComision)
+        // =======================================================================
+        // MOTOR DE REGLAS ACADÉMICAS - ENCAPSULADO Y REUTILIZABLE
+        // =======================================================================
+        // =======================================================================
+        // MOTOR DE REGLAS ACADÉMICAS - ENCAPSULADO Y REUTILIZABLE
+        // =======================================================================
+        private (int? IdEstado, decimal? NotaFinal) CalcularEstadoYNotaDefinitiva(PlanMateria plan, List<Nota> notasAlumno, List<Evaluacion> evaluacionesComision, int idEstadoActual)
         {
-            if (!notasAlumno.Any()) return (1, null); // 1 = Cursando
+            if (!notasAlumno.Any()) return (idEstadoActual, null); // Sin notas, no hay cambios
 
-            // 1. MUERTE SÚBITA (Nota Eliminatoria)
+            // =========================================================================
+            // 1. ESTADO LIBRE / ABANDONO: MUERTE SÚBITA
+            // =========================================================================
             if (plan.NotaEliminatoria.HasValue && notasAlumno.Any(n => n.Valor < plan.NotaEliminatoria.Value))
             {
-                // Como n.Valor es de tipo 'decimal' estricto en C#, ya no usamos '??' aquí
-                return (plan.IdEstadoLibre ?? 4, Math.Round(notasAlumno.Average(n => n.Valor), 2));
+                var notasValidas = notasAlumno.Where(n => n.Valor.HasValue).Select(n => n.Valor.Value).ToList();
+                decimal prom = notasValidas.Any() ? Math.Round(notasValidas.Average(), 2) : 0m;
+                return (plan.IdEstadoSiFaltaAsistencia, prom); // Estado Libre/Abandono
             }
 
-            // 2. AGRUPAR EN INSTANCIAS (Parcial + sus respectivos Recuperatorios)
-            var parcialesPrincipales = evaluacionesComision.Where(e => e.IdEvaluacionPadre == null).ToList();
+            // =========================================================================
+            // 2. SEPARAR TIPOS DE EXÁMENES
+            // =========================================================================
+            var integrador = evaluacionesComision.FirstOrDefault(e => e.EsIntegrador == true);
+            var parcialesPrincipales = evaluacionesComision.Where(e => e.IdEvaluacionPadre == null && e.EsIntegrador != true).ToList();
+
             var notasPorInstancia = new List<decimal>();
 
+            // =========================================================================
+            // 3. CALCULAR LA NOTA DEFINITIVA DE CADA INSTANCIA (PISAR O MAX)
+            // =========================================================================
             foreach (var parcial in parcialesPrincipales)
             {
-                // FirstOrDefault devuelve un objeto anulable, por lo tanto el operador ?.Valor nos da un decimal? (nulo o valor)
                 var notaParcial = notasAlumno.FirstOrDefault(n => n.IdEvaluacion == parcial.Id)?.Valor;
-
                 var recuperatorios = evaluacionesComision.Where(e => e.IdEvaluacionPadre == parcial.Id).ToList();
-                decimal notaMaxRecu = 0m;
 
-                foreach (var r in recuperatorios)
-                {
-                    var nr = notasAlumno.FirstOrDefault(n => n.IdEvaluacion == r.Id)?.Valor ?? 0m;
-                    if (nr > notaMaxRecu) notaMaxRecu = nr;
-                }
+                bool rindioInstancia = notaParcial.HasValue || notasAlumno.Any(n => recuperatorios.Select(r => r.Id).Contains(n.IdEvaluacion));
 
-                // Solo agregamos la instancia si realmente rindió el parcial o algún recuperatorio
-                if (notaParcial.HasValue || notasAlumno.Any(n => recuperatorios.Select(r => r.Id).Contains(n.IdEvaluacion)))
+                if (rindioInstancia)
                 {
-                    notasPorInstancia.Add(Math.Max(notaParcial ?? 0m, notaMaxRecu));
+                    decimal notaDefinitiva = notaParcial ?? 0m;
+
+                    var notasRecusRendidos = notasAlumno.Where(n => recuperatorios.Select(r => r.Id).Contains(n.IdEvaluacion) && n.Valor.HasValue).ToList();
+                    if (notasRecusRendidos.Any())
+                    {
+                        if (plan.ModoNotaRecuperatorio == 0) // ✅ MODO 0: Queda la nota más alta
+                        {
+                            decimal maxRecu = notasRecusRendidos.Max(n => n.Valor.Value);
+                            notaDefinitiva = Math.Max(notaDefinitiva, maxRecu);
+                        }
+                        else // ✅ MODO 1: El recuperatorio reemplaza/pisa siempre
+                        {
+                            var ultimoRecuRendido = notasRecusRendidos.OrderByDescending(n => n.FechaCarga).First();
+                            notaDefinitiva = ultimoRecuRendido.Valor.Value;
+                        }
+                    }
+                    notasPorInstancia.Add(notaDefinitiva);
                 }
             }
 
-            // Si después de agrupar resulta que no tiene notas válidas, sigue cursando
-            if (!notasPorInstancia.Any()) return (1, null);
+            if (!notasPorInstancia.Any()) return (idEstadoActual, null);
 
-            decimal promedioInstancias = notasPorInstancia.Average();
+            decimal promedioInstancias = Math.Round(notasPorInstancia.Average(), 2);
             decimal notaDeCorte = plan.PromedioMinimoAprobacion ?? plan.NotaMinimaRegularizar ?? 4m;
+            int cantidadAplazos = notasPorInstancia.Count(n => n < notaDeCorte);
 
-            // Contamos las INSTANCIAS DEFINITIVAS desaprobadas (ya falló parcial y todos sus recuperatorios)
-            int cantidadInstanciasDesaprobadas = notasPorInstancia.Count(n => n < notaDeCorte);
-
-            decimal porcentajeAsistencia = 100m; // Simulado hasta tener módulo Asistencia
-
-            // 3. REGLA DE ASISTENCIA
+            // =========================================================================
+            // 4. ESTADO LIBRE / ABANDONO: POR INASISTENCIA O LÍMITE DE APLAZOS
+            // =========================================================================
+            decimal porcentajeAsistencia = 100m; // Integrar módulo de asistencia futuro
             if (plan.PorcentajeAsistenciaRegularizar.HasValue && porcentajeAsistencia < plan.PorcentajeAsistenciaRegularizar.Value)
             {
-                return (plan.IdEstadoLibre ?? 4, Math.Round(promedioInstancias, 2));
+                return (plan.IdEstadoSiFaltaAsistencia, promedioInstancias); // Queda Libre
             }
 
-            // 4. LÍMITE DE APLAZOS (Instancias definitivas desaprobadas)
-            // Se evalúa SIEMPRE. Si el límite es 0, y saca un 2 en el 1er parcial, reprueba inmediatamente.
-            if (plan.CantidadAplazosParaLibre.HasValue && cantidadInstanciasDesaprobadas > plan.CantidadAplazosParaLibre.Value)
+            // "Límite de aplazos" define cuándo el alumno pierde el derecho a cursar
+            if (plan.CantidadAplazosParaLibre.HasValue && cantidadAplazos > plan.CantidadAplazosParaLibre.Value)
             {
-                return (plan.IdEstadoDesaprobado ?? 5, Math.Round(promedioInstancias, 2));
+                return (plan.IdEstadoSiFaltaAsistencia, promedioInstancias); // Queda Libre
             }
 
-            // 5. RENDIMIENTO FINAL 
-            // ¡OJO! Esto SOLO se evalúa si ya rindió TODOS los parciales exigidos.
+            // =========================================================================
+            // 5. EVALUACIÓN FINAL DE CURSADA (Rindió todos los exámenes)
+            // =========================================================================
             if (plan.CantidadParciales.HasValue && notasPorInstancia.Count >= plan.CantidadParciales.Value)
             {
-                // LÓGICA DE MODO DE APROBACIÓN:
-                // Modo = 1 (Instancia a Instancia): TODAS las instancias deben ser >= nota de corte
-                // Modo = 0 (Promedio): El promedio de las instancias debe ser >= nota de corte
-                bool aproboCursada = plan.ModoAprobacionCursada == 1
+                bool aproboCursadaBase = plan.ModoAprobacionCursada == 1
                     ? notasPorInstancia.All(n => n >= notaDeCorte)
                     : promedioInstancias >= notaDeCorte;
 
-                if (aproboCursada)
+                if (aproboCursadaBase)
                 {
-                    // Verificamos si le alcanza para Promoción directa
-                    bool cumpleNotaPromo = plan.NotaMinimaPromocion.HasValue &&
+                    // Aprobó limpio -> Verificamos Promoción
+                    bool cumplePromo = plan.NotaMinimaPromocion.HasValue &&
                         (plan.ModoAprobacionCursada == 1 ? notasPorInstancia.All(n => n >= plan.NotaMinimaPromocion.Value) : promedioInstancias >= plan.NotaMinimaPromocion.Value);
 
-                    bool cumpleAsisPromo = plan.PorcentajeAsistenciaPromocion.HasValue ? (porcentajeAsistencia >= plan.PorcentajeAsistenciaPromocion.Value) : true;
+                    if (plan.EsPromocionable == true && cumplePromo && plan.IdEstadoPromocion.HasValue)
+                        return (plan.IdEstadoPromocion.Value, promedioInstancias);
 
-                    if (plan.EsPromocionable == true && cumpleNotaPromo && cumpleAsisPromo && plan.IdEstadoPromocion.HasValue)
-                    {
-                        return (plan.IdEstadoPromocion.Value, Math.Round(promedioInstancias, 2));
-                    }
-
-                    // Si aprueba pero no le alcanza para promocionar, queda Regular (va a final)
-                    if (plan.IdEstadoRegular.HasValue)
-                    {
-                        return (plan.IdEstadoRegular.Value, null); // Null porque va a Mesa Final
-                    }
+                    return (plan.IdEstadoRegular ?? 2, null);
                 }
+                else
+                {
+                    // =================================================================
+                    // 6. LÓGICA DE EXAMEN INTEGRADOR Y ESTADO DESAPROBADO
+                    // =================================================================
+                    int parcialesAprobados = notasPorInstancia.Count(n => n >= notaDeCorte);
 
-                // Rindió todos los parciales, pero NO aprobó la cursada
-                return (plan.IdEstadoDesaprobado ?? 5, Math.Round(promedioInstancias, 2));
+                    // ¿Cumple requisitos para rendir integrador?
+                    bool tieneDerechoIntegrador = plan.TieneIntegrador &&
+                        (!plan.CondicionIntegradorParciales.HasValue || parcialesAprobados >= plan.CondicionIntegradorParciales.Value);
+
+                    if (tieneDerechoIntegrador && integrador != null)
+                    {
+                        var notaIntegrador = notasAlumno.FirstOrDefault(n => n.IdEvaluacion == integrador.Id)?.Valor;
+
+                        if (notaIntegrador.HasValue)
+                        {
+                            decimal minAprobarInt = plan.NotaAprobacionIntegrador ?? notaDeCorte;
+
+                            if (notaIntegrador.Value >= minAprobarInt)
+                            {
+                                // Aprobó el Integrador -> ¿Lo salva o lo promociona?
+                                if (plan.IntegradorPermitePromocion && plan.NotaPromocionIntegrador.HasValue &&
+                                    notaIntegrador.Value >= plan.NotaPromocionIntegrador.Value && plan.IdEstadoPromocion.HasValue)
+                                {
+                                    return (plan.IdEstadoPromocion.Value, notaIntegrador.Value); // Salva y Promociona
+                                }
+
+                                return (plan.IdEstadoRegular ?? 2, null); // Salvó la cursada
+                            }
+                            else
+                            {
+                                // Rindió el integrador y le fue mal
+                                return (plan.IdEstadoSiDesaprueba, notaIntegrador.Value); // ESTADO DESAPROBADO
+                            }
+                        }
+                        else
+                        {
+                            // Cumple los requisitos, existe el integrador, PERO AÚN NO LO RINDE. Sigue en carrera.
+                            return (idEstadoActual, promedioInstancias);
+                        }
+                    }
+
+                    // Si NO tiene derecho a integrador (o la materia no lo tiene), entonces reprueba la cursada
+                    return (plan.IdEstadoSiDesaprueba, promedioInstancias); // ESTADO DESAPROBADO
+                }
             }
 
-            // Si no cayó en muerte súbita, ni se pasó de aplazos, pero aún le faltan rendir parciales...
-            return (1, Math.Round(promedioInstancias, 2)); // Sigue "Cursando"
+            return (idEstadoActual, promedioInstancias); // Sigue cursando...
         }
-
         private async Task RecalcularEstadoAlumnoAsync(int idInscripcionCursada)
         {
             var inscripcion = await _context.InscripcionCursada
@@ -226,7 +278,10 @@ namespace EduSys.Api.Repositories
 
             var evaluacionesComision = await _context.Evaluacions.Where(e => e.IdComision == inscripcion.IdComision).ToListAsync();
 
-            var resultado = CalcularEstadoYNotaDefinitiva(inscripcion.IdComisionNavigation.IdPlanMateriaNavigation, inscripcion.Nota.ToList(), evaluacionesComision);
+            var resultado = CalcularEstadoYNotaDefinitiva(inscripcion.IdComisionNavigation.IdPlanMateriaNavigation, inscripcion.Nota.ToList(), evaluacionesComision, inscripcion.IdEstadoMateria ?? 1);
+
+            if (resultado.IdEstado.HasValue) inscripcion.IdEstadoMateria = resultado.IdEstado.Value;
+            inscripcion.NotaFinalCursada = resultado.NotaFinal;
 
             inscripcion.IdEstadoMateria = resultado.IdEstado;
             inscripcion.NotaFinalCursada = resultado.NotaFinal;
@@ -254,7 +309,11 @@ namespace EduSys.Api.Repositories
             {
                 if (inscripcion.CursadaCerrada) continue;
 
-                var resultado = CalcularEstadoYNotaDefinitiva(comision.IdPlanMateriaNavigation, inscripcion.Nota.ToList(), evaluacionesComision);
+                var resultado = CalcularEstadoYNotaDefinitiva(comision.IdPlanMateriaNavigation, inscripcion.Nota.ToList(), evaluacionesComision, inscripcion.IdEstadoMateria ?? 1);
+
+                if (resultado.IdEstado.HasValue) inscripcion.IdEstadoMateria = resultado.IdEstado.Value;
+                inscripcion.NotaFinalCursada = resultado.NotaFinal;
+
 
                 inscripcion.IdEstadoMateria = resultado.IdEstado;
                 inscripcion.NotaFinalCursada = resultado.NotaFinal;

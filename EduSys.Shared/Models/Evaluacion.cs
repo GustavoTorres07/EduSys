@@ -25,4 +25,7 @@ public partial class Evaluacion
 
     public virtual Comision IdComisionNavigation { get; set; } = null!;
     public virtual ICollection<Nota> Nota { get; set; } = new List<Nota>();
+
+    public bool EsIntegrador { get; set; }
+
 }

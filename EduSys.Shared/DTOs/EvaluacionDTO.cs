@@ -26,5 +26,7 @@
 
         // Propiedad de ayuda para la Vista (Read-Only)
         public bool EstaCerrada => EstadoActa == "Cerrada";
+
+        public bool EsIntegrador { get; set; }
     }
 }

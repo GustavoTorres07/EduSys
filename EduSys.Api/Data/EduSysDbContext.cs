@@ -112,8 +112,10 @@ public partial class EduSysDbContext : DbContext
 
             entity.HasOne(d => d.IdEstadoPromocionNavigation).WithMany().HasForeignKey(d => d.IdEstadoPromocion);
             entity.HasOne(d => d.IdEstadoRegularNavigation).WithMany().HasForeignKey(d => d.IdEstadoRegular);
-            entity.HasOne(d => d.IdEstadoDesaprobadoNavigation).WithMany().HasForeignKey(d => d.IdEstadoSiDesaprueba); // Mapeo a columna DB
-            entity.HasOne(d => d.IdEstadoLibreNavigation).WithMany().HasForeignKey(d => d.IdEstadoSiFaltaAsistencia); // Mapeo a columna DB
+            // ✅ AQUÍ AGREGAS TUS NUEVAS LÍNEAS:
+            entity.HasOne(d => d.IdEstadoSiDesapruebaNavigation).WithMany().HasForeignKey(d => d.IdEstadoSiDesaprueba);
+            entity.HasOne(d => d.IdEstadoSiFaltaAsistenciaNavigation).WithMany().HasForeignKey(d => d.IdEstadoSiFaltaAsistencia);
+
 
             entity.HasOne(d => d.IdMateriaNavigation).WithMany(p => p.PlanMateria)
                 .HasForeignKey(d => d.IdMateria)
