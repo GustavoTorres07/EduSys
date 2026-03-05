@@ -67,7 +67,6 @@ namespace EduSys.Api.Repositories
                     fila.Notas[eval.IdEvaluacion] = notaExistente?.Valor;
                 }
 
-                // Cálculo visual rápido (puede diferir de las instancias agrupadas, pero sirve para la tabla)
                 var notasValidas = fila.Notas.Values.Where(v => v.HasValue).Select(v => v!.Value);
                 if (notasValidas.Any())
                     fila.Promedio = Math.Round(notasValidas.Average(), 2);
@@ -124,7 +123,7 @@ namespace EduSys.Api.Repositories
             // 1. MUERTE SÚBITA (Nota Eliminatoria)
             if (plan.NotaEliminatoria.HasValue && notasAlumno.Any(n => n.Valor < plan.NotaEliminatoria.Value))
             {
-                // Un aplazo grave lo deja libre inmediatamente (IdEstadoLibre)
+                // Como n.Valor es de tipo 'decimal' estricto en C#, ya no usamos '??' aquí
                 return (plan.IdEstadoLibre ?? 4, Math.Round(notasAlumno.Average(n => n.Valor), 2));
             }
 
@@ -134,62 +133,63 @@ namespace EduSys.Api.Repositories
 
             foreach (var parcial in parcialesPrincipales)
             {
+                // FirstOrDefault devuelve un objeto anulable, por lo tanto el operador ?.Valor nos da un decimal? (nulo o valor)
                 var notaParcial = notasAlumno.FirstOrDefault(n => n.IdEvaluacion == parcial.Id)?.Valor;
 
-                // Buscar si rindió recuperatorios de este parcial específico
                 var recuperatorios = evaluacionesComision.Where(e => e.IdEvaluacionPadre == parcial.Id).ToList();
-                decimal notaMaxRecu = 0;
+                decimal notaMaxRecu = 0m;
 
                 foreach (var r in recuperatorios)
                 {
-                    var nr = notasAlumno.FirstOrDefault(n => n.IdEvaluacion == r.Id)?.Valor ?? 0;
+                    var nr = notasAlumno.FirstOrDefault(n => n.IdEvaluacion == r.Id)?.Valor ?? 0m;
                     if (nr > notaMaxRecu) notaMaxRecu = nr;
                 }
 
-                // La nota de la instancia es la máxima entre el parcial y su(s) recuperatorio(s)
+                // Solo agregamos la instancia si realmente rindió el parcial o algún recuperatorio
                 if (notaParcial.HasValue || notasAlumno.Any(n => recuperatorios.Select(r => r.Id).Contains(n.IdEvaluacion)))
                 {
-                    notasPorInstancia.Add(Math.Max(notaParcial ?? 0, notaMaxRecu));
+                    notasPorInstancia.Add(Math.Max(notaParcial ?? 0m, notaMaxRecu));
                 }
             }
 
+            // Si después de agrupar resulta que no tiene notas válidas, sigue cursando
             if (!notasPorInstancia.Any()) return (1, null);
 
             decimal promedioInstancias = notasPorInstancia.Average();
-            decimal notaDeCorte = plan.PromedioMinimoAprobacion ?? plan.NotaMinimaRegularizar ?? 4;
+            decimal notaDeCorte = plan.PromedioMinimoAprobacion ?? plan.NotaMinimaRegularizar ?? 4m;
 
-            // Un aplazo es una INSTANCIA desaprobada (ya falló parcial y todos sus recuperatorios)
+            // Contamos las INSTANCIAS DEFINITIVAS desaprobadas (ya falló parcial y todos sus recuperatorios)
             int cantidadInstanciasDesaprobadas = notasPorInstancia.Count(n => n < notaDeCorte);
 
-            decimal porcentajeAsistencia = 100; // Simulado hasta tener módulo Asistencia
+            decimal porcentajeAsistencia = 100m; // Simulado hasta tener módulo Asistencia
 
-            // 3. REGLA DE ASISTENCIA (Usamos IdEstadoLibre)
-            // 3. REGLA DE ASISTENCIA 
             // 3. REGLA DE ASISTENCIA
             if (plan.PorcentajeAsistenciaRegularizar.HasValue && porcentajeAsistencia < plan.PorcentajeAsistenciaRegularizar.Value)
             {
-                return (plan.IdEstadoSiFaltaAsistencia ?? 4, Math.Round(promedioInstancias, 2));
+                return (plan.IdEstadoLibre ?? 4, Math.Round(promedioInstancias, 2));
             }
 
-            // 4. LÍMITE DE APLAZOS 
-            if (plan.CantidadAplazosParaLibre.HasValue && cantidadInstanciasDesaprobadas >= plan.CantidadAplazosParaLibre.Value)
+            // 4. LÍMITE DE APLAZOS (Instancias definitivas desaprobadas)
+            // Se evalúa SIEMPRE. Si el límite es 0, y saca un 2 en el 1er parcial, reprueba inmediatamente.
+            if (plan.CantidadAplazosParaLibre.HasValue && cantidadInstanciasDesaprobadas > plan.CantidadAplazosParaLibre.Value)
             {
-                return (plan.IdEstadoDesaprobado ?? 5, Math.Round(promedioInstancias, 2)); // <-- CORREGIDO
+                return (plan.IdEstadoDesaprobado ?? 5, Math.Round(promedioInstancias, 2));
             }
 
-            // 5. RENDIMIENTO FINAL (Solo si ya completó la cantidad de parciales exigidos)
+            // 5. RENDIMIENTO FINAL 
+            // ¡OJO! Esto SOLO se evalúa si ya rindió TODOS los parciales exigidos.
             if (plan.CantidadParciales.HasValue && notasPorInstancia.Count >= plan.CantidadParciales.Value)
             {
                 // LÓGICA DE MODO DE APROBACIÓN:
-                // Si Modo = 1 (Instancia a Instancia): TODAS las instancias deben ser >= nota de corte
-                // Si Modo = 0 (Promedio): El promedio de las instancias debe ser >= nota de corte
+                // Modo = 1 (Instancia a Instancia): TODAS las instancias deben ser >= nota de corte
+                // Modo = 0 (Promedio): El promedio de las instancias debe ser >= nota de corte
                 bool aproboCursada = plan.ModoAprobacionCursada == 1
                     ? notasPorInstancia.All(n => n >= notaDeCorte)
                     : promedioInstancias >= notaDeCorte;
 
                 if (aproboCursada)
                 {
-                    // Promoción directa
+                    // Verificamos si le alcanza para Promoción directa
                     bool cumpleNotaPromo = plan.NotaMinimaPromocion.HasValue &&
                         (plan.ModoAprobacionCursada == 1 ? notasPorInstancia.All(n => n >= plan.NotaMinimaPromocion.Value) : promedioInstancias >= plan.NotaMinimaPromocion.Value);
 
@@ -200,18 +200,19 @@ namespace EduSys.Api.Repositories
                         return (plan.IdEstadoPromocion.Value, Math.Round(promedioInstancias, 2));
                     }
 
-                    // Regular
+                    // Si aprueba pero no le alcanza para promocionar, queda Regular (va a final)
                     if (plan.IdEstadoRegular.HasValue)
                     {
                         return (plan.IdEstadoRegular.Value, null); // Null porque va a Mesa Final
                     }
                 }
 
-                // Si llegó aquí, no le alcanzó ni para promo ni para regular (Usamos IdEstadoDesaprobado)
+                // Rindió todos los parciales, pero NO aprobó la cursada
                 return (plan.IdEstadoDesaprobado ?? 5, Math.Round(promedioInstancias, 2));
             }
 
-            return (1, null); // Aún "Cursando"
+            // Si no cayó en muerte súbita, ni se pasó de aplazos, pero aún le faltan rendir parciales...
+            return (1, Math.Round(promedioInstancias, 2)); // Sigue "Cursando"
         }
 
         private async Task RecalcularEstadoAlumnoAsync(int idInscripcionCursada)

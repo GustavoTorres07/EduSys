@@ -22,14 +22,9 @@ namespace EduSys.Api.Controllers
             _context = context;
         }
 
-        // ==========================================
-        // ENDPOINTS DE PLANES (AHORA SUPER LIMPIOS)
-        // ==========================================
-
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
-            // El repositorio ya hace todo el trabajo y devuelve los DTOs listos
             var dtos = await _repo.GetAllAsync();
             return Ok(dtos);
         }
@@ -63,14 +58,9 @@ namespace EduSys.Api.Controllers
             return NoContent();
         }
 
-        // ==========================================
-        // ENDPOINTS DE MATERIAS DEL PLAN
-        // ==========================================
-
         [HttpGet("{idPlan}/materias")]
         public async Task<IActionResult> GetMaterias(int idPlan)
         {
-            // El repositorio ya mapea TODO, incluyendo las correlativas de colores
             var dtos = await _repo.GetMateriasByPlanAsync(idPlan);
             return Ok(dtos);
         }
@@ -137,7 +127,17 @@ namespace EduSys.Api.Controllers
                 EsLibre = dto.EsLibre,
                 ContenidosMinimos = dto.ContenidosMinimos,
                 TieneProyecto = dto.TieneProyecto,
-                DescripcionProyecto = dto.DescripcionProyecto
+                DescripcionProyecto = dto.DescripcionProyecto,
+
+                // ✅ SE AGREGARON LOS NUEVOS CAMPOS AQUÍ
+                ModoAprobacionCursada = dto.ModoAprobacionCursada,
+                NotaEliminatoria = dto.NotaEliminatoria,
+                PromedioMinimoAprobacion = dto.PromedioMinimoAprobacion,
+                CantidadAplazosParaLibre = dto.CantidadAplazosParaLibre,
+                IdEstadoPromocion = dto.IdEstadoPromocion,
+                IdEstadoRegular = dto.IdEstadoRegular,
+                IdEstadoSiDesaprueba = dto.IdEstadoSiDesaprueba,
+                IdEstadoSiFaltaAsistencia = dto.IdEstadoSiFaltaAsistencia
             };
 
             if (!await _repo.AgregarMateriaAsync(pm))
@@ -153,13 +153,9 @@ namespace EduSys.Api.Controllers
             return NoContent();
         }
 
-        // ==========================================
-        // ENDPOINT ESTRELLA: CORRELATIVAS
-        // ==========================================
         [HttpPut("materia/{idPlanMateria}/correlativas")]
         public async Task<ActionResult> ActualizarCorrelativas(int idPlanMateria, [FromBody] List<CorrelativaItemDTO> correlativas)
         {
-            // Corregido el nombre de la variable _repo
             var exito = await _repo.ActualizarCorrelativasAsync(idPlanMateria, correlativas);
             if (exito) return Ok();
             return BadRequest("Error al guardar correlativas");
@@ -193,7 +189,17 @@ namespace EduSys.Api.Controllers
                 EsLibre = dto.EsLibre,
                 ContenidosMinimos = dto.ContenidosMinimos,
                 TieneProyecto = dto.TieneProyecto,
-                DescripcionProyecto = dto.DescripcionProyecto
+                DescripcionProyecto = dto.DescripcionProyecto,
+
+                // ✅ SE AGREGARON LOS NUEVOS CAMPOS AQUÍ TAMBIÉN
+                ModoAprobacionCursada = dto.ModoAprobacionCursada,
+                NotaEliminatoria = dto.NotaEliminatoria,
+                PromedioMinimoAprobacion = dto.PromedioMinimoAprobacion,
+                CantidadAplazosParaLibre = dto.CantidadAplazosParaLibre,
+                IdEstadoPromocion = dto.IdEstadoPromocion,
+                IdEstadoRegular = dto.IdEstadoRegular,
+                IdEstadoSiDesaprueba = dto.IdEstadoSiDesaprueba,
+                IdEstadoSiFaltaAsistencia = dto.IdEstadoSiFaltaAsistencia
             };
 
             if (await _repo.ModificarMateriaDelPlanAsync(pm))

@@ -17,7 +17,6 @@ namespace EduSys.Api.Repositories
 
         public async Task<List<PlanEstudioDTO>> GetAllAsync()
         {
-            // Se debe incluir la Carrera para poder mapear el NombreCarrera
             var planes = await _context.PlanEstudios
                 .Include(p => p.IdCarreraNavigation)
                 .Include(p => p.PlanMateria)
@@ -95,14 +94,10 @@ namespace EduSys.Api.Repositories
             var plan = await _context.PlanEstudios.FindAsync(id);
             if (plan == null) return false;
 
-            plan.EsVigente = false; // Baja lógica
+            plan.EsVigente = false;
             await _context.SaveChangesAsync();
             return true;
         }
-
-        // =======================================================
-        // MÉTODOS PARA GESTIONAR LAS MATERIAS DENTRO DE UN PLAN
-        // =======================================================
 
         public async Task<List<PlanMateriaDTO>> GetMateriasByPlanAsync(int idPlan)
         {
@@ -156,19 +151,17 @@ namespace EduSys.Api.Repositories
                     DescripcionProyecto = pm.DescripcionProyecto,
                     CantidadParciales = pm.CantidadParciales ?? 2,
 
-                    // ✅ MAPEO DE NUEVOS CAMPOS: Reglas Avanzadas y Estados
+                    // ✅ MAPEADO HACIA LA UI
                     ModoAprobacionCursada = pm.ModoAprobacionCursada,
                     NotaEliminatoria = pm.NotaEliminatoria,
                     PromedioMinimoAprobacion = pm.PromedioMinimoAprobacion,
                     CantidadAplazosParaLibre = pm.CantidadAplazosParaLibre,
-
                     IdEstadoPromocion = pm.IdEstadoPromocion,
                     IdEstadoRegular = pm.IdEstadoRegular,
-                    IdEstadoDesaprobado = pm.IdEstadoDesaprobado,
-                    IdEstadoLibre = pm.IdEstadoLibre
+                    IdEstadoSiDesaprueba = pm.IdEstadoSiDesaprueba,
+                    IdEstadoSiFaltaAsistencia = pm.IdEstadoSiFaltaAsistencia
                 };
 
-                // Asignamos las correlativas a la materia
                 var misCorrelativas = correlativas.Where(c => c.IdPlanMateriaOrigen == pm.Id).ToList();
 
                 dto.CorrelativasDetalle = misCorrelativas.Select(c => new CorrelativaItemDTO
@@ -185,7 +178,6 @@ namespace EduSys.Api.Repositories
 
         public async Task<bool> AgregarMateriaAsync(PlanMateria planMateria)
         {
-            // Validación básica: evitar duplicados
             bool existe = await _context.PlanMateria
                 .AnyAsync(pm => pm.IdPlan == planMateria.IdPlan && pm.IdMateria == planMateria.IdMateria);
 
@@ -201,14 +193,11 @@ namespace EduSys.Api.Repositories
             var existente = await _context.PlanMateria.FindAsync(pm.Id);
             if (existente == null) return false;
 
-            // Actualizamos los campos operativos
             existente.AnioCursada = pm.AnioCursada;
             existente.Cuatrimestre = pm.Cuatrimestre;
             existente.IdRegimen = pm.IdRegimen;
             existente.CargaHorariaTotal = pm.CargaHorariaTotal;
             existente.EsLibre = pm.EsLibre;
-
-            // Actualizamos las Reglas Académicas y Nuevos Campos
             existente.TipoCalificacion = pm.TipoCalificacion;
             existente.NotaMinimaRegularizar = pm.NotaMinimaRegularizar;
             existente.NotaMinimaAprobacion = pm.NotaMinimaAprobacion;
@@ -219,25 +208,22 @@ namespace EduSys.Api.Repositories
             existente.CantidadParciales = pm.CantidadParciales;
             existente.VigenciaCursadaAnios = pm.VigenciaCursadaAnios;
             existente.TieneFinalObligatorio = pm.TieneFinalObligatorio;
-
-            // ✅ ACTUALIZACIÓN DE NUEVOS CAMPOS: Reglas Avanzadas y Estados
-            existente.ModoAprobacionCursada = pm.ModoAprobacionCursada;
-            existente.NotaEliminatoria = pm.NotaEliminatoria;
-            existente.PromedioMinimoAprobacion = pm.PromedioMinimoAprobacion;
-            existente.CantidadAplazosParaLibre = pm.CantidadAplazosParaLibre;
-
-            existente.IdEstadoPromocion = pm.IdEstadoPromocion;
-            existente.IdEstadoRegular = pm.IdEstadoRegular;
-            existente.IdEstadoDesaprobado = pm.IdEstadoDesaprobado;
-            existente.IdEstadoLibre = pm.IdEstadoLibre;
-
-            // Actualizamos Textos y Proyecto
             existente.Objetivos = pm.Objetivos;
             existente.ContenidosMinimos = pm.ContenidosMinimos;
             existente.CondicionesCursada = pm.CondicionesCursada;
             existente.CondicionesAprobacion = pm.CondicionesAprobacion;
             existente.TieneProyecto = pm.TieneProyecto;
             existente.DescripcionProyecto = pm.DescripcionProyecto;
+
+            // ✅ MAPEADO HACIA LA BASE DE DATOS
+            existente.ModoAprobacionCursada = pm.ModoAprobacionCursada;
+            existente.NotaEliminatoria = pm.NotaEliminatoria;
+            existente.PromedioMinimoAprobacion = pm.PromedioMinimoAprobacion;
+            existente.CantidadAplazosParaLibre = pm.CantidadAplazosParaLibre;
+            existente.IdEstadoPromocion = pm.IdEstadoPromocion;
+            existente.IdEstadoRegular = pm.IdEstadoRegular;
+            existente.IdEstadoSiDesaprueba = pm.IdEstadoSiDesaprueba;
+            existente.IdEstadoSiFaltaAsistencia = pm.IdEstadoSiFaltaAsistencia;
 
             try
             {
@@ -252,7 +238,6 @@ namespace EduSys.Api.Repositories
             var item = await _context.PlanMateria.FindAsync(idPlanMateria);
             if (item == null) return false;
 
-            // Primero borramos las reglas correlativas que involucren a esta materia
             var reglas = _context.Correlatividads.Where(c => c.IdPlanMateriaOrigen == idPlanMateria || c.IdPlanMateriaRequisito == idPlanMateria);
             _context.Correlatividads.RemoveRange(reglas);
 
@@ -263,11 +248,9 @@ namespace EduSys.Api.Repositories
 
         public async Task<bool> ActualizarCorrelativasAsync(int idPlanMateria, List<CorrelativaItemDTO> correlativas)
         {
-            // Borramos las reglas viejas
             var viejas = _context.Correlatividads.Where(c => c.IdPlanMateriaOrigen == idPlanMateria);
             _context.Correlatividads.RemoveRange(viejas);
 
-            // Insertamos las nuevas
             foreach (var item in correlativas)
             {
                 _context.Correlatividads.Add(new Correlatividad
