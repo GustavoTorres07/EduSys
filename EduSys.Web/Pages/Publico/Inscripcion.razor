@@ -265,45 +265,63 @@
                             </div>
                         </MudItem>
 
-                        @* --- 2. CARRERA DE INTERÉS (CON FILTRO DE SEDE) --- *@
-                        <MudItem xs="12" Class="mt-2"><MudText Color="Color.Primary" Typo="Typo.h6" Style="font-weight: 700; font-size: 1rem;">2. Carrera de Interés</MudText></MudItem>
-
-                        @* A. SELECTOR DE SEDE *@
                         <MudItem xs="12">
                             <div class="custom-input">
-                                <MudSelect T="int" Label="Selecciona la Sede" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter"
-                                           Value="idSedeSeleccionada" ValueChanged="CargarCarrerasPorSede"
+
+                                <MudSelect T="int"
+                                           Label="Selecciona la Sede"
+                                           Variant="Variant.Outlined"
+                                           AnchorOrigin="Origin.BottomCenter"
+                                           Value="idSedeSeleccionada"
+                                           ValueChanged="CargarCarrerasPorSede"
                                            AdornmentIcon="@Icons.Material.Filled.Place">
+
                                     <MudSelectItem Value="0">-- Seleccione Sede --</MudSelectItem>
+
                                     @foreach (var s in listaSedes)
                                     {
                                         <MudSelectItem Value="@s.Id">@s.Nombre</MudSelectItem>
                                     }
+
                                 </MudSelect>
+
                             </div>
                         </MudItem>
 
-                        @* B. SELECTOR DE CARRERA *@
                         <MudItem xs="12">
                             <div class="custom-input">
-                                <MudSelect T="int" Label="Selecciona la Carrera" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter"
-                                           @bind-Value="solicitud.IdCarreraInteres" For="@(() => solicitud.IdCarreraInteres)"
+
+                                <MudSelect T="int"
+                                           Label="Selecciona la Carrera"
+                                           Variant="Variant.Outlined"
+                                           AnchorOrigin="Origin.BottomCenter"
+                                           @bind-Value="solicitud.IdCarreraInteres"
+                                           For="@(() => solicitud.IdCarreraInteres)"
                                            AdornmentIcon="@Icons.Material.Filled.School"
                                            Disabled="@(idSedeSeleccionada == 0)">
+
                                     <MudSelectItem Value="0">-- Seleccione Carrera --</MudSelectItem>
+
                                     @foreach (var c in listaCarreras)
                                     {
                                         <MudSelectItem Value="@c.Id">@c.Nombre</MudSelectItem>
                                     }
+
                                 </MudSelect>
+
                                 @if (idSedeSeleccionada == 0)
                                 {
-                                    <MudText Typo="Typo.caption" Color="Color.Warning" Class="ml-2">Debes seleccionar una sede primero.</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Warning" Class="ml-2">
+                                        Debes seleccionar una sede primero.
+                                    </MudText>
                                 }
-                                else if (listaCarreras.Count == 0 && idSedeSeleccionada > 0)
+                                else if (listaCarreras.Count == 0)
                                 {
-                                    <MudText Typo="Typo.caption" Color="Color.Error" Class="ml-2">No hay carreras disponibles en esta sede.</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Error" Class="ml-2">
+                                        No hay carreras disponibles en esta sede.
+                                    </MudText>
                                 }
+
                             </div>
                         </MudItem>
 
@@ -450,21 +468,18 @@
     private async Task CargarCarrerasPorSede(int idSede)
     {
         idSedeSeleccionada = idSede;
-        solicitud.IdCarreraInteres = 0; // Reseteamos la carrera anterior para evitar inconsistencias
-        listaCarreras.Clear();
+
+        solicitud.IdSede = idSede;
+        solicitud.IdCarreraInteres = 0;
+
+        listaCarreras = new List<CarreraDTO>();
 
         if (idSede > 0)
         {
-            try
-            {
-                // Llamamos al servicio que implementamos para buscar carreras por sede
-                listaCarreras = await CarreraService.GetCarrerasPorSedeAsync(idSede);
-            }
-            catch (Exception)
-            {
-                Snackbar.Add("Error al cargar carreras para la sede seleccionada.", Severity.Error);
-            }
+            listaCarreras = await CarreraService.GetCarrerasPorSedeAsync(idSede);
         }
+
+        StateHasChanged();
     }
 
     // --- Helpers Visuales para archivos ---

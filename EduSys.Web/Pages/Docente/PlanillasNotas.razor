@@ -14,8 +14,8 @@
 
 <style>
     /* =========================================
-                           ESTILOS PLANILLA (TABLA AVANZADA)
-                           ========================================= */
+                                   ESTILOS PLANILLA (TABLA AVANZADA)
+                                   ========================================= */
 
     :root {
         --excel-header-bg: #f8f9fa;
@@ -333,10 +333,16 @@
                             {
                                 <th class="th-detail">
                                     <div class="d-flex flex-column align-center justify-space-between h-100">
-                                        <span style="font-weight: 800; color: #1e3a58; text-transform: uppercase;">
+
+                                        @* ✅ MEJORA VISUAL: Distinguir tipo de examen *@
+                                        <span style="font-weight: 800; color: #1e3a58; text-transform: uppercase; text-align: center;">
                                             @if (eval.EsRecuperatorio)
                                             {
-                                                <MudIcon Icon="@Icons.Material.Filled.Autorenew" Size="Size.Small" Color="Color.Warning" Class="mr-1" />
+                                                <MudIcon Icon="@Icons.Material.Filled.Autorenew" Size="Size.Small" Color="Color.Info" Class="mr-1" Title="Recuperatorio" />
+                                            }
+                                            else if (eval.EsIntegrador)
+                                            {
+                                                <MudIcon Icon="@Icons.Material.Filled.Stars" Size="Size.Small" Style="color: #9C27B0;" Class="mr-1" Title="Examen Integrador" />
                                             }
                                             @eval.Nombre
                                         </span>
@@ -543,7 +549,8 @@
             Nombre = evaluacion.Nombre,
             Fecha = evaluacion.Fecha,
             EsRecuperatorio = evaluacion.EsRecuperatorio,
-            IdEvaluacionPadre = evaluacion.IdEvaluacionPadre // Importante pasar esto
+            EsIntegrador = evaluacion.EsIntegrador,
+            IdEvaluacionPadre = evaluacion.IdEvaluacionPadre
         };
 
         // ✅ PASAMOS LAS EVALUACIONES ANTERIORES PARA EL DESPLEGABLE DE RECUPERATORIO

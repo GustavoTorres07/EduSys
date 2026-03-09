@@ -64,8 +64,16 @@ namespace EduSys.Web.Services
 
         public async Task<bool> EliminarEvaluacionAsync(int idEvaluacion)
         {
-            var res = await _http.DeleteAsync($"api/notas/evaluacion/{idEvaluacion}");
-            return res.IsSuccessStatusCode;
+            try
+            {
+                var response = await _http.DeleteAsync($"api/notas/evaluacion/{idEvaluacion}");
+                return response.IsSuccessStatusCode;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al eliminar evaluación: {ex.Message}");
+                return false;
+            }
         }
 
         public async Task<bool> ToggleCierreIndividualAsync(int idInscripcion)

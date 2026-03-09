@@ -129,7 +129,7 @@ namespace EduSys.Api.Controllers
                 TieneProyecto = dto.TieneProyecto,
                 DescripcionProyecto = dto.DescripcionProyecto,
 
-                // ✅ SE AGREGARON LOS NUEVOS CAMPOS AQUÍ
+                // REGLAS AVANZADAS: CURSADA
                 ModoAprobacionCursada = dto.ModoAprobacionCursada,
                 NotaEliminatoria = dto.NotaEliminatoria,
                 PromedioMinimoAprobacion = dto.PromedioMinimoAprobacion,
@@ -137,7 +137,15 @@ namespace EduSys.Api.Controllers
                 IdEstadoPromocion = dto.IdEstadoPromocion,
                 IdEstadoRegular = dto.IdEstadoRegular,
                 IdEstadoSiDesaprueba = dto.IdEstadoSiDesaprueba,
-                IdEstadoSiFaltaAsistencia = dto.IdEstadoSiFaltaAsistencia
+                IdEstadoSiFaltaAsistencia = dto.IdEstadoSiFaltaAsistencia,
+
+                // ✅ NUEVAS REGLAS AVANZADAS: RECUPERATORIO E INTEGRADOR
+                ModoNotaRecuperatorio = dto.ModoNotaRecuperatorio,
+                TieneIntegrador = dto.TieneIntegrador,
+                CondicionIntegradorParciales = dto.CondicionIntegradorParciales,
+                NotaAprobacionIntegrador = dto.NotaAprobacionIntegrador,
+                IntegradorPermitePromocion = dto.IntegradorPermitePromocion,
+                NotaPromocionIntegrador = dto.NotaPromocionIntegrador
             };
 
             if (!await _repo.AgregarMateriaAsync(pm))
@@ -191,7 +199,7 @@ namespace EduSys.Api.Controllers
                 TieneProyecto = dto.TieneProyecto,
                 DescripcionProyecto = dto.DescripcionProyecto,
 
-                // ✅ SE AGREGARON LOS NUEVOS CAMPOS AQUÍ TAMBIÉN
+                // REGLAS AVANZADAS: CURSADA
                 ModoAprobacionCursada = dto.ModoAprobacionCursada,
                 NotaEliminatoria = dto.NotaEliminatoria,
                 PromedioMinimoAprobacion = dto.PromedioMinimoAprobacion,
@@ -199,7 +207,15 @@ namespace EduSys.Api.Controllers
                 IdEstadoPromocion = dto.IdEstadoPromocion,
                 IdEstadoRegular = dto.IdEstadoRegular,
                 IdEstadoSiDesaprueba = dto.IdEstadoSiDesaprueba,
-                IdEstadoSiFaltaAsistencia = dto.IdEstadoSiFaltaAsistencia
+                IdEstadoSiFaltaAsistencia = dto.IdEstadoSiFaltaAsistencia,
+
+                // ✅ NUEVAS REGLAS AVANZADAS: RECUPERATORIO E INTEGRADOR
+                ModoNotaRecuperatorio = dto.ModoNotaRecuperatorio,
+                TieneIntegrador = dto.TieneIntegrador,
+                CondicionIntegradorParciales = dto.CondicionIntegradorParciales,
+                NotaAprobacionIntegrador = dto.NotaAprobacionIntegrador,
+                IntegradorPermitePromocion = dto.IntegradorPermitePromocion,
+                NotaPromocionIntegrador = dto.NotaPromocionIntegrador
             };
 
             if (await _repo.ModificarMateriaDelPlanAsync(pm))

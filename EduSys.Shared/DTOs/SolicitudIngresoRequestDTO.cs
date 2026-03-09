@@ -21,7 +21,7 @@ namespace EduSys.Shared.DTOs
         [Required(ErrorMessage = "La fecha de nacimiento es obligatoria.")]
         public DateTime? FechaNacimiento { get; set; } // <--- AGREGAR ESTO
 
-        public string? Telefono { get; set; }
+        public string? Telefono { get; set; } 
         public string? Direccion { get; set; }
 
         // --- CARRERA ELEGIDA ---

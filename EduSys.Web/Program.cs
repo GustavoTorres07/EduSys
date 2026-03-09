@@ -19,17 +19,25 @@ builder.Services.AddMudServices();
 // 2. LocalStorage
 builder.Services.AddBlazoredLocalStorage();
 
-// 3. HttpClient (IMPORTANTE: Antes del AuthenticationStateProvider)
-builder.Services.AddScoped(sp => new HttpClient
-{
-    BaseAddress = new Uri("https://localhost:7188/") // Asegúrate de tener la barra al final
-});
+// 3. Handler que agrega el JWT automáticamente
+builder.Services.AddScoped<AuthMessageHandler>();
 
-// 4. Sistema de Autorización
+// 4. HttpClient configurado con el Handler
+builder.Services.AddHttpClient("Api", client =>
+{
+    client.BaseAddress = new Uri("https://localhost:7188/");
+})
+.AddHttpMessageHandler<AuthMessageHandler>();
+
+// 5. HttpClient por defecto que usará toda la app
+builder.Services.AddScoped(sp =>
+    sp.GetRequiredService<IHttpClientFactory>().CreateClient("Api"));
+
+// 6. Sistema de Autorización
 builder.Services.AddAuthorizationCore();
 builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthStateProvider>();
 
-// 5. Nuestros Servicios
+// 7. Servicios de la aplicación
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ICarreraService, CarreraService>();
 builder.Services.AddScoped<ISedeService, SedeService>();

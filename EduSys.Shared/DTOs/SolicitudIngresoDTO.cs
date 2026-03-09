@@ -14,19 +14,19 @@ namespace EduSys.Shared.DTOs
         public string Dni { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public string Telefono { get; set; } = string.Empty;
-        public string? Direccion { get; set; }
+        public string? Direccion { get; set; } = string.Empty;
 
         // --- DATOS ACADÉMICOS ---
-        public int IdCarreraInteres { get; set; }
+        public int IdCarreraInteres { get; set; } 
         public string NombreCarrera { get; set; } = string.Empty;
 
         // ✅ NUEVOS CAMPOS PARA SEDE
-        public int IdSede { get; set; }
+        public int IdSede { get; set; } 
         public string NombreSede { get; set; } = string.Empty; // Para mostrar en la grilla del admin
 
         // --- ESTADO Y FECHAS ---
         public string Estado { get; set; } = string.Empty;
-        public DateTime FechaSolicitud { get; set; }
+        public DateTime FechaSolicitud { get; set; } 
         public DateTime? FechaProcesado { get; set; }
         public DateTime? FechaNacimiento { get; set; }
 

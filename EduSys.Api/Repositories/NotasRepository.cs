@@ -26,6 +26,7 @@ namespace EduSys.Api.Repositories
                 .Include(c => c.InscripcionCursada).ThenInclude(i => i.IdAlumnoNavigation.IdUsuarioNavigation)
                 .Include(c => c.InscripcionCursada).ThenInclude(i => i.Nota)
                 .Include(c => c.InscripcionCursada).ThenInclude(i => i.IdEstadoMateriaNavigation)
+                .AsNoTracking()
                 .FirstOrDefaultAsync(c => c.Id == idComision);
 
             if (comision == null) return null;
@@ -41,7 +42,8 @@ namespace EduSys.Api.Repositories
                     IdEvaluacion = e.Id,
                     Nombre = e.Nombre,
                     Fecha = e.Fecha.ToDateTime(TimeOnly.MinValue),
-                    EsRecuperatorio = e.EsRecuperatorio ?? false,
+                    EsRecuperatorio = e.EsRecuperatorio == true,
+                    EsIntegrador = e.EsIntegrador == true,
                     IdEvaluacionPadre = e.IdEvaluacionPadre,
                     EstadoActa = e.EstadoActa ?? "Abierta",
                     Libro = e.Libro,
@@ -79,77 +81,81 @@ namespace EduSys.Api.Repositories
 
         public async Task<bool> GuardarNotaAsync(int idInscripcion, int idEvaluacion, decimal? valor)
         {
-            var evaluacion = await _context.Evaluacions.FindAsync(idEvaluacion);
-            if (evaluacion == null) return false;
-            if (evaluacion.EstadoActa == "Cerrada") return false;
-
-            var nota = await _context.Nota
-                .FirstOrDefaultAsync(n => n.IdInscripcionCursada == idInscripcion && n.IdEvaluacion == idEvaluacion);
-
-            if (valor.HasValue)
+            try
             {
-                if (nota == null)
+                var evaluacion = await _context.Evaluacions.AsNoTracking().FirstOrDefaultAsync(e => e.Id == idEvaluacion);
+                if (evaluacion == null || evaluacion.EstadoActa == "Cerrada") return false;
+
+                var nota = await _context.Nota
+                    .FirstOrDefaultAsync(n => n.IdInscripcionCursada == idInscripcion && n.IdEvaluacion == idEvaluacion);
+
+                if (valor.HasValue)
                 {
-                    nota = new Nota { IdInscripcionCursada = idInscripcion, IdEvaluacion = idEvaluacion, Valor = valor.Value, FechaCarga = DateTime.Now };
-                    _context.Nota.Add(nota);
+                    if (nota == null)
+                    {
+                        nota = new Nota
+                        {
+                            IdInscripcionCursada = idInscripcion,
+                            IdEvaluacion = idEvaluacion,
+                            Valor = valor.Value,
+                            FechaCarga = DateTime.Now
+                        };
+                        await _context.Nota.AddAsync(nota);
+                    }
+                    else
+                    {
+                        nota.Valor = valor.Value;
+                        nota.FechaCarga = DateTime.Now;
+                    }
                 }
                 else
                 {
-                    nota.Valor = valor.Value;
-                    nota.FechaCarga = DateTime.Now;
-                    _context.Nota.Update(nota);
+                    if (nota != null) _context.Nota.Remove(nota);
                 }
+
+                await _context.SaveChangesAsync();
+
+                // ✅ CORRECCIÓN: Separamos el recalculo del guardado principal para evitar choques en memoria
+                await RecalcularEstadoAlumnoAsync(idInscripcion);
+
+                return true;
             }
-            else
+            catch (Exception ex)
             {
-                if (nota != null) _context.Nota.Remove(nota);
+                Console.WriteLine($"Error GuardarNota: {ex.Message} - {ex.InnerException?.Message}");
+                return false;
             }
-
-            await _context.SaveChangesAsync();
-
-            // Llamamos al recálculo
-            await RecalcularEstadoAlumnoAsync(idInscripcion);
-
-            return true;
         }
 
         // =======================================================================
-        // MOTOR DE REGLAS ACADÉMICAS - ENCAPSULADO Y REUTILIZABLE
+        // 🧠 MOTOR DE REGLAS ACADÉMICAS
         // =======================================================================
-        // =======================================================================
-        // MOTOR DE REGLAS ACADÉMICAS - ENCAPSULADO Y REUTILIZABLE
-        // =======================================================================
-        // =======================================================================
-        // MOTOR DE REGLAS ACADÉMICAS - ENCAPSULADO Y REUTILIZABLE
-        // =======================================================================
-        private (int? IdEstado, decimal? NotaFinal) CalcularEstadoYNotaDefinitiva(PlanMateria plan, List<Nota> notasAlumno, List<Evaluacion> evaluacionesComision, int idEstadoActual)
+        private (int IdEstado, decimal? NotaFinal) CalcularEstadoYNotaDefinitiva(PlanMateria plan, List<Nota> notasAlumno, List<Evaluacion> evaluacionesComision, int idEstadoActual)
         {
-            if (!notasAlumno.Any()) return (idEstadoActual, null); // Sin notas, no hay cambios
+            if (!notasAlumno.Any()) return (idEstadoActual, null);
 
-            // =========================================================================
-            // 1. ESTADO LIBRE / ABANDONO: MUERTE SÚBITA
-            // =========================================================================
+            int estadoDesaprobado = plan.IdEstadoSiDesaprueba ?? 7;
+            int estadoLibre = plan.IdEstadoSiFaltaAsistencia ?? 4;
+            int estadoRegular = plan.IdEstadoRegular ?? 2;
+
+            // 1. MUERTE SÚBITA
             if (plan.NotaEliminatoria.HasValue && notasAlumno.Any(n => n.Valor < plan.NotaEliminatoria.Value))
             {
-                var notasValidas = notasAlumno.Where(n => n.Valor.HasValue).Select(n => n.Valor.Value).ToList();
+                var notasValidas = notasAlumno.Select(n => n.Valor).ToList();
                 decimal prom = notasValidas.Any() ? Math.Round(notasValidas.Average(), 2) : 0m;
-                return (plan.IdEstadoSiFaltaAsistencia, prom); // Estado Libre/Abandono
+                return (estadoLibre, prom);
             }
 
-            // =========================================================================
-            // 2. SEPARAR TIPOS DE EXÁMENES
-            // =========================================================================
+            // 2. SEPARAR EXÁMENES
             var integrador = evaluacionesComision.FirstOrDefault(e => e.EsIntegrador == true);
             var parcialesPrincipales = evaluacionesComision.Where(e => e.IdEvaluacionPadre == null && e.EsIntegrador != true).ToList();
 
             var notasPorInstancia = new List<decimal>();
 
-            // =========================================================================
-            // 3. CALCULAR LA NOTA DEFINITIVA DE CADA INSTANCIA (PISAR O MAX)
-            // =========================================================================
+            // 3. PISAR NOTAS O MAX
             foreach (var parcial in parcialesPrincipales)
             {
-                var notaParcial = notasAlumno.FirstOrDefault(n => n.IdEvaluacion == parcial.Id)?.Valor;
+                decimal? notaParcial = notasAlumno.FirstOrDefault(n => n.IdEvaluacion == parcial.Id)?.Valor;
                 var recuperatorios = evaluacionesComision.Where(e => e.IdEvaluacionPadre == parcial.Id).ToList();
 
                 bool rindioInstancia = notaParcial.HasValue || notasAlumno.Any(n => recuperatorios.Select(r => r.Id).Contains(n.IdEvaluacion));
@@ -158,18 +164,18 @@ namespace EduSys.Api.Repositories
                 {
                     decimal notaDefinitiva = notaParcial ?? 0m;
 
-                    var notasRecusRendidos = notasAlumno.Where(n => recuperatorios.Select(r => r.Id).Contains(n.IdEvaluacion) && n.Valor.HasValue).ToList();
+                    var notasRecusRendidos = notasAlumno.Where(n => recuperatorios.Select(r => r.Id).Contains(n.IdEvaluacion)).ToList();
                     if (notasRecusRendidos.Any())
                     {
-                        if (plan.ModoNotaRecuperatorio == 0) // ✅ MODO 0: Queda la nota más alta
+                        if (plan.ModoNotaRecuperatorio == 0) // Max
                         {
-                            decimal maxRecu = notasRecusRendidos.Max(n => n.Valor.Value);
+                            decimal maxRecu = notasRecusRendidos.Max(n => n.Valor);
                             notaDefinitiva = Math.Max(notaDefinitiva, maxRecu);
                         }
-                        else // ✅ MODO 1: El recuperatorio reemplaza/pisa siempre
+                        else // Pisar
                         {
                             var ultimoRecuRendido = notasRecusRendidos.OrderByDescending(n => n.FechaCarga).First();
-                            notaDefinitiva = ultimoRecuRendido.Valor.Value;
+                            notaDefinitiva = ultimoRecuRendido.Valor;
                         }
                     }
                     notasPorInstancia.Add(notaDefinitiva);
@@ -182,24 +188,15 @@ namespace EduSys.Api.Repositories
             decimal notaDeCorte = plan.PromedioMinimoAprobacion ?? plan.NotaMinimaRegularizar ?? 4m;
             int cantidadAplazos = notasPorInstancia.Count(n => n < notaDeCorte);
 
-            // =========================================================================
-            // 4. ESTADO LIBRE / ABANDONO: POR INASISTENCIA O LÍMITE DE APLAZOS
-            // =========================================================================
-            decimal porcentajeAsistencia = 100m; // Integrar módulo de asistencia futuro
+            // 4. LÍMITES Y ASISTENCIA
+            decimal porcentajeAsistencia = 100m;
             if (plan.PorcentajeAsistenciaRegularizar.HasValue && porcentajeAsistencia < plan.PorcentajeAsistenciaRegularizar.Value)
-            {
-                return (plan.IdEstadoSiFaltaAsistencia, promedioInstancias); // Queda Libre
-            }
+                return (estadoLibre, promedioInstancias);
 
-            // "Límite de aplazos" define cuándo el alumno pierde el derecho a cursar
             if (plan.CantidadAplazosParaLibre.HasValue && cantidadAplazos > plan.CantidadAplazosParaLibre.Value)
-            {
-                return (plan.IdEstadoSiFaltaAsistencia, promedioInstancias); // Queda Libre
-            }
+                return (estadoLibre, promedioInstancias);
 
-            // =========================================================================
-            // 5. EVALUACIÓN FINAL DE CURSADA (Rindió todos los exámenes)
-            // =========================================================================
+            // 5. RENDIMIENTO FINAL
             if (plan.CantidadParciales.HasValue && notasPorInstancia.Count >= plan.CantidadParciales.Value)
             {
                 bool aproboCursadaBase = plan.ModoAprobacionCursada == 1
@@ -208,29 +205,24 @@ namespace EduSys.Api.Repositories
 
                 if (aproboCursadaBase)
                 {
-                    // Aprobó limpio -> Verificamos Promoción
                     bool cumplePromo = plan.NotaMinimaPromocion.HasValue &&
                         (plan.ModoAprobacionCursada == 1 ? notasPorInstancia.All(n => n >= plan.NotaMinimaPromocion.Value) : promedioInstancias >= plan.NotaMinimaPromocion.Value);
 
                     if (plan.EsPromocionable == true && cumplePromo && plan.IdEstadoPromocion.HasValue)
                         return (plan.IdEstadoPromocion.Value, promedioInstancias);
 
-                    return (plan.IdEstadoRegular ?? 2, null);
+                    return (estadoRegular, null);
                 }
                 else
                 {
-                    // =================================================================
-                    // 6. LÓGICA DE EXAMEN INTEGRADOR Y ESTADO DESAPROBADO
-                    // =================================================================
+                    // 6. INTEGRADOR
                     int parcialesAprobados = notasPorInstancia.Count(n => n >= notaDeCorte);
-
-                    // ¿Cumple requisitos para rendir integrador?
                     bool tieneDerechoIntegrador = plan.TieneIntegrador &&
                         (!plan.CondicionIntegradorParciales.HasValue || parcialesAprobados >= plan.CondicionIntegradorParciales.Value);
 
                     if (tieneDerechoIntegrador && integrador != null)
                     {
-                        var notaIntegrador = notasAlumno.FirstOrDefault(n => n.IdEvaluacion == integrador.Id)?.Valor;
+                        decimal? notaIntegrador = notasAlumno.FirstOrDefault(n => n.IdEvaluacion == integrador.Id)?.Valor;
 
                         if (notaIntegrador.HasValue)
                         {
@@ -238,56 +230,64 @@ namespace EduSys.Api.Repositories
 
                             if (notaIntegrador.Value >= minAprobarInt)
                             {
-                                // Aprobó el Integrador -> ¿Lo salva o lo promociona?
                                 if (plan.IntegradorPermitePromocion && plan.NotaPromocionIntegrador.HasValue &&
                                     notaIntegrador.Value >= plan.NotaPromocionIntegrador.Value && plan.IdEstadoPromocion.HasValue)
                                 {
-                                    return (plan.IdEstadoPromocion.Value, notaIntegrador.Value); // Salva y Promociona
+                                    return (plan.IdEstadoPromocion.Value, notaIntegrador.Value);
                                 }
 
-                                return (plan.IdEstadoRegular ?? 2, null); // Salvó la cursada
+                                return (estadoRegular, null);
                             }
                             else
                             {
-                                // Rindió el integrador y le fue mal
-                                return (plan.IdEstadoSiDesaprueba, notaIntegrador.Value); // ESTADO DESAPROBADO
+                                return (estadoDesaprobado, notaIntegrador.Value);
                             }
                         }
                         else
                         {
-                            // Cumple los requisitos, existe el integrador, PERO AÚN NO LO RINDE. Sigue en carrera.
                             return (idEstadoActual, promedioInstancias);
                         }
                     }
 
-                    // Si NO tiene derecho a integrador (o la materia no lo tiene), entonces reprueba la cursada
-                    return (plan.IdEstadoSiDesaprueba, promedioInstancias); // ESTADO DESAPROBADO
+                    return (estadoDesaprobado, promedioInstancias);
                 }
             }
 
-            return (idEstadoActual, promedioInstancias); // Sigue cursando...
+            return (idEstadoActual, promedioInstancias);
         }
+
         private async Task RecalcularEstadoAlumnoAsync(int idInscripcionCursada)
         {
-            var inscripcion = await _context.InscripcionCursada
-                .Include(i => i.Nota)
-                .Include(i => i.IdComisionNavigation).ThenInclude(c => c.IdPlanMateriaNavigation)
-                .FirstOrDefaultAsync(i => i.Id == idInscripcionCursada);
+            try
+            {
+                // Buscamos la inscripción en una nueva consulta limpia
+                var inscripcion = await _context.InscripcionCursada
+                    .Include(i => i.Nota)
+                    .Include(i => i.IdComisionNavigation).ThenInclude(c => c.IdPlanMateriaNavigation)
+                    .FirstOrDefaultAsync(i => i.Id == idInscripcionCursada);
 
-            if (inscripcion == null || inscripcion.CursadaCerrada) return;
+                if (inscripcion == null || inscripcion.CursadaCerrada) return;
 
-            var evaluacionesComision = await _context.Evaluacions.Where(e => e.IdComision == inscripcion.IdComision).ToListAsync();
+                var evaluacionesComision = await _context.Evaluacions
+                    .Where(e => e.IdComision == inscripcion.IdComision)
+                    .AsNoTracking()
+                    .ToListAsync();
 
-            var resultado = CalcularEstadoYNotaDefinitiva(inscripcion.IdComisionNavigation.IdPlanMateriaNavigation, inscripcion.Nota.ToList(), evaluacionesComision, inscripcion.IdEstadoMateria ?? 1);
+                var resultado = CalcularEstadoYNotaDefinitiva(
+                    inscripcion.IdComisionNavigation.IdPlanMateriaNavigation,
+                    inscripcion.Nota.ToList(),
+                    evaluacionesComision,
+                    inscripcion.IdEstadoMateria ?? 1);
 
-            if (resultado.IdEstado.HasValue) inscripcion.IdEstadoMateria = resultado.IdEstado.Value;
-            inscripcion.NotaFinalCursada = resultado.NotaFinal;
+                inscripcion.IdEstadoMateria = resultado.IdEstado;
+                inscripcion.NotaFinalCursada = resultado.NotaFinal;
 
-            inscripcion.IdEstadoMateria = resultado.IdEstado;
-            inscripcion.NotaFinalCursada = resultado.NotaFinal;
-
-            _context.InscripcionCursada.Update(inscripcion);
-            await _context.SaveChangesAsync();
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al recalcular: {ex.Message}");
+            }
         }
 
         public async Task<bool> CerrarActaComisionAsync(int idComision, string libro, string folio)
@@ -298,7 +298,7 @@ namespace EduSys.Api.Repositories
 
             if (comision == null) return false;
 
-            var evaluacionesComision = await _context.Evaluacions.Where(e => e.IdComision == idComision).ToListAsync();
+            var evaluacionesComision = await _context.Evaluacions.Where(e => e.IdComision == idComision).AsNoTracking().ToListAsync();
 
             var inscripciones = await _context.InscripcionCursada
                 .Include(i => i.Nota)
@@ -311,10 +311,6 @@ namespace EduSys.Api.Repositories
 
                 var resultado = CalcularEstadoYNotaDefinitiva(comision.IdPlanMateriaNavigation, inscripcion.Nota.ToList(), evaluacionesComision, inscripcion.IdEstadoMateria ?? 1);
 
-                if (resultado.IdEstado.HasValue) inscripcion.IdEstadoMateria = resultado.IdEstado.Value;
-                inscripcion.NotaFinalCursada = resultado.NotaFinal;
-
-
                 inscripcion.IdEstadoMateria = resultado.IdEstado;
                 inscripcion.NotaFinalCursada = resultado.NotaFinal;
                 inscripcion.Estado = "Finalizada";
@@ -325,8 +321,7 @@ namespace EduSys.Api.Repositories
             await _context.SaveChangesAsync();
             return true;
         }
-
-        // Métodos de Actas y Evaluaciones permanecen igual
+        
         public async Task<bool> CerrarActaAsync(CierreActaDTO dto)
         {
             var evaluacion = await _context.Evaluacions.FindAsync(dto.IdEvaluacion);
@@ -352,6 +347,7 @@ namespace EduSys.Api.Repositories
             eval.Nombre = dto.Nombre;
             eval.Fecha = DateOnly.FromDateTime(dto.Fecha);
             eval.EsRecuperatorio = dto.EsRecuperatorio;
+            eval.EsIntegrador = dto.EsIntegrador;
             eval.IdEvaluacionPadre = dto.IdEvaluacionPadre;
 
             return await _context.SaveChangesAsync() > 0;
@@ -365,6 +361,7 @@ namespace EduSys.Api.Repositories
                 Nombre = dto.Nombre,
                 Fecha = DateOnly.FromDateTime(dto.Fecha),
                 EsRecuperatorio = dto.EsRecuperatorio,
+                EsIntegrador = dto.EsIntegrador,
                 IdEvaluacionPadre = dto.IdEvaluacionPadre,
                 EstadoActa = "Abierta"
             };
@@ -387,13 +384,54 @@ namespace EduSys.Api.Repositories
 
         public async Task<bool> EliminarEvaluacionAsync(int idEvaluacion)
         {
-            var evaluacion = await _context.Evaluacions.Include(e => e.Nota).FirstOrDefaultAsync(e => e.Id == idEvaluacion);
-            if (evaluacion == null || evaluacion.EstadoActa == "Cerrada") return false;
+            try
+            {
+                // ✅ CORRECCIÓN 400 AL ELIMINAR: 
+                // Primero buscamos el examen directamente sin Incluir notas
+                var evaluacion = await _context.Evaluacions.FirstOrDefaultAsync(e => e.Id == idEvaluacion);
+                if (evaluacion == null || evaluacion.EstadoActa == "Cerrada") return false;
 
-            _context.Nota.RemoveRange(evaluacion.Nota);
-            _context.Evaluacions.Remove(evaluacion);
+                // Desvinculamos a todos los hijos (recuperatorios) de este examen
+                var hijos = await _context.Evaluacions.Where(e => e.IdEvaluacionPadre == idEvaluacion).ToListAsync();
+                foreach (var hijo in hijos)
+                {
+                    hijo.IdEvaluacionPadre = null;
+                    hijo.EsRecuperatorio = false; // Como perdió al padre, ya no es recuperatorio
+                }
 
-            return await _context.SaveChangesAsync() > 0;
+                // Guardamos la desvinculación para liberar las llaves foráneas
+                await _context.SaveChangesAsync();
+
+                // Buscamos TODAS las notas atadas a este examen y las borramos
+                var notasABorrar = await _context.Nota.Where(n => n.IdEvaluacion == idEvaluacion).ToListAsync();
+                if (notasABorrar.Any())
+                {
+                    _context.Nota.RemoveRange(notasABorrar);
+                    await _context.SaveChangesAsync(); // Guardamos el borrado de notas
+                }
+
+                // Finalmente borramos el examen
+                _context.Evaluacions.Remove(evaluacion);
+                await _context.SaveChangesAsync();
+
+                // Recalculamos los estados de toda la comisión porque borramos una columna de notas
+                var inscripciones = await _context.InscripcionCursada
+                    .Where(i => i.IdComision == evaluacion.IdComision && i.Estado != "Baja")
+                    .Select(i => i.Id)
+                    .ToListAsync();
+
+                foreach (var insId in inscripciones)
+                {
+                    await RecalcularEstadoAlumnoAsync(insId);
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al eliminar: {ex.Message} - {ex.InnerException?.Message}");
+                return false;
+            }
         }
 
         public async Task<bool> ToggleCierreCursadaIndividualAsync(int idInscripcion)

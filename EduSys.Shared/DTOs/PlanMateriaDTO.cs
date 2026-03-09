@@ -23,7 +23,7 @@
         public int? PorcentajeAsistenciaRegularizar { get; set; }
         public int VigenciaCursadaAnios { get; set; } = 3;
 
-        // 👇 REGLAS DE FINAL Y PROYECTO
+        // REGLAS DE FINAL Y PROYECTO
         public bool TieneFinalObligatorio { get; set; } = false;
         public bool TieneProyecto { get; set; }
         public string? CondicionesCursada { get; set; }
@@ -32,23 +32,38 @@
         public string? ContenidosMinimos { get; set; }
         public string? DescripcionProyecto { get; set; }
         public int CantidadParciales { get; set; } = 2;
-        public int? IdEstadoPromocion { get; set; }
-        public int? IdEstadoRegular { get; set; }
-        public int? IdEstadoDesaprobado { get; set; }
-        public int? IdEstadoLibre { get; set; }
-        public string CorrelativasTexto { get; set; } = "";
-        public List<int> IdsCorrelativas { get; set; } = new List<int>();
-        public int? IdEstadoSiDesaprueba { get; set; } // Nuevo
-        public int? IdEstadoSiFaltaAsistencia { get; set; } // Nuevo
 
+        // =========================================================
+        // NUEVAS REGLAS ACADÉMICAS COMBINADAS
+        // =========================================================
         public int ModoAprobacionCursada { get; set; } = 0;
         public decimal? NotaEliminatoria { get; set; }
-        public int? CantidadAplazosParaLibre { get; set; } // Nuevo
-        public decimal? PromedioMinimoAprobacion { get; set; } // Reemplaza o complementa NotaMinimaRegularizar
+        public int? CantidadAplazosParaLibre { get; set; }
+        public decimal? PromedioMinimoAprobacion { get; set; }
 
-        // 👇 NUEVO: Lista con el detalle de si es Regular o Aprobada
+        // =========================================================
+        // REGLAS AVANZADAS: RECUPERATORIOS E INTEGRADOR
+        // =========================================================
+        public int ModoNotaRecuperatorio { get; set; } = 0;
+        public bool TieneIntegrador { get; set; } = false;
+        public int? CondicionIntegradorParciales { get; set; }
+        public decimal? NotaAprobacionIntegrador { get; set; }
+        public bool IntegradorPermitePromocion { get; set; } = false;
+        public decimal? NotaPromocionIntegrador { get; set; }
+
+        // =========================================================
+        // MAPEOS DE ESTADOS DINÁMICOS
+        // =========================================================
+        public int? IdEstadoPromocion { get; set; }
+        public int? IdEstadoRegular { get; set; }
+        public int? IdEstadoSiDesaprueba { get; set; }
+        public int? IdEstadoSiFaltaAsistencia { get; set; }
+
+        // =========================================================
+        // CORRELATIVAS
+        // =========================================================
+        public string CorrelativasTexto { get; set; } = "";
+        public List<int> IdsCorrelativas { get; set; } = new List<int>();
         public List<CorrelativaItemDTO> CorrelativasDetalle { get; set; } = new List<CorrelativaItemDTO>();
-
-
     }
 }

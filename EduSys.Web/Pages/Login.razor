@@ -357,6 +357,48 @@
     }
 
     // Métodos dummy para compilación, asegúrate de tener tu lógica real
-    private async Task EnviarCorreoRecuperacion() { /* ... tu código ... */ await Task.Delay(500); }
+    private async Task EnviarCorreoRecuperacion()
+    {
+        if (string.IsNullOrWhiteSpace(emailRecuperacion))
+        {
+            await MostrarAlerta("error", "Correo requerido", "Debes ingresar tu correo.");
+            return;
+        }
+
+        procesando = true;
+
+        try
+        {
+            var enviado = await AuthService.RecuperarClaveAsync(emailRecuperacion);
+
+            if (enviado)
+            {
+                await MostrarAlerta(
+                    "success",
+                    "Correo enviado",
+                    "Si el correo existe recibirás una contraseña temporal."
+                );
+
+                CambiarVista(0); // volver al login
+            }
+            else
+            {
+                await MostrarAlerta(
+                    "error",
+                    "Error",
+                    "No se pudo procesar la solicitud."
+                );
+            }
+        }
+        catch (Exception ex)
+        {
+            await MostrarAlerta("error", "Error", ex.Message);
+        }
+        finally
+        {
+            procesando = false;
+        }
+    }
+
     private async Task MostrarAlerta(string t, string ti, string tx) { try { if (!jsReady) await Task.Delay(200); await JSRuntime.InvokeVoidAsync("mostrarAlerta", t, ti, tx); } catch { } }
 }

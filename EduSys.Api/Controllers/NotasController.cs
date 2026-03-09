@@ -89,10 +89,15 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpDelete("evaluacion/{id}")]
-        public async Task<IActionResult> EliminarEvaluacion(int id)
+        public async Task<IActionResult> EliminarEvaluacion([FromRoute] int id)
         {
+            if (id <= 0) return BadRequest("ID de evaluación inválido.");
+
             var result = await _notasRepo.EliminarEvaluacionAsync(id);
-            if (!result) return BadRequest("No se puede eliminar la evaluación.");
+
+            if (!result)
+                return BadRequest("No se puede eliminar la evaluación. Verifique que no esté cerrada.");
+
             return Ok();
         }
 
