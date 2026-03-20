@@ -3,10 +3,12 @@
 @using Microsoft.JSInterop
 @using EduSys.Web.Services.Interfaces
 
+@inject IDialogService DialogService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager NavManager
 @inject IJSRuntime JS
-@inject IAuthService AuthService
+@* 💡 Recuerda ajustar "AuthService" si descubriste que tu método se llamaba diferente (ej: IUsuarioService) *@
+@inject IAuthService AuthService 
 
 @implements IDisposable
 
@@ -82,10 +84,6 @@
         padding: 2px 6px;
         border-radius: 4px;
         align-self: flex-start;
-        max-width: 100%;
-        white-space: nowrap;
-        text-overflow: ellipsis;
-        overflow: hidden;
     }
 
     /* ===== 2. BUSCADOR (TRIGGER) ===== */
@@ -102,11 +100,11 @@
         transition: 0.2s;
     }
 
-        .command-trigger:hover {
-            border-color: var(--nav-accent);
-            background: white;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
+    .command-trigger:hover {
+        border-color: var(--nav-accent);
+        background: white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
 
     .command-trigger-text {
         flex: 1;
@@ -131,14 +129,8 @@
         padding: 8px 16px 16px 16px;
     }
 
-        .nav-scroll-area::-webkit-scrollbar {
-            width: 5px;
-        }
-
-        .nav-scroll-area::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 4px;
-        }
+    .nav-scroll-area::-webkit-scrollbar { width: 5px; }
+    .nav-scroll-area::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
 
     .nav-section-header {
         font-size: 0.65rem;
@@ -150,10 +142,6 @@
         border-bottom: 1px solid #f1f5f9;
         padding-bottom: 4px;
     }
-
-        .nav-section-header:first-child {
-            margin-top: 8px;
-        }
 
     .nav-link-wrapper {
         position: relative;
@@ -171,17 +159,17 @@
         font-size: 0.9rem !important;
     }
 
-        .mud-nav-link:hover {
-            background-color: var(--nav-hover) !important;
-            color: var(--nav-primary) !important;
-            transform: translateX(3px);
-        }
+    .mud-nav-link:hover {
+        background-color: var(--nav-hover) !important;
+        color: var(--nav-primary) !important;
+        transform: translateX(3px);
+    }
 
-        .mud-nav-link.active {
-            background-color: var(--nav-active-bg) !important;
-            color: var(--nav-primary) !important;
-            font-weight: 700 !important;
-        }
+    .mud-nav-link.active {
+        background-color: var(--nav-active-bg) !important;
+        color: var(--nav-primary) !important;
+        font-weight: 700 !important;
+    }
 
     .mud-nav-link-icon {
         color: #64748b !important;
@@ -190,10 +178,9 @@
         font-size: 1.2rem !important;
     }
 
-    .mud-nav-link.active .mud-nav-link-icon {
-        color: var(--nav-accent) !important;
-    }
+    .mud-nav-link.active .mud-nav-link-icon { color: var(--nav-accent) !important; }
 
+    /* ESTRELLA FAVORITOS */
     .favorite-star-btn {
         position: absolute;
         right: 8px;
@@ -206,128 +193,41 @@
         background: transparent;
         border: none;
         padding: 4px;
-        display: flex;
         z-index: 10;
     }
 
-    .nav-link-wrapper:hover .favorite-star-btn {
-        opacity: 1;
-    }
+    .nav-link-wrapper:hover .favorite-star-btn, .favorite-star-btn.active { opacity: 1; }
+    .favorite-star-btn.active { color: #f59e0b; }
+    .favorite-star-btn:hover { color: #f59e0b; transform: translateY(-50%) scale(1.2); }
+    .favorites-pinned { margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px dashed var(--nav-border); }
 
-    .favorite-star-btn.active {
-        opacity: 1;
-        color: #f59e0b;
-    }
-
-    .favorite-star-btn:hover {
-        color: #f59e0b;
-        transform: translateY(-50%) scale(1.2);
-    }
-
-    .favorites-pinned {
-        margin-bottom: 16px;
-        padding-bottom: 8px;
-        border-bottom: 1px dashed var(--nav-border);
-    }
-
-    /* ===== 4. FOOTER ===== */
-    .nav-footer {
-        padding: 12px 16px;
-        border-top: 1px solid var(--nav-border);
-        background: #fff;
-    }
+    /* ===== FOOTER ===== */
+    .nav-footer { padding: 12px 16px; border-top: 1px solid var(--nav-border); background: #fff; }
 
     /* ===== MODAL COMMAND PALETTE ===== */
     .command-palette-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(30, 58, 88, 0.4);
-        backdrop-filter: blur(3px);
-        z-index: 2000;
-        display: flex;
-        justify-content: center;
-        padding-top: 12vh;
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(30, 58, 88, 0.4); backdrop-filter: blur(3px);
+        z-index: 2000; display: flex; justify-content: center; padding-top: 12vh;
         animation: fadeIn 0.2s ease-out;
     }
 
     .command-palette {
-        width: 600px;
-        max-width: 90%;
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-        max-height: 500px;
+        width: 600px; max-width: 90%; background: white; border-radius: 12px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); overflow: hidden;
+        display: flex; flex-direction: column; max-height: 500px;
         animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    .command-input-container {
-        padding: 16px;
-        border-bottom: 1px solid #e2e8f0;
-    }
+    .command-input-container { padding: 16px; border-bottom: 1px solid #e2e8f0; }
+    .command-input { width: 100%; font-size: 1.1rem; border: none; outline: none; color: var(--nav-primary); font-weight: 500; }
+    .command-results { flex: 1; overflow-y: auto; padding: 8px 0; }
+    .command-item { padding: 12px 20px; display: flex; align-items: center; gap: 14px; cursor: pointer; border-left: 3px solid transparent; transition: 0.1s; }
+    .command-item:hover, .command-item.selected { background: #f8fafc; border-left-color: var(--nav-accent); }
+    .command-empty { padding: 40px; text-align: center; color: #94a3b8; }
 
-    .command-input {
-        width: 100%;
-        font-size: 1.1rem;
-        border: none;
-        outline: none;
-        color: var(--nav-primary);
-        font-weight: 500;
-    }
-
-    .command-results {
-        flex: 1;
-        overflow-y: auto;
-        padding: 8px 0;
-    }
-
-    .command-item {
-        padding: 12px 20px;
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        cursor: pointer;
-        border-left: 3px solid transparent;
-        transition: 0.1s;
-    }
-
-        .command-item:hover, .command-item.selected {
-            background: #f8fafc;
-            border-left-color: var(--nav-accent);
-        }
-
-    .command-empty {
-        padding: 40px;
-        text-align: center;
-        color: #94a3b8;
-    }
-
-    @@keyframes fadeIn {
-        from {
-            opacity: 0;
-        }
-
-        to {
-            opacity: 1;
-        }
-    }
-
-    @@keyframes slideDown {
-        from {
-            opacity: 0;
-            transform: translateY(-20px);
-        }
-
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
+    @@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @@keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
 </style>
 
 <div class="custom-nav-menu">
@@ -365,7 +265,7 @@
     @* 3. LISTA DE NAVEGACIÓN *@
     <div class="nav-scroll-area">
 
-        @* SECCIÓN DE FAVORITOS (POR USUARIO) *@
+        @* SECCIÓN DE FAVORITOS *@
         @if (favoritePages.Any())
         {
             <div class="favorites-pinned">
@@ -446,7 +346,6 @@
 
                 <div class="nav-section-header">Autogestión</div>
                 @RenderNavLink("/inscripcion-materias", "Cursar Materias", Icons.Material.Filled.Class)
-                @* ✅ CORRECCIÓN DE LA RUTA: AHORA APUNTA A /alumno/inscripcion-finales *@
                 @RenderNavLink("/alumno/inscripcion-finales", "Rendir Finales", Icons.Material.Filled.AssignmentTurnedIn)
                 @RenderNavLink("/alumno/mis-inscripciones", "Comprobantes", Icons.Material.Filled.ListAlt)
 
@@ -486,9 +385,9 @@
 
     @* 4. FOOTER *@
     <div class="nav-footer">
-        <MudButton FullWidth="true" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Person" Href="/perfil" Style="justify-content:flex-start; color:#475569;">
-            Mi Perfil
-        </MudButton>
+<MudButton FullWidth="true" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Person" OnClick="AbrirPerfil" Style="justify-content:flex-start; color:#475569;">
+    Mi Perfil
+</MudButton>
         <MudButton FullWidth="true" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Logout" OnClick="CerrarSesion" Style="justify-content:flex-start; color:#ef4444;">
             Cerrar Sesión
         </MudButton>
@@ -502,7 +401,7 @@
         <div class="command-palette" @onclick:stopPropagation="true">
             <div class="command-input-container">
                 <input type="text" class="command-input" placeholder="Escribe para buscar..."
-                       @bind="commandSearch" @bind:event="oninput" @ref="commandInputRef"
+                       value="@commandSearch" @oninput="HandleSearchInput" @ref="commandInputRef"
                        @onkeydown="HandleCommandKeyDown" />
             </div>
             <div class="command-results">
@@ -545,13 +444,30 @@
     private ElementReference commandInputRef;
     private List<CommandItem> allCommands = new();
     private List<CommandItem> filteredCommands = new();
+    private DotNetObjectReference<NavMenu>? _dotNetRef;
 
-    // --- Favoritos (Clave dinámica por ID) ---
+    // --- Favoritos ---
     private List<NavPage> favoritePages = new();
     private string FavoritesKey => string.IsNullOrEmpty(UserId) ? "edusys_favorites_guest" : $"edusys_favorites_{UserId}";
 
+    // ✅ HELPER: MUCHO MÁS LIMPIO QUE USAR RenderTreeBuilder manual
+    private RenderFragment RenderNavLink(string href, string title, string icon, bool matchAll = false) => __builder =>
+    {
+        <div class="nav-link-wrapper">
+            <MudNavLink Href="@href" Match="@(matchAll ? NavLinkMatch.All : NavLinkMatch.Prefix)" Class="mud-nav-link">
+                <MudIcon Icon="@icon" Class="mud-nav-link-icon" Size="Size.Small" />
+                @title
+            </MudNavLink>
+            <button class="favorite-star-btn @(IsFavorite(href) ? "active" : "")" @onclick="() => ToggleFavorite(href, title, icon)">
+                <MudIcon Icon="@(IsFavorite(href) ? Icons.Material.Filled.Star : Icons.Material.Filled.StarBorder)" Size="Size.Small" />
+            </button>
+        </div>
+    };
+
     protected override async Task OnInitializedAsync()
     {
+        _dotNetRef = DotNetObjectReference.Create(this); // Instanciamos la referencia para JS
+
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
 
@@ -583,11 +499,30 @@
         {
             try
             {
-                await JS.InvokeVoidAsync("eval", "document.addEventListener('keydown', function(e) { if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); DotNet.invokeMethodAsync('EduSys.Web', 'OpenCommandPaletteFromJS'); } });");
+                await JS.InvokeVoidAsync("eval", @"
+                    (function(dotNetHelper) {
+                        window.addEventListener('keydown', function(e) { 
+                            if ((e.ctrlKey || e.metaKey) && e.key === 'k') { 
+                                e.preventDefault(); 
+                                dotNetHelper.invokeMethodAsync('OpenCommandPaletteInstance'); 
+                            } 
+                        });
+                    })(arguments[0]);
+                ", _dotNetRef);
             }
             catch { }
         }
-        if (showCommandPalette) try { await commandInputRef.FocusAsync(); } catch { }
+        
+        if (showCommandPalette) 
+        { 
+            try { await commandInputRef.FocusAsync(); } catch { } 
+        }
+    }
+
+    [JSInvokable] 
+    public void OpenCommandPaletteInstance() 
+    { 
+        OpenCommandPalette(); 
     }
 
     // --- Helpers de Usuario ---
@@ -607,44 +542,11 @@
 
     private async Task CerrarSesion()
     {
-        await AuthService.Logout();
+        try { await AuthService.LogoutAsync(); } catch { }
         NavManager.NavigateTo("/");
     }
 
-    // --- Helper para Renderizar Links con Favoritos ---
-    private RenderFragment RenderNavLink(string href, string title, string icon, bool matchAll = false) => builder =>
-    {
-        var isFav = IsFavorite(href);
-        builder.OpenElement(0, "div");
-        builder.AddAttribute(1, "class", "nav-link-wrapper");
-
-        builder.OpenComponent<MudNavLink>(2);
-        builder.AddAttribute(3, "Href", href);
-        builder.AddAttribute(4, "Match", matchAll ? NavLinkMatch.All : NavLinkMatch.Prefix);
-        builder.AddAttribute(5, "Class", "mud-nav-link");
-        builder.AddAttribute(6, "ChildContent", (RenderFragment)((b2) =>
-        {
-            b2.OpenComponent<MudIcon>(7);
-            b2.AddAttribute(8, "Icon", icon);
-            b2.AddAttribute(9, "Class", "mud-nav-link-icon");
-            b2.AddAttribute(10, "Size", Size.Small);
-            b2.CloseComponent();
-            b2.AddContent(11, title);
-        }));
-        builder.CloseComponent();
-
-        builder.OpenElement(12, "button");
-        builder.AddAttribute(13, "class", $"favorite-star-btn {(isFav ? "active" : "")}");
-        builder.AddAttribute(14, "onclick", EventCallback.Factory.Create(this, () => ToggleFavorite(href, title, icon)));
-        builder.OpenComponent<MudIcon>(15);
-        builder.AddAttribute(16, "Icon", isFav ? Icons.Material.Filled.Star : Icons.Material.Filled.StarBorder);
-        builder.AddAttribute(17, "Size", Size.Small);
-        builder.CloseComponent();
-        builder.CloseElement();
-
-        builder.CloseElement();
-    };
-
+    // --- Favoritos ---
     private async Task LoadFavorites()
     {
         try
@@ -670,8 +572,13 @@
     private void InitializeCommands(ClaimsPrincipal user)
     {
         allCommands.Clear();
-        allCommands.Add(new CommandItem { Title = "Mi Perfil", Category = "Cuenta", Url = "/perfil", Icon = Icons.Material.Filled.Person });
-        allCommands.Add(new CommandItem { Title = "Cerrar Sesión", Category = "Cuenta", Action = CerrarSesion, Icon = Icons.Material.Filled.Logout });
+        // ✅ CORRECCIÓN RUTA PERFIL PALETA DE COMANDOS (Opcional, pero bueno tenerlo consistente)
+        if (user.IsInRole("Docente"))
+            allCommands.Add(new CommandItem { Title = "Mi Perfil", Category = "Cuenta", Url = "/docente/mi-perfil", Icon = Icons.Material.Filled.Person });
+        else if (user.IsInRole("Alumno"))
+            allCommands.Add(new CommandItem { Title = "Mi Perfil", Category = "Cuenta", Url = "/alumno/perfil", Icon = Icons.Material.Filled.Person });
+
+        allCommands.Add(new CommandItem { Title = "Cerrar Sesión", Category = "Cuenta", Action = () => { _ = CerrarSesion(); return Task.CompletedTask; }, Icon = Icons.Material.Filled.Logout });
 
         if (user.IsInRole("Administrador") || user.IsInRole("Secretaria Academica"))
         {
@@ -680,20 +587,16 @@
             allCommands.Add(new CommandItem { Title = "Planes de Estudio", Category = "Config. Institucional", Url = "/planes", Icon = Icons.Material.Filled.Map });
             allCommands.Add(new CommandItem { Title = "Materias", Category = "Config. Institucional", Url = "/materias", Icon = Icons.Material.Filled.Book });
             allCommands.Add(new CommandItem { Title = "Sedes", Category = "Config. Institucional", Url = "/sedes", Icon = Icons.Material.Filled.Place });
-            allCommands.Add(new CommandItem { Title = "Períodos Académicos", Category = "Planificación Académica", Url = "/periodos", Icon = Icons.Material.Filled.DateRange });
-            allCommands.Add(new CommandItem { Title = "Ventanas y Calendario", Category = "Planificación Académica", Url = "/calendario", Icon = Icons.Material.Filled.EventAvailable });
-            allCommands.Add(new CommandItem { Title = "Comisiones", Category = "Planificación Académica", Url = "/comisiones", Icon = Icons.Material.Filled.Groups });
+            allCommands.Add(new CommandItem { Title = "Períodos Académicos", Category = "Planificación", Url = "/periodos", Icon = Icons.Material.Filled.DateRange });
+            allCommands.Add(new CommandItem { Title = "Comisiones", Category = "Planificación", Url = "/comisiones", Icon = Icons.Material.Filled.Groups });
             allCommands.Add(new CommandItem { Title = "Alumnos / Legajos", Category = "Comunidad", Url = "/alumnos", Icon = Icons.Material.Filled.Person });
             allCommands.Add(new CommandItem { Title = "Docentes", Category = "Comunidad", Url = "/docentes", Icon = Icons.Material.Filled.Face });
-            allCommands.Add(new CommandItem { Title = "Forzar Inscripciones", Category = "Operaciones", Url = "/admin/inscripciones", Icon = Icons.Material.Filled.HowToReg });
             allCommands.Add(new CommandItem { Title = "Reportes", Category = "Sistema", Url = "/reportes/operativos", Icon = Icons.Material.Filled.BarChart });
-            allCommands.Add(new CommandItem { Title = "Mesas Asignadas", Category = "Exámenes Finales", Url = "/docente/mesas-asignadas", Icon = Icons.Material.Filled.EventSeat });
-            allCommands.Add(new CommandItem { Title = "Estados de Materia", Category = "Config. Institucional", Url = "/admin/estados-materia", Icon = Icons.Material.Filled.RuleFolder });
         }
 
         if (user.IsInRole("Alumno"))
         {
-            allCommands.Add(new CommandItem { Title = "Mis Notas", Category = "Cursada", Url = "/alumno/dashboard", Icon = Icons.Material.Filled.Grade });
+            allCommands.Add(new CommandItem { Title = "Mis Notas", Category = "Cursada", Url = "/alumno/mis-cursadas", Icon = Icons.Material.Filled.Grade });
             allCommands.Add(new CommandItem { Title = "Inscribirme a Cursadas", Category = "Autogestión", Url = "/inscripcion-materias", Icon = Icons.Material.Filled.LibraryAdd });
             allCommands.Add(new CommandItem { Title = "Mis Horarios", Category = "Cursada", Url = "/horarios-alumno", Icon = Icons.Material.Filled.CalendarMonth });
             allCommands.Add(new CommandItem { Title = "Rendir Finales", Category = "Autogestión", Url = "/alumno/inscripcion-finales", Icon = Icons.Material.Filled.AssignmentTurnedIn });
@@ -703,13 +606,20 @@
         {
             allCommands.Add(new CommandItem { Title = "Mis Comisiones", Category = "Clases", Url = "/mis-comisiones", Icon = Icons.Material.Filled.Groups });
             allCommands.Add(new CommandItem { Title = "Cargar Notas", Category = "Evaluación", Url = "/docente/cargar-notas", Icon = Icons.Material.Filled.EditNote });
-            allCommands.Add(new CommandItem { Title = "Mesas Asignadas", Category = "Exámenes Finales", Url = "/docente/mesas-asignadas", Icon = Icons.Material.Filled.EventSeat });
         }
 
-        filteredCommands = allCommands;
+        filteredCommands = allCommands.ToList();
     }
 
-    private void OpenCommandPalette() { showCommandPalette = true; commandSearch = ""; filteredCommands = allCommands; StateHasChanged(); }
+    private void OpenCommandPalette() 
+    { 
+        showCommandPalette = true; 
+        commandSearch = ""; 
+        filteredCommands = allCommands.ToList(); 
+        selectedCommandIndex = 0;
+        StateHasChanged(); 
+    }
+    
     private void CloseCommandPalette() => showCommandPalette = false;
 
     private void ExecuteCommand(CommandItem cmd)
@@ -719,10 +629,21 @@
         CloseCommandPalette();
     }
 
-    private void OnCommandSearchChanged()
+    private void HandleSearchInput(ChangeEventArgs e)
     {
-        if (string.IsNullOrWhiteSpace(commandSearch)) filteredCommands = allCommands;
-        else filteredCommands = allCommands.Where(c => c.Title.ToLower().Contains(commandSearch.ToLower()) || c.Category.ToLower().Contains(commandSearch.ToLower())).ToList();
+        commandSearch = e.Value?.ToString() ?? "";
+        
+        if (string.IsNullOrWhiteSpace(commandSearch)) 
+        {
+            filteredCommands = allCommands.ToList();
+        }
+        else 
+        {
+            filteredCommands = allCommands
+                .Where(c => c.Title.Contains(commandSearch, StringComparison.OrdinalIgnoreCase) || 
+                            c.Category.Contains(commandSearch, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
         selectedCommandIndex = 0;
     }
 
@@ -732,18 +653,46 @@
         else if (e.Key == "ArrowUp") selectedCommandIndex = Math.Max(selectedCommandIndex - 1, 0);
         else if (e.Key == "Enter" && filteredCommands.Any()) ExecuteCommand(filteredCommands[selectedCommandIndex]);
         else if (e.Key == "Escape") CloseCommandPalette();
-
-        // Disparar búsqueda manual al teclear
-        if (e.Key != "ArrowDown" && e.Key != "ArrowUp" && e.Key != "Enter" && e.Key != "Escape")
-        {
-            OnCommandSearchChanged();
-        }
     }
 
-    [JSInvokable] public static void OpenCommandPaletteFromJS() { /* Hook para JS global */ }
-
     private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e) => StateHasChanged();
-    public void Dispose() => NavManager.LocationChanged -= OnLocationChanged;
+    
+    public void Dispose() 
+    {
+        NavManager.LocationChanged -= OnLocationChanged;
+        _dotNetRef?.Dispose(); 
+    }
+
+    private async Task AbrirPerfil()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        
+        if (user.IsInRole("Docente"))
+        {
+            // ✅ CORRECCIÓN RUTA OFICIAL PERFIL DOCENTE
+            NavManager.NavigateTo("/docente/mi-perfil");
+        }
+        else if (user.IsInRole("Alumno"))
+        {
+            NavManager.NavigateTo("/alumno/perfil");
+        }
+        else
+        {
+            var options = new DialogOptions 
+            { 
+                MaxWidth = MaxWidth.Small, 
+                FullWidth = true, 
+                NoHeader = true, 
+                CloseButton = false,
+                BackdropClick = true 
+            };
+            
+            DialogService.Show<DialogoPerfil>("", options);
+        }
+        
+        CloseCommandPalette();
+    }
 
     private record NavPage(string Url, string Title, string Icon);
     private class CommandItem { public string Title { get; set; } = ""; public string Category { get; set; } = ""; public string Url { get; set; } = ""; public string Icon { get; set; } = ""; public Func<Task>? Action { get; set; } }

@@ -1,6 +1,7 @@
 ﻿@page "/admin/solicitudes/{Id:int}"
 @using EduSys.Shared.DTOs
 @using EduSys.Web.Services.Interfaces
+
 @inject ISolicitudService InscripcionService
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
@@ -43,120 +44,160 @@
         font-weight: 800;
         font-size: 1.5rem;
     }
+
+    /* Mejora responsiva para documentos */
+    .document-frame {
+        width: 100%;
+        height: 75vh;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        background-color: #f8fafc;
+    }
 </style>
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-6 mb-6">
+@* --- OVERLAY DE CARGA (Evita clicks accidentales mientras se guarda) --- *@
+<MudOverlay Visible="procesando" DarkBackground="true" Absolute="false" ZIndex="9999">
+    <MudStack AlignItems="AlignItems.Center">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+        <MudText Typo="Typo.h6" Style="color: white; font-weight: 600;">Procesando resolución...</MudText>
+    </MudStack>
+</MudOverlay>
 
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-6 mb-10">
+
+    @* --- ENCABEZADO --- *@
     <div class="d-flex align-center gap-4 mb-6">
-        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick="Volver" Color="Color.Inherit" />
+        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick="Volver" Color="Color.Default" Class="bg-white elevation-1" />
         <div>
-            <MudText Typo="Typo.h4" Color="Color.Primary" Style="font-weight: 700;">Evaluación de Solicitud</MudText>
+            <MudText Typo="Typo.h4" Color="Color.Primary" Style="font-weight: 800; letter-spacing: -0.5px;">Evaluación de Solicitud #@Id</MudText>
             <MudText Typo="Typo.subtitle1" Class="mud-text-secondary">Revisión de documentación y alta de alumno</MudText>
         </div>
     </div>
 
+    @* --- ESTADO DE CARGA (SKELETON) --- *@
     @if (cargando)
     {
-        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
-        <MudText Align="Align.Center">Cargando datos del aspirante...</MudText>
+        <MudGrid>
+            <MudItem xs="12" md="3">
+                <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="250px" Animation="Animation.Wave" Class="rounded-lg mb-4" />
+                <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="50px" Animation="Animation.Wave" Class="rounded-lg mb-4" />
+                <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" Animation="Animation.Wave" Class="rounded-lg mb-4" />
+                <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="150px" Animation="Animation.Wave" Class="rounded-lg" />
+            </MudItem>
+            <MudItem xs="12" md="9">
+                <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="700px" Animation="Animation.Wave" Class="rounded-lg" />
+            </MudItem>
+        </MudGrid>
     }
     else if (solicitud != null)
     {
         <MudGrid>
-            <MudItem xs="12" md="3">
-                <MudPaper Elevation="3" Class="pa-4 mb-4 text-center">
+            @* ===== COLUMNA IZQUIERDA: PERFIL Y ACCIONES ===== *@
+            <MudItem xs="12" md="3" Class="d-flex flex-column gap-4">
+                
+                @* TARJETA DE PERFIL *@
+                <MudPaper Elevation="2" Class="pa-4 text-center rounded-lg" Style="border-top: 4px solid #456990;">
                     <div class="d-flex justify-center mb-3">
                         @if (!string.IsNullOrEmpty(solicitud.RutaFotoPerfil))
                         {
-                            <MudImage Src="@solicitud.RutaFotoPerfil" ObjectFit="ObjectFit.Cover" Style="width:130px; height:130px; border-radius:50%; box-shadow: 0 4px 6px rgba(0,0,0,0.1);" />
+                            <MudImage Src="@solicitud.RutaFotoPerfil" ObjectFit="ObjectFit.Cover" Style="width:130px; height:130px; border-radius:50%; box-shadow: 0 4px 10px rgba(0,0,0,0.1);" />
                         }
                         else
                         {
-                            <MudAvatar Color="Color.Secondary" Style="height:130px; width:130px; font-size:3rem;">
-                                @(string.IsNullOrEmpty(solicitud.Nombre) ? "?" : solicitud.Nombre.Substring(0, 1))
+                            <MudAvatar Color="Color.Primary" Style="height:130px; width:130px; font-size:3rem; font-weight: bold;">
+                                @(string.IsNullOrEmpty(solicitud.Nombre) ? "?" : solicitud.Nombre.Substring(0, 1).ToUpper())
                             </MudAvatar>
                         }
                     </div>
-
-                    <MudText Typo="Typo.h6" Style="font-weight: 700;">@solicitud.Apellido</MudText>
-                    <MudText Typo="Typo.body1">@solicitud.Nombre</MudText>
-                    <MudChip T="string" Color="Color.Primary" Size="Size.Small" Class="mt-2">DNI: @solicitud.Dni</MudChip>
+                    <MudText Typo="Typo.h6" Style="font-weight: 800; color: #1e293b; line-height: 1.2;">@solicitud.Apellido</MudText>
+                    <MudText Typo="Typo.body1" Style="color: #475569;">@solicitud.Nombre</MudText>
+                    <MudChip T="string" Color="Color.Primary" Size="Size.Small" Class="mt-3 font-weight-bold">DNI: @solicitud.Dni</MudChip>
                 </MudPaper>
 
-                <MudButton Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.CloudDownload" FullWidth="true" Class="mb-4 py-3 elevation-4" Style="background-color: #456990; color: white; font-weight: bold; letter-spacing: 0.5px;" OnClick="DescargarZip">
+                @* BOTÓN DE DESCARGA ZIP *@
+                <MudButton Variant="Variant.Filled"
+                           StartIcon="@Icons.Material.Filled.CloudDownload"
+                           FullWidth="true"
+                           Class="py-3 rounded-lg"
+                           Style="background-color: #456990; color: white; font-weight: 700; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(69,105,144,0.3);"
+                           OnClick="DescargarZip"
+                           Disabled="procesando">
                     DESCARGAR LEGAJO ZIP
                 </MudButton>
 
-                <MudPaper Elevation="3" Class="pa-4 mb-4">
-                    <MudText Typo="Typo.subtitle2" Color="Color.Primary" Class="mb-2"><b>Datos del Aspirante</b></MudText>
+                @* DATOS DE CONTACTO *@
+                <MudPaper Elevation="2" Class="pa-4 rounded-lg">
+                    <MudText Typo="Typo.subtitle2" Color="Color.Primary" Class="mb-3" Style="font-weight: 700; text-transform: uppercase; letter-spacing: 1px; font-size: 0.7rem;">Datos del Aspirante</MudText>
                     <MudList T="string" Dense="true" DisablePadding="true">
                         <MudListItem Icon="@Icons.Material.Filled.Email" IconSize="Size.Small">
-                            <MudText Typo="Typo.caption" Color="Color.Default"><b>Email</b></MudText>
-                            <MudText Typo="Typo.body2" Style="word-break: break-all;">@solicitud.Email</MudText>
+                            <MudText Typo="Typo.caption" Style="color: #94a3b8; font-weight: 600;">Email</MudText>
+                            <MudText Typo="Typo.body2" Style="word-break: break-all; color: #334155; font-weight: 500;">@solicitud.Email</MudText>
                         </MudListItem>
                         <MudListItem Icon="@Icons.Material.Filled.Phone" IconSize="Size.Small">
-                            <MudText Typo="Typo.caption" Color="Color.Default"><b>Teléfono</b></MudText>
-                            <MudText Typo="Typo.body2">@solicitud.Telefono</MudText>
+                            <MudText Typo="Typo.caption" Style="color: #94a3b8; font-weight: 600;">Teléfono</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #334155; font-weight: 500;">@solicitud.Telefono</MudText>
                         </MudListItem>
                         <MudListItem Icon="@Icons.Material.Filled.School" IconSize="Size.Small">
-                            <MudText Typo="Typo.caption" Color="Color.Default"><b>Carrera Solicitada</b></MudText>
-                            <MudText Typo="Typo.body2">@solicitud.NombreCarrera</MudText>
+                            <MudText Typo="Typo.caption" Style="color: #94a3b8; font-weight: 600;">Carrera Solicitada</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #334155; font-weight: 500;">@solicitud.NombreCarrera</MudText>
                         </MudListItem>
                         <MudListItem Icon="@Icons.Material.Filled.Map" IconSize="Size.Small">
-                            <MudText Typo="Typo.caption" Color="Color.Default"><b>Dirección</b></MudText>
-                            <MudText Typo="Typo.body2">@solicitud.Direccion</MudText>
+                            <MudText Typo="Typo.caption" Style="color: #94a3b8; font-weight: 600;">Dirección</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #334155; font-weight: 500;">@solicitud.Direccion</MudText>
                         </MudListItem>
                     </MudList>
                 </MudPaper>
 
-                <MudPaper Elevation="3" Class="pa-4" Style="background-color: #f8f9fa;">
-                    <MudText Typo="Typo.h6" Class="mb-3" Align="Align.Center">Resolución Final</MudText>
+                @* PANEL DE RESOLUCIÓN *@
+                <MudPaper Elevation="2" Class="pa-4 rounded-lg" Style="background-color: #f8fafc; border: 1px solid #e2e8f0;">
+                    <MudText Typo="Typo.h6" Class="mb-4" Align="Align.Center" Style="font-weight: 700; color: #1e293b;">Resolución Final</MudText>
 
-                    @* ✅ LOGICA CONDICIONAL PARA MOSTRAR BOTONES O ESTADO *@
                     @if (solicitud.Estado == "Pendiente")
                     {
                         @if (modoRechazo)
                         {
-                            <MudTextField @bind-Value="motivoRechazo" Label="Motivo del rechazo" Variant="Variant.Outlined" Color="Color.Primary" Lines="4" Class="mb-3 force-black-text" Style="background-color: white;" Placeholder="Escribe aquí la razón..." />
+                            <MudTextField @bind-Value="motivoRechazo" Label="Motivo del rechazo" Variant="Variant.Outlined" Color="Color.Primary" Lines="4" Class="mb-3 force-black-text" Style="background-color: white;" Placeholder="Escribe aquí la razón detallada..." />
                             <div class="d-flex flex-column gap-2">
                                 <MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="AbrirModalConfirmarRechazo" FullWidth="true" Disabled="procesando" StartIcon="@Icons.Material.Filled.Send">Confirmar Rechazo</MudButton>
-                                <MudButton Variant="Variant.Text" OnClick="@(() => modoRechazo = false)" FullWidth="true">Cancelar</MudButton>
+                                <MudButton Variant="Variant.Text" OnClick="@(() => modoRechazo = false)" FullWidth="true" Disabled="procesando">Cancelar</MudButton>
                             </div>
                         }
                         else
                         {
                             <div class="d-flex flex-column gap-3">
-                                <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="AbrirModalAprobar" Disabled="procesando" FullWidth="true" Size="Size.Large" StartIcon="@Icons.Material.Filled.CheckCircle" Class="py-3">APROBAR ADMISIÓN</MudButton>
-                                <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="@(() => modoRechazo = true)" Disabled="procesando" FullWidth="true" StartIcon="@Icons.Material.Filled.Cancel">RECHAZAR SOLICITUD</MudButton>
+                                <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="AbrirModalAprobar" Disabled="procesando" FullWidth="true" Size="Size.Large" StartIcon="@Icons.Material.Filled.CheckCircle" Class="py-3 font-weight-bold">
+                                    APROBAR ADMISIÓN
+                                </MudButton>
+                                <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="@(() => modoRechazo = true)" Disabled="procesando" FullWidth="true" StartIcon="@Icons.Material.Filled.Cancel" Class="font-weight-bold">
+                                    RECHAZAR SOLICITUD
+                                </MudButton>
                             </div>
                         }
                     }
                     else
                     {
-                        @* ✅ ESTADO DE SOLO LECTURA MEJORADO *@
-                        <div class="d-flex flex-column align-center pa-6 mt-2"
-                             style="background-color: #f1f5f9; border-radius: 12px; border: 1px solid #e2e8f0;">
-
+                        <div class="d-flex flex-column align-center pa-4 mt-2 rounded-lg" style="background-color: white; border: 1px solid #cbd5e1;">
                             @if (solicitud.Estado == "Aprobada")
                             {
-                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Style="font-size: 5rem;" />
+                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Style="font-size: 4rem;" />
                                 <MudText Color="Color.Success" Typo="Typo.h5" Class="mt-2" Style="font-weight: 800;">APROBADA</MudText>
                             }
                             else
                             {
-                                <MudIcon Icon="@Icons.Material.Filled.Cancel" Color="Color.Error" Style="font-size: 5rem;" />
+                                <MudIcon Icon="@Icons.Material.Filled.Cancel" Color="Color.Error" Style="font-size: 4rem;" />
                                 <MudText Color="Color.Error" Typo="Typo.h5" Class="mt-2" Style="font-weight: 800;">RECHAZADA</MudText>
                             }
 
-                            <div class="mt-4 px-4 py-2 rounded" style="background-color: white; border: 1px solid #cbd5e1;">
-                                <MudText Typo="Typo.body2" Color="Color.Primary" Style="font-weight: 600;">
-                                    Procesado el: @(solicitud.FechaProcesado?.ToString("dd/MM/yyyy HH:mm") ?? "-")
-                                </MudText>
-                            </div>
+                            <MudDivider Class="my-3 w-100" />
+                            
+                            <MudText Typo="Typo.caption" Style="color: #94a3b8; font-weight: 600;">Procesado el</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Primary" Style="font-weight: 700;">
+                                @(solicitud.FechaProcesado?.ToString("dd/MM/yyyy HH:mm") ?? "-")
+                            </MudText>
 
                             @if (!string.IsNullOrEmpty(solicitud.ObservacionAdmin))
                             {
-                                <MudText Typo="Typo.body2" Class="mt-4 text-center px-2" Style="font-style: italic; color: #64748b;">
+                                <MudText Typo="Typo.body2" Class="mt-4 text-center px-2 py-2 rounded" Style="font-style: italic; color: #475569; background-color: #f1f5f9; width: 100%;">
                                     "@solicitud.ObservacionAdmin"
                                 </MudText>
                             }
@@ -165,71 +206,107 @@
                 </MudPaper>
             </MudItem>
 
+            @* ===== COLUMNA DERECHA: DOCUMENTACIÓN (PESTAÑAS) ===== *@
             <MudItem xs="12" md="9">
-                <MudPaper Elevation="3" Class="pa-2" Style="min-height: 600px;">
-                    <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-4" Color="Color.Primary" Centered="true">
+                <MudPaper Elevation="2" Class="rounded-lg h-100 overflow-hidden">
+                    <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-6" Color="Color.Primary" Centered="true" MinimumTabWidth="150px">
+                        
                         <MudTabPanel Text="Foto Perfil" Icon="@Icons.Material.Filled.Person">
-                            <div class="d-flex justify-center mt-4">
+                            <div class="d-flex justify-center align-center" style="min-height: 60vh;">
                                 @if (!string.IsNullOrEmpty(solicitud.RutaFotoPerfil))
                                 {
-                                    <MudImage Src="@solicitud.RutaFotoPerfil" Height="500" ObjectFit="ObjectFit.Contain" Class="rounded-lg border shadow-sm" />
+                                    <MudImage Src="@solicitud.RutaFotoPerfil" ObjectFit="ObjectFit.Contain" Style="max-height: 60vh; max-width: 100%;" Class="rounded-lg shadow-sm border" />
                                 }
                                 else
                                 {
-                                    <MudAlert Severity="Severity.Warning">No disponible</MudAlert>
+                                    <MudAlert Severity="Severity.Warning" Variant="Variant.Filled">El aspirante no subió foto de perfil.</MudAlert>
                                 }
                             </div>
                         </MudTabPanel>
+
                         <MudTabPanel Text="DNI" Icon="@Icons.Material.Filled.Badge">
-                            <div class="d-flex flex-wrap gap-4 justify-center mt-4">
-                                <div>
-                                    <MudText Align="Align.Center" Class="mb-2"><b>Frente</b></MudText>
-                                    <MudImage Src="@solicitud.RutaFotoDniFrente" Height="400" Class="rounded border shadow-sm" ObjectFit="ObjectFit.Contain" />
+                            <div class="d-flex flex-column flex-xl-row gap-6 justify-center align-center mt-2">
+                                <div class="text-center w-100">
+                                    <MudText Class="mb-3" Style="font-weight: 700; color: #456990;">FRENTE DEL DNI</MudText>
+                                    @if (!string.IsNullOrEmpty(solicitud.RutaFotoDniFrente))
+                                    {
+                                        <MudImage Src="@solicitud.RutaFotoDniFrente" Style="max-height: 400px; max-width: 100%;" Class="rounded-lg shadow-sm border" ObjectFit="ObjectFit.Contain" />
+                                    }
+                                    else
+                                    {
+                                        <MudAlert Severity="Severity.Warning">No hay imagen del frente.</MudAlert>
+                                    }
                                 </div>
-                                <div>
-                                    <MudText Align="Align.Center" Class="mb-2"><b>Dorso</b></MudText>
-                                    <MudImage Src="@solicitud.RutaFotoDniDorso" Height="400" Class="rounded border shadow-sm" ObjectFit="ObjectFit.Contain" />
+                                <div class="text-center w-100">
+                                    <MudText Class="mb-3" Style="font-weight: 700; color: #456990;">DORSO DEL DNI</MudText>
+                                    @if (!string.IsNullOrEmpty(solicitud.RutaFotoDniDorso))
+                                    {
+                                        <MudImage Src="@solicitud.RutaFotoDniDorso" Style="max-height: 400px; max-width: 100%;" Class="rounded-lg shadow-sm border" ObjectFit="ObjectFit.Contain" />
+                                    }
+                                    else
+                                    {
+                                        <MudAlert Severity="Severity.Warning">No hay imagen del dorso.</MudAlert>
+                                    }
                                 </div>
                             </div>
                         </MudTabPanel>
+
                         <MudTabPanel Text="Validación" Icon="@Icons.Material.Filled.Face">
-                            <div class="d-flex justify-center mt-4">
-                                <div>
-                                    <MudText Align="Align.Center" Class="mb-2"><b>Selfie con DNI</b></MudText>
-                                    <MudImage Src="@solicitud.RutaFotoSosteniendoDNI" Height="500" Class="rounded border shadow-sm" ObjectFit="ObjectFit.Contain" />
-                                </div>
+                            <div class="d-flex flex-column align-center justify-center mt-2">
+                                <MudText Class="mb-4" Style="font-weight: 700; color: #456990;">FOTO SELFIE SOSTENIENDO EL DNI</MudText>
+                                @if (!string.IsNullOrEmpty(solicitud.RutaFotoSosteniendoDNI))
+                                {
+                                    <MudImage Src="@solicitud.RutaFotoSosteniendoDNI" Style="max-height: 60vh; max-width: 100%;" Class="rounded-lg shadow-sm border" ObjectFit="ObjectFit.Contain" />
+                                }
+                                else
+                                {
+                                    <MudAlert Severity="Severity.Warning">El aspirante no subió foto de validación de identidad.</MudAlert>
+                                }
                             </div>
                         </MudTabPanel>
+
                         <MudTabPanel Text="Título Secundario" Icon="@Icons.Material.Filled.School">
                             @if (!string.IsNullOrEmpty(solicitud.RutaTituloSecundario))
                             {
-                                <div class="d-flex flex-column gap-2" style="height: 100%;">
-                                    <div class="d-flex justify-end">
-                                        <MudButton Href="@solicitud.RutaTituloSecundario" Target="_blank" Variant="Variant.Filled" Color="Color.Info" StartIcon="@Icons.Material.Filled.OpenInNew">ABRIR EN PESTAÑA NUEVA</MudButton>
+                                <div class="d-flex flex-column gap-3 w-100">
+                                    <div class="d-flex justify-space-between align-center">
+                                        <MudText Style="font-weight: 700; color: #456990;">Certificado de Estudios</MudText>
+                                        <MudButton Href="@solicitud.RutaTituloSecundario" Target="_blank" Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.OpenInNew">
+                                            ABRIR EN OTRA PESTAÑA
+                                        </MudButton>
                                     </div>
-                                    <iframe src="@solicitud.RutaTituloSecundario" style="width: 100%; height: 85vh; border: 1px solid #ccc; border-radius: 4px;"></iframe>
+                                    <iframe src="@solicitud.RutaTituloSecundario" class="document-frame"></iframe>
                                 </div>
                             }
                             else
                             {
-                                <MudAlert Severity="Severity.Error">Documento no disponible.</MudAlert>
+                                <div class="d-flex justify-center align-center h-100 mt-10">
+                                    <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Icon="@Icons.Material.Filled.ErrorOutline">No se adjuntó el Título Secundario.</MudAlert>
+                                </div>
                             }
                         </MudTabPanel>
+
                         <MudTabPanel Text="Antecedentes" Icon="@Icons.Material.Filled.Security">
                             @if (!string.IsNullOrEmpty(solicitud.RutaAntecedentesPenales))
                             {
-                                <div class="d-flex flex-column gap-2" style="height: 100%;">
-                                    <div class="d-flex justify-end">
-                                        <MudButton Href="@solicitud.RutaAntecedentesPenales" Target="_blank" Variant="Variant.Filled" Color="Color.Info" StartIcon="@Icons.Material.Filled.OpenInNew">ABRIR EN PESTAÑA NUEVA</MudButton>
+                                <div class="d-flex flex-column gap-3 w-100">
+                                    <div class="d-flex justify-space-between align-center">
+                                        <MudText Style="font-weight: 700; color: #456990;">Certificado de Antecedentes</MudText>
+                                        <MudButton Href="@solicitud.RutaAntecedentesPenales" Target="_blank" Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.OpenInNew">
+                                            ABRIR EN OTRA PESTAÑA
+                                        </MudButton>
                                     </div>
-                                    <iframe src="@solicitud.RutaAntecedentesPenales" style="width: 100%; height: 85vh; border: 1px solid #ccc; border-radius: 4px;"></iframe>
+                                    <iframe src="@solicitud.RutaAntecedentesPenales" class="document-frame"></iframe>
                                 </div>
                             }
                             else
                             {
-                                <MudAlert Severity="Severity.Error">Documento no disponible.</MudAlert>
+                                <div class="d-flex justify-center align-center h-100 mt-10">
+                                    <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Icon="@Icons.Material.Filled.WarningAmber">No se adjuntó certificado de antecedentes penales.</MudAlert>
+                                </div>
                             }
                         </MudTabPanel>
+
                     </MudTabs>
                 </MudPaper>
             </MudItem>
@@ -237,24 +314,34 @@
     }
     else
     {
-        <MudAlert Severity="Severity.Error">No se encontró la solicitud o ha ocurrido un error.</MudAlert>
-        <MudButton OnClick="Volver" Variant="Variant.Text">Volver al listado</MudButton>
+        <MudPaper Class="pa-8 text-center rounded-lg mt-8" Elevation="2">
+            <MudIcon Icon="@Icons.Material.Filled.SearchOff" Color="Color.Default" Style="font-size: 5rem; opacity: 0.5;" Class="mb-4" />
+            <MudText Typo="Typo.h5" Style="font-weight: 700; color: #1e293b;" Class="mb-2">Solicitud no encontrada</MudText>
+            <MudText Typo="Typo.body1" Style="color: #64748b;" Class="mb-6">No pudimos localizar la solicitud que buscas. Puede que haya sido eliminada o el número sea incorrecto.</MudText>
+            <MudButton OnClick="Volver" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large">Volver a la bandeja</MudButton>
+        </MudPaper>
     }
 </MudContainer>
 
-@* --- DIÁLOGOS (Sin cambios) --- *@
+@* --- DIÁLOGOS DE CONFIRMACIÓN --- *@
 <MudDialog @bind-Visible="mostrarDialogoAprobar" Options="dialogOptions" Class="unified-dialog-card">
     <DialogContent>
         <div class="pa-4 d-flex flex-column align-center text-center">
-            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Style="font-size: 4rem;" Class="mb-4" />
+            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Style="font-size: 4.5rem;" Class="mb-4" />
             <MudText Class="modal-title-success mb-2">Aprobar Solicitud</MudText>
-            <MudText Typo="Typo.body1" Class="force-black-text mb-4">Estás a punto de dar de alta a <b>@solicitud?.Nombre @solicitud?.Apellido</b>.<br />Se creará su usuario y legajo automáticamente.</MudText>
+            <MudText Typo="Typo.body1" Class="force-black-text mb-2">
+                Estás a punto de dar de alta a <br />
+                <b style="font-size: 1.1rem;">@solicitud?.Nombre @solicitud?.Apellido</b>
+            </MudText>
+            <MudText Typo="Typo.body2" Style="color: #64748b;" Class="mb-4">
+                Se creará automáticamente su usuario, contraseña y legajo universitario.
+            </MudText>
         </div>
     </DialogContent>
     <DialogActions>
         <div class="px-6 pb-6 d-flex justify-center gap-4 w-100">
-            <MudButton OnClick="@(() => mostrarDialogoAprobar = false)" Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg">Cancelar</MudButton>
-            <MudButton OnClick="ConfirmarAprobacionFinal" Variant="Variant.Filled" Color="Color.Success" Class="rounded-lg px-6">Sí, Aprobar</MudButton>
+            <MudButton OnClick="@(() => mostrarDialogoAprobar = false)" Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg font-weight-bold">Cancelar</MudButton>
+            <MudButton OnClick="ConfirmarAprobacionFinal" Variant="Variant.Filled" Color="Color.Success" Class="rounded-lg px-8 font-weight-bold" DropShadow="false">Sí, Aprobar Alta</MudButton>
         </div>
     </DialogActions>
 </MudDialog>
@@ -262,21 +349,28 @@
 <MudDialog @bind-Visible="mostrarDialogoConfirmarRechazo" Options="dialogOptions" Class="unified-dialog-card">
     <DialogContent>
         <div class="pa-4 d-flex flex-column align-center text-center">
-            <MudIcon Icon="@Icons.Material.Filled.Warning" Color="Color.Warning" Style="font-size: 4rem;" Class="mb-4" />
+            <MudIcon Icon="@Icons.Material.Filled.Warning" Color="Color.Warning" Style="font-size: 4.5rem;" Class="mb-4" />
             <MudText Class="modal-title-warning mb-2">Rechazar Solicitud</MudText>
-            <MudText Typo="Typo.body1" Class="force-black-text mb-4">¿Estás seguro de <b>RECHAZAR</b> esta solicitud?<br />Esta acción notificará al aspirante y no se puede deshacer.</MudText>
+            <MudText Typo="Typo.body1" Class="force-black-text mb-2">
+                ¿Estás seguro de <b>RECHAZAR</b> la solicitud de <br />
+                <b>@solicitud?.Nombre @solicitud?.Apellido</b>?
+            </MudText>
+            <MudText Typo="Typo.body2" Style="color: #64748b;" Class="mb-4">
+                Se enviará un correo al aspirante notificándole tu motivo. Esta acción <b>no</b> se puede deshacer.
+            </MudText>
         </div>
     </DialogContent>
     <DialogActions>
         <div class="px-6 pb-6 d-flex justify-center gap-4 w-100">
-            <MudButton OnClick="@(() => mostrarDialogoConfirmarRechazo = false)" Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg">Cancelar</MudButton>
-            <MudButton OnClick="ConfirmarRechazoFinal" Variant="Variant.Filled" Color="Color.Warning" Class="rounded-lg px-6">Confirmar Rechazo</MudButton>
+            <MudButton OnClick="@(() => mostrarDialogoConfirmarRechazo = false)" Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg font-weight-bold">Cancelar</MudButton>
+            <MudButton OnClick="ConfirmarRechazoFinal" Variant="Variant.Filled" Color="Color.Warning" Class="rounded-lg px-6 font-weight-bold" DropShadow="false">Confirmar Rechazo</MudButton>
         </div>
     </DialogActions>
 </MudDialog>
 
 @code {
     [Parameter] public int Id { get; set; }
+    
     private SolicitudIngresoDTO? solicitud;
     private bool cargando = true;
     private bool procesando = false;
@@ -285,18 +379,30 @@
 
     private bool mostrarDialogoAprobar = false;
     private bool mostrarDialogoConfirmarRechazo = false;
-    private DialogOptions dialogOptions = new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true, CloseButton = false };
+    private DialogOptions dialogOptions = new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true, CloseButton = false, BackdropClick = false };
 
     protected override async Task OnInitializedAsync()
     {
-        try { solicitud = await InscripcionService.GetSolicitudByIdAsync(Id); }
-        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
-        finally { cargando = false; }
+        try
+        {
+            solicitud = await InscripcionService.GetSolicitudByIdAsync(Id);
+        }
+        catch (ApplicationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Error al cargar la solicitud.", Severity.Error);
+        }
+        finally
+        {
+            cargando = false;
+        }
     }
 
     private void Volver()
     {
-        // ✅ CORRECCIÓN DE NAVEGACIÓN: Vuelve al historial si ya estaba procesada
         if (solicitud?.Estado != "Pendiente")
         {
             Navigation.NavigateTo("/admin/solicitudes-historial");
@@ -309,30 +415,70 @@
 
     private void DescargarZip()
     {
-        Navigation.NavigateTo($"http://localhost:5000/api/inscripciones/{Id}/descargar-zip", true);
+        // ✅ CORRECCIÓN: Evitamos harcodear "http://localhost:5000".
+        // En Blazor WebAssembly, es mejor usar rutas relativas para que funcione tanto en desarrollo como en el servidor de producción.
+        Navigation.NavigateTo($"/api/inscripciones/{Id}/descargar-zip", true);
     }
 
     private void AbrirModalAprobar() => mostrarDialogoAprobar = true;
-    private async Task ConfirmarAprobacionFinal() { mostrarDialogoAprobar = false; await EnviarDecision(true, null); }
+    
+    private async Task ConfirmarAprobacionFinal()
+    {
+        mostrarDialogoAprobar = false;
+        await EnviarDecision(true, null);
+    }
 
     private void AbrirModalConfirmarRechazo()
     {
-        if (string.IsNullOrWhiteSpace(motivoRechazo)) { Snackbar.Add("Debes escribir un motivo para rechazar.", Severity.Warning); return; }
+        if (string.IsNullOrWhiteSpace(motivoRechazo))
+        {
+            Snackbar.Add("Debes escribir un motivo para rechazar.", Severity.Warning);
+            return;
+        }
         mostrarDialogoConfirmarRechazo = true;
     }
-    private async Task ConfirmarRechazoFinal() { mostrarDialogoConfirmarRechazo = false; await EnviarDecision(false, motivoRechazo); }
+    
+    private async Task ConfirmarRechazoFinal()
+    {
+        mostrarDialogoConfirmarRechazo = false;
+        await EnviarDecision(false, motivoRechazo);
+    }
 
     private async Task EnviarDecision(bool aprobado, string? motivo)
     {
         procesando = true;
+        StateHasChanged(); // Forzamos el render para que aparezca el Overlay
+
         try
         {
-            await InscripcionService.ProcesarSolicitudAsync(new ProcesarSolicitudDTO { SolicitudId = Id, EsAprobado = aprobado, MotivoRechazo = motivo });
-            Snackbar.Add(aprobado ? "Solicitud Aprobada Correctamente" : "Solicitud Rechazada", aprobado ? Severity.Success : Severity.Info);
-            await Task.Delay(1000);
+            var decision = new ProcesarSolicitudDTO
+            {
+                SolicitudId = Id,
+                EsAprobado = aprobado,
+                MotivoRechazo = motivo
+            };
+            
+            await InscripcionService.ProcesarSolicitudAsync(decision);
+            
+            Snackbar.Add(aprobado ? "¡Alumno dado de alta exitosamente!" : "Solicitud rechazada y notificada.",
+                         aprobado ? Severity.Success : Severity.Info);
+            
+            // Pausa dramática para que el usuario vea que se guardó antes de sacarlo de la pantalla
+            await Task.Delay(1200);
             Volver();
         }
-        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
-        finally { procesando = false; }
+        catch (ApplicationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Ocurrió un error inesperado al procesar la solicitud.", Severity.Error);
+        }
+        finally
+        {
+            procesando = false;
+            StateHasChanged();
+        }
     }
 }

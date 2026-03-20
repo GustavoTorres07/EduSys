@@ -16,25 +16,25 @@ namespace EduSys.Api.Repositories
 
         public async Task<List<Carrera>> GetAllAsync()
         {
-            // Usamos INCLUDE para traer los datos relacionados (JOIN)
+            // 🚀 OPTIMIZADO: AsNoTracking
             return await _context.Carreras
-                                 // Traemos Sedes
+                                 .AsNoTracking()
                                  .Include(c => c.CarreraSedes)
-                                 .ThenInclude(cs => cs.IdSedeNavigation)
-                                 // Traemos Modalidades (NUEVO)
+                                    .ThenInclude(cs => cs.IdSedeNavigation)
                                  .Include(c => c.CarreraModalidads)
-                                 .ThenInclude(cm => cm.IdModalidadNavigation)
+                                    .ThenInclude(cm => cm.IdModalidadNavigation)
                                  .ToListAsync();
         }
 
         public async Task<Carrera?> GetByIdAsync(int id)
         {
-            // Cambiamos FindAsync por FirstOrDefaultAsync para poder usar INCLUDE
+            // 🚀 OPTIMIZADO: AsNoTracking (Solo lectura, el update tiene su propio tracking)
             return await _context.Carreras
+                                 .AsNoTracking()
                                  .Include(c => c.CarreraSedes)
-                                 .ThenInclude(cs => cs.IdSedeNavigation)
-                                 .Include(c => c.CarreraModalidads) // (NUEVO)
-                                 .ThenInclude(cm => cm.IdModalidadNavigation)
+                                    .ThenInclude(cs => cs.IdSedeNavigation)
+                                 .Include(c => c.CarreraModalidads)
+                                    .ThenInclude(cm => cm.IdModalidadNavigation)
                                  .FirstOrDefaultAsync(c => c.Id == id);
         }
 
@@ -67,22 +67,27 @@ namespace EduSys.Api.Repositories
 
         public async Task<bool> ExisteNombreAsync(string nombre, int idExcluir = 0)
         {
+            // 🚀 OPTIMIZADO: AsNoTracking y lógica más limpia
             return await _context.Carreras
-                                 .AnyAsync(c => c.Nombre == nombre && c.Id != idExcluir);
+                                 .AsNoTracking()
+                                 .AnyAsync(c => c.Nombre.ToLower() == nombre.ToLower() && c.Id != idExcluir);
         }
 
         // --- MÉTODOS PARA SEDES ---
 
         public async Task<List<int>> GetSedesIdsByCarreraAsync(int carreraId)
         {
+            // 🚀 OPTIMIZADO: AsNoTracking
             return await _context.CarreraSedes
-                                 .Where(cs => cs.IdCarrera == carreraId && (cs.Activo ?? true))
+                                 .AsNoTracking()
+                                 .Where(cs => cs.IdCarrera == carreraId && cs.Activo == true)
                                  .Select(cs => cs.IdSede)
                                  .ToListAsync();
         }
 
         public async Task<bool> ActualizarSedesAsync(int carreraId, List<int> idsSedes)
         {
+            // Este SÍ usa Tracking porque vamos a borrar las entidades
             var actuales = await _context.CarreraSedes
                                          .Where(cs => cs.IdCarrera == carreraId)
                                          .ToListAsync();
@@ -103,45 +108,47 @@ namespace EduSys.Api.Repositories
             return true;
         }
 
-        // --- MÉTODOS PARA MODALIDADES (NUEVOS) ---
+        public async Task<List<Carrera>> GetCarrerasPorSedeAsync(int idSede)
+        {
+            // 🚀 OPTIMIZADO: AsNoTracking
+            return await _context.CarreraSedes
+                .AsNoTracking()
+                .Include(cs => cs.IdCarreraNavigation)
+                .Where(cs => cs.IdSede == idSede
+                             && cs.Activo == true
+                             && cs.IdCarreraNavigation.Activo == true)
+                .Select(cs => cs.IdCarreraNavigation)
+                .OrderBy(c => c.Nombre)
+                .ToListAsync();
+        }
+
+        // --- MÉTODOS PARA MODALIDADES ---
 
         public async Task<List<int>> GetModalidadesIdsByCarreraAsync(int carreraId)
         {
+            // 🚀 OPTIMIZADO: AsNoTracking
             return await _context.CarreraModalidads
+                                 .AsNoTracking()
                                  .Where(cm => cm.IdCarrera == carreraId)
                                  .Select(cm => cm.IdModalidad)
                                  .ToListAsync();
         }
 
-        public async Task<List<Carrera>> GetCarrerasPorSedeAsync(int idSede)
-        {
-            return await _context.CarreraSedes
-                .Include(cs => cs.IdCarreraNavigation) // Traemos los datos de la carrera
-                .Where(cs => cs.IdSede == idSede
-                             && cs.Activo == true // Que la relación esté activa
-                             && cs.IdCarreraNavigation.Activo == true) // Que la carrera esté activa
-                .Select(cs => cs.IdCarreraNavigation) // Seleccionamos solo el objeto Carrera
-                .OrderBy(c => c.Nombre)
-                .ToListAsync();
-        }
-
         public async Task<bool> ActualizarModalidadesAsync(int carreraId, List<int> idsModalidades)
         {
-            // 1. Buscamos las asociaciones viejas y las borramos
+            // Este SÍ usa Tracking porque vamos a borrar las entidades
             var actuales = await _context.CarreraModalidads
                                          .Where(cm => cm.IdCarrera == carreraId)
                                          .ToListAsync();
 
             _context.CarreraModalidads.RemoveRange(actuales);
 
-            // 2. Insertamos las nuevas
             foreach (var idMod in idsModalidades)
             {
                 _context.CarreraModalidads.Add(new CarreraModalidad
                 {
                     IdCarrera = carreraId,
                     IdModalidad = idMod
-                    // La tabla intermedia CarreraModalidad usualmente no lleva 'Activo', se borra físicamente
                 });
             }
 

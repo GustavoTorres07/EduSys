@@ -4,13 +4,9 @@ namespace EduSys.Web.Services.Interfaces
 {
     public interface IAuthService
     {
-        Task<SesionDTO> Login(LoginDTO loginDTO);
-        Task Logout();
-
+        Task<SesionDTO?> LoginAsync(LoginDTO loginDTO); // ✅ Añadido el sufijo Async y tipado nullable
+        Task LogoutAsync(); // ✅ Añadido el sufijo Async
         Task<bool> CambiarClaveAsync(string nuevaClave);
-
-
-        // 👇 NUEVO MÉTODO
         Task<bool> RecuperarClaveAsync(string email);
     }
 }

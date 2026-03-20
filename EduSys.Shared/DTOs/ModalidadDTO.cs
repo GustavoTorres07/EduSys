@@ -9,7 +9,7 @@ namespace EduSys.Shared.DTOs
         [Required(ErrorMessage = "El nombre es obligatorio")]
         public string Nombre { get; set; } = string.Empty;
 
-        public string? Codigo { get; set; } // Ej: PRES, VIRT
+        public string? Codigo { get; set; } 
         public bool Activo { get; set; } = true;
     }
 }

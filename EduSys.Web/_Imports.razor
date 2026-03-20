@@ -1,13 +1,23 @@
 ﻿@using System.Net.Http
 @using System.Net.Http.Json
+@using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Components.Routing
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.AspNetCore.Components.Web.Virtualization
 @using Microsoft.AspNetCore.Components.WebAssembly.Http
 @using Microsoft.JSInterop
+
+@* --- Librerías de Terceros --- *@
+@using MudBlazor
+
+@* --- Namespaces del Proyecto Web --- *@
 @using EduSys.Web
 @using EduSys.Web.Layout
-@using MudBlazor
-@using Microsoft.AspNetCore.Components.Authorization
 @using EduSys.Web.Pages.Admin
+@using EduSys.Web.Services.Interfaces
+@* @using EduSys.Web.Components *@ @* <-- Descomenta esto si creas una carpeta "Components" compartida *@
+
+@* --- Namespaces Compartidos (¡Te ahorrará mucho tipeo!) --- *@
+@using EduSys.Shared.DTOs
+@using EduSys.Shared.Models

@@ -12,8 +12,6 @@ namespace EduSys.Shared.DTOs
         public string? Direccion { get; set; }
         public string? CodigoPostal { get; set; }
         public bool Activo { get; set; } = true;
-
-        // Campo calculado para mostrar en la tabla
         public int CantidadAulas { get; set; }
     }
 }

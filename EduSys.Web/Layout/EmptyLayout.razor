@@ -1,12 +1,94 @@
 ﻿@inherits LayoutComponentBase
+@inject NavigationManager NavManager
 
-<MudThemeProvider />
+@* 1. APLICAMOS TU TEMA CORPORATIVO GLOBALMENTE *@
+<MudThemeProvider Theme="_corporateTheme" />
 <MudPopoverProvider />
+
+@* 2. CONFIGURAMOS EL COMPORTAMIENTO DE LOS DIÁLOGOS Y ALERTAS *@
 <MudDialogProvider />
-<MudSnackbarProvider />
+
+<MudSnackbarProvider Position="SnackbarPosition.TopRight"
+                     ShowCloseIcon="true"
+                     VisibleStateDuration="4000"
+                     AnimationDuration="500" />
+
+<style>
+    /* Fondo sutil y elegante para pantallas de Login o formularios públicos */
+    .empty-layout-background {
+        background-color: #f8fafc; /* Gris/azulado muy clarito */
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
+</style>
 
 <MudLayout>
-    <MudMainContent>
-        @Body
+    <MudMainContent Class="empty-layout-background">
+        
+        @* 3. PROTECCIÓN GLOBAL CONTRA ERRORES (ERROR BOUNDARY) *@
+        <ErrorBoundary @ref="_errorBoundary">
+            <ChildContent>
+                @* Aquí se renderizará tu Login.razor o SolicitudIngreso.razor *@
+                @Body
+            </ChildContent>
+            <ErrorContent Context="ex">
+                @* Si la pantalla "hija" explota, mostramos esta tarjeta en su lugar *@
+                <MudContainer MaxWidth="MaxWidth.Small" Class="d-flex justify-center align-center" Style="height: 100vh;">
+                    <MudCard Elevation="4" Class="pa-6 rounded-lg border-t-4" Style="border-top-color: #ef4444; text-align: center; width: 100%;">
+                        <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Color="Color.Error" Size="Size.Large" Class="mb-3" />
+                        <MudText Typo="Typo.h5" Style="font-weight: 700; color: #1e293b;">¡Uy! Algo salió mal</MudText>
+                        <MudText Typo="Typo.body2" Class="mb-4" Style="color: #64748b;">
+                            Ocurrió un error inesperado al cargar esta pantalla. Por favor, intenta de nuevo.
+                        </MudText>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="RecargarPagina" Class="rounded-lg">
+                            Volver al Inicio
+                        </MudButton>
+                    </MudCard>
+                </MudContainer>
+            </ErrorContent>
+        </ErrorBoundary>
+
     </MudMainContent>
 </MudLayout>
+
+@code {
+    private ErrorBoundary? _errorBoundary;
+
+    // --- TEMA CORPORATIVO (Basado en el CSS que armaste para DialogoPerfil) ---
+    private MudTheme _corporateTheme = new MudTheme()
+    {
+        PaletteLight = new PaletteLight()
+        {
+            Primary = "#456990", // Tu azul corporativo
+            Secondary = "#2b4162", // Azul más oscuro para contrastes
+            AppbarBackground = "#456990",
+            Background = "#f8fafc",
+            Surface = "#ffffff",
+            TextPrimary = "#1e293b",
+            TextSecondary = "#64748b",
+            Error = "#ef4444",
+            Success = "#10b981",
+            Warning = "#f59e0b"
+        },
+        Typography = new Typography()
+        {
+            Default = new Default()
+            {
+                FontFamily = new[] { "Inter", "Segoe UI", "Helvetica", "Arial", "sans-serif" }
+            }
+        }
+    };
+
+    protected override void OnParametersSet()
+    {
+        // Si el usuario navega a otra URL, limpiamos el estado de error
+        // para que vuelva a intentar cargar la pantalla nueva.
+        _errorBoundary?.Recover();
+    }
+
+    private void RecargarPagina()
+    {
+        NavManager.NavigateTo("/", forceLoad: true);
+    }
+}

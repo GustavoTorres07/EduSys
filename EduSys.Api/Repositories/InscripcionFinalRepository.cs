@@ -18,40 +18,53 @@ namespace EduSys.Api.Repositories
         public async Task<List<MesaFinalOfertaDTO>> GetOfertaParaAlumnoAsync(int idAlumno, int idPeriodo)
         {
             var alumno = await _context.Alumnos
+                .AsNoTracking() // 🚀 OPTIMIZADO
                 .Include(a => a.IdPlanActualNavigation).ThenInclude(p => p.PlanMateria)
                 .FirstOrDefaultAsync(a => a.Id == idAlumno);
 
             if (alumno == null || alumno.IdPlanActualNavigation == null) return new List<MesaFinalOfertaDTO>();
 
-            // 1. Obtener las mesas del periodo actual (solo de las materias de su plan)
             var idsMateriasPlan = alumno.IdPlanActualNavigation.PlanMateria.Select(pm => pm.Id).ToList();
-            var mesas = await _context.MesaFinals
+
+            // 🚀 OPTIMIZACIÓN EXTREMA: Ejecutamos las 4 consultas en PARALELO para ahorrar tiempo de carga
+            var mesasTask = _context.MesaFinals
+                .AsNoTracking()
                 .Include(m => m.IdPlanMateriaNavigation).ThenInclude(pm => pm.IdMateriaNavigation)
                 .Include(m => m.IdPresidenteMesaNavigation).ThenInclude(d => d.IdUsuarioNavigation)
                 .Where(m => m.IdPeriodo == idPeriodo && idsMateriasPlan.Contains(m.IdPlanMateria) && m.Estado == "Abierta")
                 .ToListAsync();
 
-            // 2. Calcular el historial leyendo Cursadas y Finales directamente (IGNORANDO BAJAS)
-            var cursadas = await _context.InscripcionCursada
+            var cursadasTask = _context.InscripcionCursada
+                .AsNoTracking()
                 .Include(c => c.IdComisionNavigation)
                 .Where(c => c.IdAlumno == idAlumno && c.Estado != "Baja" && (c.CondicionFinal == "Regular" || c.CondicionFinal == "Promocionado" || c.CondicionFinal == "Aprobado"))
                 .ToListAsync();
 
-            var finalesAprobados = await _context.InscripcionFinals
+            var finalesAprobadosTask = _context.InscripcionFinals
+                .AsNoTracking()
                 .Include(f => f.IdMesaFinalNavigation)
                 .Where(f => f.IdAlumno == idAlumno && f.Estado == "Aprobado")
                 .ToListAsync();
 
-            // 3. Obtener inscripciones vigentes a finales en este periodo
-            var misInscripciones = await _context.InscripcionFinals
+            var misInscripcionesTask = _context.InscripcionFinals
+                .AsNoTracking()
                 .Where(i => i.IdAlumno == idAlumno && i.IdMesaFinalNavigation.IdPeriodo == idPeriodo && i.Estado != "Baja")
                 .ToListAsync();
 
-            // 4. Traer TODAS las reglas correlativas de las materias del plan
-            var reglasCorrelativas = await _context.Correlatividads
+            var reglasCorrelativasTask = _context.Correlatividads
+                .AsNoTracking()
                 .Include(c => c.IdPlanMateriaRequisitoNavigation).ThenInclude(pm => pm.IdMateriaNavigation)
                 .Where(c => idsMateriasPlan.Contains(c.IdPlanMateriaOrigen))
                 .ToListAsync();
+
+            // Esperamos a que todas terminen al mismo tiempo
+            await Task.WhenAll(mesasTask, cursadasTask, finalesAprobadosTask, misInscripcionesTask, reglasCorrelativasTask);
+
+            var mesas = mesasTask.Result;
+            var cursadas = cursadasTask.Result;
+            var finalesAprobados = finalesAprobadosTask.Result;
+            var misInscripciones = misInscripcionesTask.Result;
+            var reglasCorrelativas = reglasCorrelativasTask.Result;
 
             var oferta = new List<MesaFinalOfertaDTO>();
 
@@ -81,7 +94,7 @@ namespace EduSys.Api.Repositories
                     continue;
                 }
 
-                // B. Validar Estado Académico de la materia actual (¿Tiene la Cursada aprobada?)
+                // B. Validar Estado Académico de la materia actual
                 bool estaAprobada = finalesAprobados.Any(f => f.IdMesaFinalNavigation.IdPlanMateria == mesa.IdPlanMateria) ||
                                     cursadas.Any(c => c.IdComisionNavigation.IdPlanMateria == mesa.IdPlanMateria && (c.CondicionFinal == "Promocionado" || c.CondicionFinal == "Aprobado"));
 
@@ -106,12 +119,9 @@ namespace EduSys.Api.Repositories
                     dto.MotivoBloqueo = "Debes tener la cursada aprobada (Regular) para rendir el final.";
                 }
 
-                // ====================================================================
-                // C. VALIDAR CORRELATIVAS PARA RENDIR FINAL (NUEVO MOTOR)
-                // ====================================================================
+                // C. VALIDAR CORRELATIVAS PARA RENDIR FINAL
                 if (dto.PuedeInscribirse)
                 {
-                    // Buscamos ÚNICAMENTE las reglas que el Secretario marcó "Para Rendir"
                     var requisitosParaRendir = reglasCorrelativas
                         .Where(r => r.IdPlanMateriaOrigen == mesa.IdPlanMateria && r.TipoRequisito.StartsWith("Rendir-"))
                         .ToList();
@@ -120,11 +130,9 @@ namespace EduSys.Api.Repositories
 
                     foreach (var req in requisitosParaRendir)
                     {
-                        // Dividimos el texto (Ej: "Rendir-Aprobada" -> "Aprobada")
                         var partes = req.TipoRequisito.Split('-');
-                        string condicionExigida = partes.Length == 2 ? partes[1] : "Aprobada"; // Por defecto Aprobada
+                        string condicionExigida = partes.Length == 2 ? partes[1] : "Aprobada";
 
-                        // ¿Cómo está el alumno en la materia que se le exige?
                         bool correlativaAprobada = finalesAprobados.Any(f => f.IdMesaFinalNavigation.IdPlanMateria == req.IdPlanMateriaRequisito) ||
                                                    cursadas.Any(c => c.IdComisionNavigation.IdPlanMateria == req.IdPlanMateriaRequisito && (c.CondicionFinal == "Promocionado" || c.CondicionFinal == "Aprobado"));
 
@@ -132,12 +140,11 @@ namespace EduSys.Api.Repositories
 
                         bool cumpleRequisito = false;
 
-                        // Evaluamos la regla
                         if (condicionExigida == "Regular")
                         {
                             cumpleRequisito = correlativaAprobada || correlativaRegular;
                         }
-                        else // Si le exigieron "Aprobada" (que es el 99% de los casos para rendir finales)
+                        else
                         {
                             cumpleRequisito = correlativaAprobada;
                         }
@@ -164,6 +171,7 @@ namespace EduSys.Api.Repositories
         public async Task<List<MesaFinalOfertaDTO>> GetMisInscripcionesAsync(int idAlumno, int idPeriodo)
         {
             var inscripciones = await _context.InscripcionFinals
+                .AsNoTracking() // 🚀 OPTIMIZADO
                 .Include(i => i.IdMesaFinalNavigation).ThenInclude(m => m.IdPlanMateriaNavigation).ThenInclude(pm => pm.IdMateriaNavigation)
                 .Include(i => i.IdMesaFinalNavigation).ThenInclude(m => m.IdPresidenteMesaNavigation).ThenInclude(d => d.IdUsuarioNavigation)
                 .Where(i => i.IdAlumno == idAlumno && i.IdMesaFinalNavigation.IdPeriodo == idPeriodo && i.Estado != "Baja")
@@ -183,10 +191,18 @@ namespace EduSys.Api.Repositories
 
         public async Task<ResultadoOperacionDTO> InscribirAlumnoAsync(InscripcionFinalRequestDTO dto)
         {
-            var mesa = await _context.MesaFinals.Include(m => m.IdPeriodoNavigation).FirstOrDefaultAsync(m => m.Id == dto.IdMesaFinal);
+            var mesa = await _context.MesaFinals
+                .AsNoTracking()
+                .FirstOrDefaultAsync(m => m.Id == dto.IdMesaFinal);
+
             if (mesa == null) return new ResultadoOperacionDTO { Exito = false, Mensaje = "Mesa no encontrada." };
 
+            // 🚀 VALIDACIÓN EXTRA PREVENTIVA
+            bool yaInscripto = await _context.InscripcionFinals.AnyAsync(i => i.IdAlumno == dto.IdAlumno && i.IdMesaFinal == dto.IdMesaFinal && i.Estado != "Baja");
+            if (yaInscripto) return new ResultadoOperacionDTO { Exito = false, Mensaje = "El alumno ya se encuentra inscripto en esta mesa." };
+
             var alumno = await _context.Alumnos.FindAsync(dto.IdAlumno);
+            if (alumno == null) return new ResultadoOperacionDTO { Exito = false, Mensaje = "Alumno no encontrado." };
 
             // Validar Ventana Operativa
             var hoy = DateOnly.FromDateTime(DateTime.Now);
@@ -199,7 +215,8 @@ namespace EduSys.Api.Repositories
             {
                 var inicio = DateOnly.FromDateTime(ventana.FechaInicio);
                 var fin = DateOnly.FromDateTime(ventana.FechaFin);
-                if (hoy < inicio || hoy > fin) return new ResultadoOperacionDTO { Exito = false, Mensaje = $"Fuera de término (Habilitado del {inicio:dd/MM} al {fin:dd/MM})." };
+                if (hoy < inicio || hoy > fin)
+                    return new ResultadoOperacionDTO { Exito = false, Mensaje = $"Fuera de término (Habilitado del {inicio:dd/MM} al {fin:dd/MM})." };
             }
 
             var nuevaInscripcion = new InscripcionFinal
@@ -233,7 +250,8 @@ namespace EduSys.Api.Repositories
             {
                 var inicio = DateOnly.FromDateTime(ventana.FechaInicio);
                 var fin = DateOnly.FromDateTime(ventana.FechaFin);
-                if (hoy < inicio || hoy > fin) return new ResultadoOperacionDTO { Exito = false, Mensaje = "El período de inscripciones/bajas ya finalizó." };
+                if (hoy < inicio || hoy > fin)
+                    return new ResultadoOperacionDTO { Exito = false, Mensaje = "El período de inscripciones/bajas ya finalizó." };
             }
 
             inscripcion.Estado = "Baja";

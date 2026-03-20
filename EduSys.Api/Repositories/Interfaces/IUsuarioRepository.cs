@@ -13,5 +13,10 @@ namespace EduSys.Api.Repositories.Interfaces
         Task<Usuario> CrearAsync(Usuario usuario);
         Task<bool> ExisteEmailAsync(string email);
         Task<bool> RestablecerClaveAsync(string email, string nuevaClaveHash);
+
+        Task<bool> CambiarClaveDesdePerfilAsync(int idUsuario, string nuevaClaveHash);
+
+        Task<Usuario?> GetByIdAsync(int id);
+        Task<bool> UpdateAsync(Usuario usuario);
     }
 }

@@ -1,6 +1,5 @@
 ﻿using Blazored.LocalStorage;
 using Microsoft.AspNetCore.Components.Authorization;
-using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text.Json;
 
@@ -9,43 +8,43 @@ namespace EduSys.Web.Auth
     public class CustomAuthStateProvider : AuthenticationStateProvider
     {
         private readonly ILocalStorageService _localStorage;
-        private readonly HttpClient _httpClient;
 
-        public CustomAuthStateProvider(ILocalStorageService localStorage, HttpClient httpClient)
+        // ✅ Uso de constantes para evitar "Magic Strings" propensos a errores de tipeo
+        public const string AuthTokenKey = "authToken";
+        public const string UserNombreKey = "UserNombre";
+        public const string UserApellidoKey = "UserApellido";
+        public const string UserFotoKey = "UserFoto";
+
+        public CustomAuthStateProvider(ILocalStorageService localStorage)
         {
             _localStorage = localStorage;
-            _httpClient = httpClient;
         }
 
         public override async Task<AuthenticationState> GetAuthenticationStateAsync()
         {
-            // 1. Obtener Token
-            var token = await _localStorage.GetItemAsync<string>("authToken");
+            var token = await _localStorage.GetItemAsync<string>(AuthTokenKey);
 
             if (string.IsNullOrWhiteSpace(token))
             {
-                _httpClient.DefaultRequestHeaders.Authorization = null;
                 return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
             }
 
-            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
-            // 2. Parsear Claims básicos del Token
             var claims = ParseClaimsFromJwt(token).ToList();
 
-            // 3. ✅ RECUPERAR DATOS DEL LOCALSTORAGE (ESTA ES LA CLAVE)
-            // Si no recuperamos esto aquí, al dar F5 se pierden los datos visuales
-            var nombre = await _localStorage.GetItemAsync<string>("UserNombre");
-            var apellido = await _localStorage.GetItemAsync<string>("UserApellido");
-            var foto = await _localStorage.GetItemAsync<string>("UserFoto"); // <--- IMPORTANTE
+            // ✅ Recuperar datos visuales del LocalStorage (Para sobrevivir al F5)
+            var nombre = await _localStorage.GetItemAsync<string>(UserNombreKey);
+            var apellido = await _localStorage.GetItemAsync<string>(UserApellidoKey);
+            var foto = await _localStorage.GetItemAsync<string>(UserFotoKey);
 
-            if (!string.IsNullOrEmpty(nombre)) claims.Add(new Claim("Nombre", nombre));
-            if (!string.IsNullOrEmpty(apellido)) claims.Add(new Claim("Apellido", apellido));
+            // Aseguramos no duplicar claims si el JWT ya los trajera en un futuro
+            if (!string.IsNullOrEmpty(nombre) && !claims.Any(c => c.Type == "Nombre"))
+                claims.Add(new Claim("Nombre", nombre));
 
-            // ✅ Aseguramos que el Claim exista siempre si hay foto guardada
+            if (!string.IsNullOrEmpty(apellido) && !claims.Any(c => c.Type == "Apellido"))
+                claims.Add(new Claim("Apellido", apellido));
+
             if (!string.IsNullOrEmpty(foto))
             {
-                // Removemos si ya existía para evitar duplicados y ponemos el del storage
                 var existing = claims.FirstOrDefault(c => c.Type == "FotoPerfilUrl");
                 if (existing != null) claims.Remove(existing);
 
@@ -60,12 +59,10 @@ namespace EduSys.Web.Auth
 
         public async Task MarcarUsuarioComoAutenticado(string token, string nombre, string apellido, string fotoUrl)
         {
-            await _localStorage.SetItemAsync("authToken", token);
-            await _localStorage.SetItemAsync("UserNombre", nombre ?? "");
-            await _localStorage.SetItemAsync("UserApellido", apellido ?? "");
-
-            // ✅ Guardamos la foto (incluso si es null guardamos cadena vacía)
-            await _localStorage.SetItemAsync("UserFoto", fotoUrl ?? "");
+            await _localStorage.SetItemAsync(AuthTokenKey, token);
+            await _localStorage.SetItemAsync(UserNombreKey, nombre ?? "");
+            await _localStorage.SetItemAsync(UserApellidoKey, apellido ?? "");
+            await _localStorage.SetItemAsync(UserFotoKey, fotoUrl ?? "");
 
             var claims = ParseClaimsFromJwt(token).ToList();
 
@@ -81,10 +78,10 @@ namespace EduSys.Web.Auth
 
         public async Task MarcarUsuarioComoDeslogueado()
         {
-            await _localStorage.RemoveItemAsync("authToken");
-            await _localStorage.RemoveItemAsync("UserNombre");
-            await _localStorage.RemoveItemAsync("UserApellido");
-            await _localStorage.RemoveItemAsync("UserFoto");
+            await _localStorage.RemoveItemAsync(AuthTokenKey);
+            await _localStorage.RemoveItemAsync(UserNombreKey);
+            await _localStorage.RemoveItemAsync(UserApellidoKey);
+            await _localStorage.RemoveItemAsync(UserFotoKey);
 
             var anonymousUser = new ClaimsPrincipal(new ClaimsIdentity());
             var authState = Task.FromResult(new AuthenticationState(anonymousUser));

@@ -15,7 +15,5 @@ namespace EduSys.Shared.Models
 
         public bool Activo { get; set; } = true;
 
-        // Relación inversa (opcional, pero útil si quieres ver qué materias usan este régimen)
-        // public virtual ICollection<PlanMateria> PlanMaterias { get; set; } = new List<PlanMateria>();
     }
 }

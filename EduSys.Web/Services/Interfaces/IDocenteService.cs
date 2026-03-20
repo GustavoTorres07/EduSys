@@ -1,6 +1,4 @@
 ﻿using EduSys.Shared.DTOs;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace EduSys.Web.Services.Interfaces
 {
@@ -13,7 +11,7 @@ namespace EduSys.Web.Services.Interfaces
         Task<bool> EditarDocenteAsync(DocenteRequestDTO docente);
         Task<bool> EliminarDocenteAsync(int id);
 
-        // ✅ NUEVO: Para el Dashboard del Docente
+        Task<DocenteRequestDTO?> GetMiPerfilAsync();
         Task<List<ComisionDocenteDTO>> GetMisComisionesAsync();
     }
 }

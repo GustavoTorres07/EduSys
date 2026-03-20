@@ -16,9 +16,11 @@ namespace EduSys.Api.Repositories
 
         public async Task<List<Aula>> GetBySedeAsync(int idSede)
         {
-            // Retorna solo las aulas de esa sede que estén activas
+            // 🚀 OPTIMIZADO: AsNoTracking para velocidad y OrderBy para UX
             return await _context.Aulas
-                .Where(a => a.IdSede == idSede && (a.Activo == true))
+                .AsNoTracking()
+                .Where(a => a.IdSede == idSede && a.Activo == true)
+                .OrderBy(a => a.Nombre)
                 .ToListAsync();
         }
     }

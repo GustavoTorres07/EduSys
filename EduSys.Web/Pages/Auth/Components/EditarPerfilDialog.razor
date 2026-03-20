@@ -2,132 +2,204 @@
 @inject ISnackbar Snackbar
 
 <style>
-    /* CABECERA INTEGRADA */
+    /* CABECERA INTEGRADA CONSISTENTE */
     .dialog-header-integrated {
         background: #456990;
         color: white;
-        padding: 12px 20px;
+        padding: 16px 24px;
         display: flex;
         align-items: center;
         justify-content: space-between;
+        flex-shrink: 0;
     }
 
-    /* --- CORRECCIÓN DE TEXTO INVISIBLE --- */
-    /* Forzamos el color negro en el input y en el placeholder */
+    .dialog-container {
+        display: flex;
+        flex-direction: column;
+        background-color: white;
+        width: 100%;
+        max-width: 500px;
+    }
+
+    /* --- CORRECCIÓN DE TEXTO Y BORDES --- */
     .force-black-text input,
-    .force-black-text .mud-input-slot,
-    .force-black-text .mud-input-root {
-        color: #1F2937 !important;
-        font-weight: 500;
-        -webkit-text-fill-color: #1F2937 !important; /* Fix crítico para navegadores webkit */
+    .force-black-text .mud-input-slot {
+        color: #1e293b !important;
+        font-weight: 600 !important;
+        -webkit-text-fill-color: #1e293b !important;
     }
 
     .force-black-text .mud-input-label {
         color: #456990 !important;
         background-color: white !important;
         padding: 0 5px;
+        font-weight: 600;
     }
 
     .force-black-text .mud-input-outlined-border {
+        border-color: #cbd5e1 !important;
+        transition: border-color 0.2s;
+    }
+
+    .force-black-text:hover .mud-input-outlined-border {
         border-color: #456990 !important;
     }
 
-    /* --- ESTILO PARA CAMPOS DE SOLO LECTURA (GRISES) --- */
+    /* --- CAMPOS SOLO LECTURA --- */
     .readonly-field .mud-input-slot {
         color: #64748b !important;
-        -webkit-text-fill-color: #64748b !important;
+        font-weight: 500 !important;
+        cursor: default !important;
     }
 
     .readonly-field .mud-input-outlined-border {
-        border-color: #e2e8f0 !important;
+        border-color: #f1f5f9 !important;
         background-color: #f8fafc !important;
+    }
+
+    .section-tag {
+        color: #456990;
+        font-size: 0.7rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 8px;
+        display: block;
     }
 </style>
 
 <MudDialog DisableSidePadding="true" Class="rounded-lg overflow-hidden">
     <DialogContent>
-        <div style="background: white; max-width: 500px;">
+        <div class="dialog-container">
 
-            @* CABECERA *@
+            @* --- CABECERA --- *@
             <div class="dialog-header-integrated">
                 <div class="d-flex align-center">
                     <MudIcon Icon="@Icons.Material.Filled.ManageAccounts" Class="mr-3" />
-                    <MudText Typo="Typo.h6" Style="font-weight: 700;">Mi Perfil</MudText>
+                    <MudText Typo="Typo.h6" Style="font-weight: 700; letter-spacing: -0.5px;">Mi Perfil</MudText>
                 </div>
-                <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" OnClick="Cancel" Size="Size.Small" />
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" OnClick="Cancel" Size="Size.Small" Disabled="_procesando" />
             </div>
 
-            @* CUERPO *@
-            <div class="pa-6">
-                <MudText Typo="Typo.body2" Class="mb-4 text-secondary">
-                    Actualiza tu información de contacto. Los datos de identidad no pueden modificarse.
+            @* --- CUERPO --- *@
+            <div class="pa-8">
+                <MudText Typo="Typo.body2" Class="mb-6" Style="color: #64748b; line-height: 1.4;">
+                    Puedes actualizar tu información de contacto. Los datos de identidad están protegidos y solo pueden ser modificados por Bedelía.
                 </MudText>
 
-                <MudGrid Spacing="2">
-                    @* --- DATOS FIJOS (SOLO LECTURA) --- *@
-                    <MudItem xs="6">
-                        <MudTextField Value="@("Juan")" Label="Nombre" Variant="Variant.Outlined" ReadOnly="true" Margin="Margin.Dense" Class="readonly-field" />
-                    </MudItem>
-                    <MudItem xs="6">
-                        <MudTextField Value="@("Pérez")" Label="Apellido" Variant="Variant.Outlined" ReadOnly="true" Margin="Margin.Dense" Class="readonly-field" />
-                    </MudItem>
-                    <MudItem xs="12">
-                        <MudTextField Value="@("40.123.456")" Label="DNI" Variant="Variant.Outlined" ReadOnly="true" Margin="Margin.Dense" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Badge" Class="readonly-field" />
-                    </MudItem>
+                <MudForm @ref="_form">
+                    <MudGrid Spacing="2">
+                        @* DATOS FIJOS *@
+                        <MudItem xs="6">
+                            <MudTextField Value="@Nombre" Label="Nombre" Variant="Variant.Outlined" ReadOnly="true" Margin="Margin.Dense" Class="readonly-field" />
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudTextField Value="@Apellido" Label="Apellido" Variant="Variant.Outlined" ReadOnly="true" Margin="Margin.Dense" Class="readonly-field" />
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudTextField Value="@Dni" Label="Documento de Identidad" Variant="Variant.Outlined" ReadOnly="true" Margin="Margin.Dense" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Badge" Class="readonly-field" />
+                        </MudItem>
 
-                    @* --- DATOS EDITABLES --- *@
-                    <MudItem xs="12">
-                        <MudDivider Class="my-2" />
-                        <MudText Typo="Typo.caption" Color="Color.Primary" Style="font-weight:bold;">DATOS DE CONTACTO</MudText>
-                    </MudItem>
+                        @* DIVISOR Y TÍTULO SECCIÓN *@
+                        <MudItem xs="12" Class="mt-4">
+                            <span class="section-tag">Información de Contacto</span>
+                            <MudDivider Class="mb-4" />
+                        </MudItem>
 
-                    <MudItem xs="12">
-                        <MudTextField @bind-Value="modelo.Telefono" Label="Teléfono / Celular"
-                                      Variant="Variant.Outlined" Margin="Margin.Dense"
-                                      Class="force-black-text"
-                                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Phone" />
-                    </MudItem>
-                    <MudItem xs="12">
-                        <MudTextField @bind-Value="modelo.Direccion" Label="Dirección"
-                                      Variant="Variant.Outlined" Margin="Margin.Dense"
-                                      Class="force-black-text"
-                                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Home" />
-                    </MudItem>
-                    <MudItem xs="12">
-                        <MudTextField @bind-Value="modelo.Localidad" Label="Localidad"
-                                      Variant="Variant.Outlined" Margin="Margin.Dense"
-                                      Class="force-black-text"
-                                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Map" />
-                    </MudItem>
-                </MudGrid>
+                        @* DATOS EDITABLES *@
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="modelo.Telefono" Label="Teléfono / Celular"
+                                          Variant="Variant.Outlined" Margin="Margin.Dense"
+                                          Class="force-black-text" Required="true"
+                                          Disabled="_procesando"
+                                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Phone" />
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="modelo.Direccion" Label="Dirección Particular"
+                                          Variant="Variant.Outlined" Margin="Margin.Dense"
+                                          Class="force-black-text"
+                                          Disabled="_procesando"
+                                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Home" />
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="modelo.Localidad" Label="Localidad"
+                                          Variant="Variant.Outlined" Margin="Margin.Dense"
+                                          Class="force-black-text"
+                                          Disabled="_procesando"
+                                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Map" />
+                        </MudItem>
+                    </MudGrid>
+                </MudForm>
             </div>
 
-            @* FOOTER *@
-            <div class="pa-4 d-flex justify-end gap-2" style="border-top: 1px solid #e2e8f0;">
-                <MudButton OnClick="Cancel" Variant="Variant.Outlined" Color="Color.Default">Cancelar</MudButton>
-                <MudButton OnClick="Guardar" Variant="Variant.Filled" Color="Color.Primary">Guardar Cambios</MudButton>
+            @* --- FOOTER --- *@
+            <div class="pa-4 d-flex justify-end gap-3" style="border-top: 1px solid #f1f5f9; background-color: #f8fafc;">
+                <MudButton OnClick="Cancel" Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg" Disabled="_procesando">Cancelar</MudButton>
+                <MudButton OnClick="Guardar" 
+                           Variant="Variant.Filled" 
+                           Color="Color.Primary" 
+                           Class="rounded-lg px-6"
+                           Disabled="_procesando">
+                    @if (_procesando)
+                    {
+                        <MudProgressCircular Class="ms-n1 mr-2" Size="Size.Small" Indeterminate="true" />
+                        <span>Guardando...</span>
+                    }
+                    else
+                    {
+                        <span>Guardar Cambios</span>
+                    }
+                </MudButton>
             </div>
         </div>
     </DialogContent>
 </MudDialog>
 
 @code {
-    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = null!;
 
-    // Simulación de datos (En realidad vendrían del UsuarioDTO)
-    private class PerfilModel
+    // Parámetros recibidos del componente padre (ej. desde el perfil del alumno)
+    [Parameter] public string Nombre { get; set; } = "";
+    [Parameter] public string Apellido { get; set; } = "";
+    [Parameter] public string Dni { get; set; } = "";
+    [Parameter] public string TelefonoInicial { get; set; } = "";
+    [Parameter] public string DireccionInicial { get; set; } = "";
+    [Parameter] public string LocalidadInicial { get; set; } = "";
+
+    private MudForm _form = null!;
+    private bool _procesando = false;
+
+    // Modelo interno para la edición
+    public class PerfilEditableModel
     {
-        public string Telefono { get; set; } = "11-1234-5678";
-        public string Direccion { get; set; } = "Av. Siempre Viva 742";
-        public string Localidad { get; set; } = "Springfield";
+        public string? Telefono { get; set; }
+        public string? Direccion { get; set; }
+        public string? Localidad { get; set; }
     }
-    private PerfilModel modelo = new();
+    
+    private PerfilEditableModel modelo = new();
 
-    private void Guardar()
+    protected override void OnInitialized()
     {
-        // Aquí llamarías al servicio para actualizar
-        Snackbar.Add("Perfil actualizado correctamente", Severity.Success);
-        MudDialog.Close(DialogResult.Ok(true));
+        // Cargamos los valores iniciales
+        modelo.Telefono = TelefonoInicial;
+        modelo.Direccion = DireccionInicial;
+        modelo.Localidad = LocalidadInicial;
+    }
+
+    private async Task Guardar()
+    {
+        await _form.Validate();
+        
+        if (_form.IsValid)
+        {
+            _procesando = true;
+            StateHasChanged();
+
+            // Aquí retornaríamos el objeto con los cambios al componente padre
+            // El componente padre se encargará de llamar al servicio de la API
+            MudDialog.Close(DialogResult.Ok(modelo));
+        }
     }
 
     private void Cancel() => MudDialog.Cancel();

@@ -14,14 +14,22 @@ namespace EduSys.Api.Repositories
 
         public async Task<List<Sede>> GetAllSedesAsync()
         {
-            // CORRECCIÓN: Traemos TODAS (sin filtrar Activo) para que el Frontend pueda filtrar.
+            // 🚀 OPTIMIZADO: AsNoTracking. Traemos TODAS (sin filtrar Activo) 
+            // para que el Frontend pueda filtrar o mostrar el historial.
             return await _context.Sedes
+                .AsNoTracking()
                 .Include(s => s.Aulas) // Incluimos aulas para el contador
                 .OrderBy(s => s.Nombre)
                 .ToListAsync();
         }
 
-        public async Task<Sede?> GetSedeByIdAsync(int id) => await _context.Sedes.FindAsync(id);
+        public async Task<Sede?> GetSedeByIdAsync(int id)
+        {
+            // 🚀 OPTIMIZADO
+            return await _context.Sedes
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Id == id);
+        }
 
         public async Task<bool> CreateSedeAsync(Sede sede)
         {
@@ -37,7 +45,6 @@ namespace EduSys.Api.Repositories
             existing.Nombre = sede.Nombre;
             existing.Direccion = sede.Direccion;
             existing.CodigoPostal = sede.CodigoPostal;
-            // IMPORTANTE: Permitir actualizar el estado (para reactivar una sede dada de baja)
             existing.Activo = sede.Activo;
 
             return await _context.SaveChangesAsync() > 0;
@@ -56,8 +63,9 @@ namespace EduSys.Api.Repositories
 
         public async Task<List<Aula>> GetAulasBySedeAsync(int idSede)
         {
-            // CORRECCIÓN: Traemos también las inactivas para mostrarlas como "Baja" en la tabla
+            // 🚀 OPTIMIZADO: AsNoTracking. Traemos también las inactivas.
             return await _context.Aulas
+                .AsNoTracking()
                 .Where(a => a.IdSede == idSede)
                 .OrderBy(a => a.Nombre)
                 .ToListAsync();
@@ -76,7 +84,6 @@ namespace EduSys.Api.Repositories
 
             existing.Nombre = aula.Nombre;
             existing.Capacidad = aula.Capacidad;
-            // IMPORTANTE: Permitir reactivar el aula desde el modal de edición
             existing.Activo = aula.Activo;
 
             return await _context.SaveChangesAsync() > 0;

@@ -10,17 +10,18 @@
 @inject IDocenteService DocenteService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
+@inject ISnackbar Snackbar
 
 @attribute [Authorize(Roles = "Docente")]
 
 <style>
     /* ============================================
-           SISTEMA DE DISEÑO EDUSYS - DASHBOARD DOCENTE
-           ============================================ */
+       SISTEMA DE DISEÑO EDUSYS - DASHBOARD DOCENTE
+       ============================================ */
     :root {
         --edusys-primary: #1e3a58;
         --edusys-primary-light: #2c5282;
-        --edusys-accent: #0288d1;
+        --edusys-accent: #456990;
         --edusys-success: #2e7d32;
         --edusys-warning: #f57c00;
         --edusys-danger: #d32f2f;
@@ -30,18 +31,16 @@
         --edusys-surface: #ffffff;
         --edusys-background: #f8fafc;
         --edusys-border: #e2e8f0;
-        --edusys-text-primary: #1a202c;
+        --edusys-text-primary: #1e293b;
         --edusys-text-secondary: #64748b;
         --edusys-shadow-sm: 0 1px 3px rgba(30, 58, 88, 0.08);
         --edusys-shadow-md: 0 4px 12px rgba(30, 58, 88, 0.12);
         --edusys-shadow-lg: 0 8px 24px rgba(30, 58, 88, 0.16);
     }
 
-    /* ============================================
-           BANNER DE BIENVENIDA
-           ============================================ */
+    /* --- BANNER DE BIENVENIDA --- */
     .dashboard-hero {
-        background: linear-gradient(135deg, var(--edusys-primary) 0%, var(--edusys-primary-light) 50%, #3b5998 100%);
+        background: linear-gradient(135deg, var(--edusys-primary) 0%, var(--edusys-primary-light) 50%, #355270 100%);
         border-radius: 16px;
         padding: 2.5rem;
         color: white;
@@ -51,530 +50,176 @@
         margin-bottom: 2rem;
     }
 
-        .dashboard-hero::before {
-            content: '';
-            position: absolute;
-            top: -100px;
-            right: -100px;
-            width: 300px;
-            height: 300px;
-            background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
-            border-radius: 50%;
-        }
-
-        .dashboard-hero::after {
-            content: '';
-            position: absolute;
-            bottom: -50px;
-            left: -50px;
-            width: 200px;
-            height: 200px;
-            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-            border-radius: 50%;
-        }
-
-    .hero-content {
-        position: relative;
-        z-index: 1;
+    .dashboard-hero::before {
+        content: ''; position: absolute; top: -100px; right: -100px; width: 300px; height: 300px;
+        background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%); border-radius: 50%;
     }
+
+    .dashboard-hero::after {
+        content: ''; position: absolute; bottom: -50px; left: -50px; width: 200px; height: 200px;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%); border-radius: 50%;
+    }
+
+    .hero-content { position: relative; z-index: 1; }
 
     .hero-greeting {
-        font-size: 2rem;
-        font-weight: 800;
-        margin-bottom: 0.5rem;
-        letter-spacing: -0.5px;
+        font-size: 2rem; font-weight: 800; margin-bottom: 0.5rem; letter-spacing: -0.5px;
     }
 
-    .hero-subtitle {
-        font-size: 1.1rem;
-        opacity: 0.95;
-        font-weight: 400;
-    }
+    .hero-subtitle { font-size: 1.1rem; opacity: 0.95; font-weight: 400; }
 
     .hero-date-box {
-        background: rgba(255, 255, 255, 0.15);
-        backdrop-filter: blur(10px);
-        border-radius: 12px;
-        padding: 1.5rem;
-        text-align: center;
-        border: 1px solid rgba(255, 255, 255, 0.2);
+        background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(10px); border-radius: 12px;
+        padding: 1.5rem; text-align: center; border: 1px solid rgba(255, 255, 255, 0.2);
     }
 
-    .hero-date-label {
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        opacity: 0.9;
-        margin-bottom: 0.5rem;
-    }
+    .hero-date-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; opacity: 0.9; margin-bottom: 0.5rem; }
+    .hero-date-value { font-size: 2rem; font-weight: 900; letter-spacing: -1px; }
 
-    .hero-date-value {
-        font-size: 2rem;
-        font-weight: 900;
-        letter-spacing: -1px;
-    }
-
-    /* ============================================
-           TARJETAS KPI
-           ============================================ */
+    /* --- TARJETAS KPI --- */
     .kpi-card {
-        background: white;
-        border-radius: 12px;
-        padding: 1.75rem;
-        border: 1px solid var(--edusys-border);
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: var(--edusys-shadow-sm);
-        position: relative;
-        overflow: hidden;
+        background: white; border-radius: 12px; padding: 1.75rem; border: 1px solid var(--edusys-border);
+        height: 100%; display: flex; flex-direction: column; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: var(--edusys-shadow-sm); position: relative; overflow: hidden;
     }
 
-        .kpi-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 4px;
-            height: 100%;
-            background: linear-gradient(180deg, var(--kpi-color), transparent);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .kpi-card:hover {
-            transform: translateY(-4px);
-            box-shadow: var(--edusys-shadow-lg);
-            border-color: var(--kpi-color);
-        }
-
-            .kpi-card:hover::before {
-                opacity: 1;
-            }
-
-    .kpi-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 1rem;
+    .kpi-card::before {
+        content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%;
+        background: linear-gradient(180deg, var(--kpi-color), transparent); opacity: 0; transition: opacity 0.3s ease;
     }
+
+    .kpi-card:hover { transform: translateY(-4px); box-shadow: var(--edusys-shadow-lg); border-color: var(--kpi-color); }
+    .kpi-card:hover::before { opacity: 1; }
+
+    .kpi-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; }
 
     .kpi-icon-box {
-        width: 48px;
-        height: 48px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: linear-gradient(135deg, var(--kpi-color), var(--kpi-color-light));
-        color: white;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center;
+        background: linear-gradient(135deg, var(--kpi-color), var(--kpi-color-light)); color: white; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     }
 
-    .kpi-number {
-        font-size: 2.5rem;
-        font-weight: 900;
-        color: var(--edusys-text-primary);
-        line-height: 1;
-        margin-bottom: 0.5rem;
-        font-family: 'Segoe UI', sans-serif;
-    }
-
-    .kpi-label {
-        font-size: 0.875rem;
-        color: var(--edusys-text-secondary);
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
+    .kpi-number { font-size: 2.5rem; font-weight: 900; color: var(--edusys-text-primary); line-height: 1; margin-bottom: 0.5rem; }
+    .kpi-label { font-size: 0.875rem; color: var(--edusys-text-secondary); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
 
     .kpi-trend {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        margin-top: auto;
-        padding-top: 1rem;
-        border-top: 1px solid var(--edusys-border);
+        display: flex; align-items: center; gap: 0.5rem; margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--edusys-border);
     }
+    .kpi-trend-positive { color: var(--edusys-success); }
+    .kpi-trend-neutral { color: var(--edusys-text-secondary); }
 
-    .kpi-trend-positive {
-        color: var(--edusys-success);
-    }
-
-    .kpi-trend-neutral {
-        color: var(--edusys-text-secondary);
-    }
-
-    /* ============================================
-           PANEL DE AGENDA DEL DÍA
-           ============================================ */
+    /* --- PANEL DE AGENDA DEL DÍA --- */
     .agenda-panel {
-        background: white;
-        border-radius: 12px;
-        border: 1px solid var(--edusys-border);
-        box-shadow: var(--edusys-shadow-sm);
-        overflow: hidden;
+        background: white; border-radius: 12px; border: 1px solid var(--edusys-border); box-shadow: var(--edusys-shadow-sm); overflow: hidden;
     }
 
     .panel-header {
-        padding: 1.5rem;
-        background: linear-gradient(135deg, var(--edusys-background) 0%, white 100%);
-        border-bottom: 2px solid var(--edusys-border);
+        padding: 1.5rem; background: linear-gradient(135deg, var(--edusys-background) 0%, white 100%); border-bottom: 2px solid var(--edusys-border);
     }
 
-    .panel-title {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        font-size: 1.25rem;
-        font-weight: 800;
-        color: var(--edusys-primary);
-    }
+    .panel-title { display: flex; align-items: center; gap: 0.75rem; font-size: 1.25rem; font-weight: 800; color: var(--edusys-primary); }
+    .panel-subtitle { margin-top: 0.25rem; font-size: 0.875rem; color: var(--edusys-text-secondary); }
 
-    .panel-subtitle {
-        margin-top: 0.25rem;
-        font-size: 0.875rem;
-        color: var(--edusys-text-secondary);
-    }
-
-    .panel-content {
-        padding: 1.5rem;
-    }
+    .panel-content { padding: 1.5rem; }
 
     .clase-item {
-        background: white;
-        border: 1px solid var(--edusys-border);
-        border-left: 4px solid var(--edusys-accent);
-        border-radius: 10px;
-        padding: 1.25rem;
-        margin-bottom: 1rem;
-        transition: all 0.3s ease;
-        position: relative;
+        background: white; border: 1px solid var(--edusys-border); border-left: 4px solid var(--edusys-accent);
+        border-radius: 10px; padding: 1.25rem; margin-bottom: 1rem; transition: all 0.3s ease;
     }
+    .clase-item:hover { box-shadow: var(--edusys-shadow-md); border-left-color: var(--edusys-primary); transform: translateX(4px); }
+    .clase-item:last-child { margin-bottom: 0; }
 
-        .clase-item:hover {
-            box-shadow: var(--edusys-shadow-md);
-            border-left-color: var(--edusys-primary);
-            transform: translateX(4px);
-        }
+    .clase-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem; }
+    .clase-materia { font-size: 1rem; font-weight: 800; color: var(--edusys-text-primary); line-height: 1.3; }
 
-        .clase-item:last-child {
-            margin-bottom: 0;
-        }
-
-    .clase-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 0.75rem;
-    }
-
-    .clase-materia {
-        font-size: 1rem;
-        font-weight: 800;
-        color: var(--edusys-text-primary);
-        line-height: 1.3;
-    }
-
-    .clase-info {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        flex-wrap: wrap;
-    }
-
-    .clase-detalle {
-        display: flex;
-        align-items: center;
-        gap: 0.4rem;
-        font-size: 0.85rem;
-        color: var(--edusys-text-secondary);
-    }
+    .clase-info { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+    .clase-detalle { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; color: var(--edusys-text-secondary); font-weight: 500;}
 
     .clase-actions {
-        display: flex;
-        gap: 0.5rem;
-        margin-top: 0.75rem;
-        padding-top: 0.75rem;
-        border-top: 1px dashed var(--edusys-border);
+        display: flex; gap: 0.5rem; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px dashed var(--edusys-border);
     }
 
     .quick-action-btn {
-        flex: 1;
-        padding: 0.5rem 1rem;
-        border-radius: 8px;
-        border: 1px solid var(--edusys-border);
-        background: white;
-        color: var(--edusys-text-primary);
-        font-size: 0.8rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.4rem;
+        flex: 1; padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--edusys-border); background: white;
+        color: var(--edusys-text-primary); font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease;
+        display: flex; align-items: center; justify-content: center; gap: 0.4rem;
     }
+    .quick-action-btn:hover { background: var(--edusys-primary); color: white; border-color: var(--edusys-primary); transform: translateY(-2px); }
 
-        .quick-action-btn:hover {
-            background: var(--edusys-primary);
-            color: white;
-            border-color: var(--edusys-primary);
-            transform: translateY(-2px);
-        }
+    /* --- ESTADOS VACÍOS --- */
+    .empty-state { text-align: center; padding: 3rem 2rem; background: var(--edusys-background); border-radius: 12px; border: 2px dashed var(--edusys-border); }
+    .empty-icon { font-size: 4rem !important; color: #cbd5e1; margin-bottom: 1rem; }
+    .empty-title { font-size: 1.1rem; font-weight: 700; color: var(--edusys-text-primary); margin-bottom: 0.5rem; }
+    .empty-text { color: var(--edusys-text-secondary); margin-bottom: 1rem; }
 
-    .empty-state {
-        text-align: center;
-        padding: 3rem 2rem;
-        background: var(--edusys-background);
-        border-radius: 12px;
-        border: 2px dashed var(--edusys-border);
-    }
+    /* --- PANEL DE NOTIFICACIONES --- */
+    .notification-panel { background: white; border-radius: 12px; border: 1px solid var(--edusys-border); box-shadow: var(--edusys-shadow-sm); overflow: hidden; }
+    .notification-item { padding: 1rem 1.5rem; border-bottom: 1px solid var(--edusys-border); transition: background-color 0.2s ease; }
+    .notification-item:hover { background-color: var(--edusys-background); }
+    .notification-item:last-child { border-bottom: none; }
 
-    .empty-icon {
-        font-size: 4rem !important;
-        color: var(--edusys-border);
-        margin-bottom: 1rem;
-        opacity: 0.6;
-    }
+    .notification-content { display: flex; gap: 1rem; }
+    .notification-icon-wrapper { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .notification-body { flex: 1; }
+    .notification-title { font-weight: 700; font-size: 0.9rem; color: var(--edusys-text-primary); margin-bottom: 0.25rem; }
+    .notification-text { font-size: 0.85rem; color: var(--edusys-text-secondary); line-height: 1.4; }
+    .notification-time { font-size: 0.75rem; color: var(--edusys-text-secondary); margin-top: 0.5rem; display: flex; align-items: center; gap: 0.3rem; }
 
-    .empty-title {
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: var(--edusys-text-primary);
-        margin-bottom: 0.5rem;
-    }
-
-    .empty-text {
-        color: var(--edusys-text-secondary);
-        margin-bottom: 1rem;
-    }
-
-    /* ============================================
-           PANEL DE NOTIFICACIONES
-           ============================================ */
-    .notification-panel {
-        background: white;
-        border-radius: 12px;
-        border: 1px solid var(--edusys-border);
-        box-shadow: var(--edusys-shadow-sm);
-        overflow: hidden;
-    }
-
-    .notification-item {
-        padding: 1rem 1.5rem;
-        border-bottom: 1px solid var(--edusys-border);
-        transition: background-color 0.2s ease;
-    }
-
-        .notification-item:last-child {
-            border-bottom: none;
-        }
-
-        .notification-item:hover {
-            background-color: var(--edusys-background);
-        }
-
-    .notification-content {
-        display: flex;
-        gap: 1rem;
-    }
-
-    .notification-icon-wrapper {
-        width: 40px;
-        height: 40px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-    }
-
-    .notification-body {
-        flex: 1;
-    }
-
-    .notification-title {
-        font-weight: 700;
-        font-size: 0.9rem;
-        color: var(--edusys-text-primary);
-        margin-bottom: 0.25rem;
-    }
-
-    .notification-text {
-        font-size: 0.85rem;
-        color: var(--edusys-text-secondary);
-        line-height: 1.4;
-    }
-
-    .notification-time {
-        font-size: 0.75rem;
-        color: var(--edusys-text-secondary);
-        margin-top: 0.5rem;
-        display: flex;
-        align-items: center;
-        gap: 0.3rem;
-    }
-
-    /* ============================================
-           ACCESOS RÁPIDOS
-           ============================================ */
-    .quick-access-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 1rem;
-    }
-
+    /* --- ACCESOS RÁPIDOS --- */
+    .quick-access-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
     .access-card {
-        background: white;
-        border: 1px solid var(--edusys-border);
-        border-radius: 12px;
-        padding: 1.5rem;
-        cursor: pointer;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        text-align: center;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 0.75rem;
-        box-shadow: var(--edusys-shadow-sm);
+        background: white; border: 1px solid var(--edusys-border); border-radius: 12px; padding: 1.5rem; cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); text-align: center; display: flex; flex-direction: column;
+        align-items: center; gap: 0.75rem; box-shadow: var(--edusys-shadow-sm);
     }
-
-        .access-card:hover {
-            background: linear-gradient(135deg, var(--card-color), var(--card-color-light));
-            color: white;
-            transform: translateY(-4px);
-            box-shadow: var(--edusys-shadow-lg);
-            border-color: var(--card-color);
-        }
-
-    .access-icon {
-        font-size: 2.5rem !important;
-        transition: transform 0.3s ease;
+    .access-card:hover {
+        background: linear-gradient(135deg, var(--card-color), var(--card-color-light)); color: white;
+        transform: translateY(-4px); box-shadow: var(--edusys-shadow-lg); border-color: var(--card-color);
     }
+    .access-icon { font-size: 2.5rem !important; transition: transform 0.3s ease; color: var(--card-color); }
+    .access-card:hover .access-icon { transform: scale(1.1); color: white; }
+    .access-label { font-weight: 700; font-size: 0.85rem; letter-spacing: 0.3px; }
+    .access-full-width { grid-column: 1 / -1; flex-direction: row; justify-content: center; }
 
-    .access-card:hover .access-icon {
-        transform: scale(1.1);
-    }
-
-    .access-label {
-        font-weight: 700;
-        font-size: 0.85rem;
-        letter-spacing: 0.3px;
-    }
-
-    .access-full-width {
-        grid-column: 1 / -1;
-        flex-direction: row;
-        justify-content: center;
-    }
-
-    /* ============================================
-           ESTADÍSTICAS MINI
-           ============================================ */
-    .mini-stats {
-        background: linear-gradient(135deg, var(--edusys-background) 0%, white 100%);
-        border-radius: 10px;
-        padding: 1rem;
-        border: 1px solid var(--edusys-border);
-        margin-top: 1rem;
-    }
-
-    .mini-stats-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 1rem;
-    }
-
-    .mini-stat-item {
-        text-align: center;
-    }
-
-    .mini-stat-value {
-        font-size: 1.5rem;
-        font-weight: 900;
-        color: var(--stat-color);
-        margin-bottom: 0.25rem;
-    }
-
-    .mini-stat-label {
-        font-size: 0.7rem;
-        color: var(--edusys-text-secondary);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        font-weight: 600;
-    }
-
-    /* ============================================
-           RESPONSIVE
-           ============================================ */
-    @@media (max-width: 960px) {
-        .dashboard-hero {
-            padding: 2rem;
-        }
-
-        .hero-greeting {
-            font-size: 1.5rem;
-        }
-
-        .hero-subtitle {
-            font-size: 1rem;
-        }
-
-        .quick-access-grid {
-            grid-template-columns: 1fr;
-        }
-    }
-
-    @@media (max-width: 600px) {
-        .dashboard-hero {
-            padding: 1.5rem;
-        }
-
-        .kpi-card {
-            padding: 1.25rem;
-        }
-
-        .kpi-number {
-            font-size: 2rem;
-        }
-
-        .clase-item {
-            padding: 1rem;
-        }
-    }
+    /* --- ESTADÍSTICAS MINI --- */
+    .mini-stats { background: linear-gradient(135deg, var(--edusys-background) 0%, white 100%); border-radius: 10px; padding: 1rem; border: 1px solid var(--edusys-border); margin-top: 1rem; }
+    .mini-stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+    .mini-stat-item { text-align: center; }
+    .mini-stat-value { font-size: 1.5rem; font-weight: 900; color: var(--stat-color); margin-bottom: 0.25rem; }
+    .mini-stat-label { font-size: 0.7rem; color: var(--edusys-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; }
 </style>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-6 mb-12">
 
-    <!-- BANNER HERO -->
-    <div class="dashboard-hero">
+    <div class="dashboard-hero animate__animated animate__fadeIn">
         <div class="hero-content">
             <MudGrid>
                 <MudItem xs="12" md="8">
                     <div class="hero-greeting">
-                        ¡Bienvenido, @NombreDocente!
+                        ¡Bienvenido/a, @NombreDocente!
                     </div>
                     <div class="hero-subtitle">
-                        @if (ClasesHoy.Any())
+                        @if (cargando)
+                        {
+                            <MudSkeleton Width="200px" Height="20px" Animation="Animation.Wave" />
+                        }
+                        else if (ClasesHoy.Any())
                         {
                             <span>Tienes <strong>@ClasesHoy.Count</strong> @(ClasesHoy.Count == 1 ? "clase programada" : "clases programadas") para hoy.</span>
                         }
                         else
                         {
-                            <span>No tienes clases programadas para hoy. ¡Aprovecha el día!</span>
+                            <span>No tienes clases programadas para el día de hoy.</span>
                         }
                     </div>
                 </MudItem>
                 <MudItem xs="12" md="4" Class="d-flex justify-end align-center">
                     <div class="hero-date-box">
-                        <div class="hero-date-label">Hoy es</div>
+                        <div class="hero-date-label">HOY ES</div>
                         <div class="hero-date-value">
                             @DateTime.Now.ToString("dd MMM", new CultureInfo("es-ES")).ToUpper()
                         </div>
-                        <div style="opacity: 0.9; margin-top: 0.25rem; font-size: 0.9rem;">
-                            @DateTime.Now.ToString("dddd", new CultureInfo("es-ES"))
+                        <div style="opacity: 0.9; margin-top: 0.25rem; font-size: 0.9rem; font-weight: 600;">
+                            @DateTime.Now.ToString("dddd, yyyy", new CultureInfo("es-ES")).ToUpper()
                         </div>
                     </div>
                 </MudItem>
@@ -582,100 +227,114 @@
         </div>
     </div>
 
-    <!-- KPIs -->
-    <MudGrid Spacing="3" Class="mb-4">
-        <MudItem xs="6" sm="6" md="3">
-            <div class="kpi-card" style="--kpi-color: var(--edusys-accent); --kpi-color-light: #4fc3f7;">
-                <div class="kpi-header">
-                    <div>
-                        <div class="kpi-number">@comisiones.Sum(c => c.CantidadAlumnos)</div>
-                        <div class="kpi-label">Estudiantes</div>
+    <MudGrid Spacing="3" Class="mb-6">
+        @if (cargando)
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                <MudItem xs="6" sm="6" md="3">
+                    <MudSkeleton Height="140px" Class="rounded-lg" Animation="Animation.Wave" />
+                </MudItem>
+            }
+        }
+        else
+        {
+            <MudItem xs="6" sm="6" md="3">
+                <div class="kpi-card animate__animated animate__fadeInUp" style="--kpi-color: var(--edusys-accent); --kpi-color-light: #5f8ebf;">
+                    <div class="kpi-header">
+                        <div>
+                            <div class="kpi-number">@comisiones.Sum(c => c.CantidadAlumnos)</div>
+                            <div class="kpi-label">Estudiantes</div>
+                        </div>
+                        <div class="kpi-icon-box">
+                            <MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Large" />
+                        </div>
                     </div>
-                    <div class="kpi-icon-box">
-                        <MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Large" />
+                    <div class="kpi-trend kpi-trend-neutral">
+                        <MudIcon Icon="@Icons.Material.Filled.School" Size="Size.Small" />
+                        <span style="font-size: 0.75rem;">Totales inscritos</span>
                     </div>
                 </div>
-                <div class="kpi-trend kpi-trend-neutral">
-                    <MudIcon Icon="@Icons.Material.Filled.School" Size="Size.Small" />
-                    <span style="font-size: 0.75rem;">Totales activos</span>
-                </div>
-            </div>
-        </MudItem>
+            </MudItem>
 
-        <MudItem xs="6" sm="6" md="3">
-            <div class="kpi-card" style="--kpi-color: var(--edusys-primary); --kpi-color-light: var(--edusys-primary-light);">
-                <div class="kpi-header">
-                    <div>
-                        <div class="kpi-number">@comisiones.Count</div>
-                        <div class="kpi-label">Comisiones</div>
+            <MudItem xs="6" sm="6" md="3">
+                <div class="kpi-card animate__animated animate__fadeInUp" style="--kpi-color: var(--edusys-primary); --kpi-color-light: var(--edusys-primary-light);">
+                    <div class="kpi-header">
+                        <div>
+                            <div class="kpi-number">@comisiones.Count</div>
+                            <div class="kpi-label">Comisiones</div>
+                        </div>
+                        <div class="kpi-icon-box">
+                            <MudIcon Icon="@Icons.Material.Filled.Class" Size="Size.Large" />
+                        </div>
                     </div>
-                    <div class="kpi-icon-box">
-                        <MudIcon Icon="@Icons.Material.Filled.Class" Size="Size.Large" />
+                    <div class="kpi-trend kpi-trend-neutral">
+                        <MudIcon Icon="@Icons.Material.Filled.Groups" Size="Size.Small" />
+                        <span style="font-size: 0.75rem;">A cargo este ciclo</span>
                     </div>
                 </div>
-                <div class="kpi-trend kpi-trend-neutral">
-                    <MudIcon Icon="@Icons.Material.Filled.Groups" Size="Size.Small" />
-                    <span style="font-size: 0.75rem;">A cargo este ciclo</span>
-                </div>
-            </div>
-        </MudItem>
+            </MudItem>
 
-        <MudItem xs="6" sm="6" md="3">
-            <div class="kpi-card" style="--kpi-color: var(--edusys-teal); --kpi-color-light: #4db6ac;">
-                <div class="kpi-header">
-                    <div>
-                        <div class="kpi-number">@ClasesHoy.Count</div>
-                        <div class="kpi-label">Clases Hoy</div>
+            <MudItem xs="6" sm="6" md="3">
+                <div class="kpi-card animate__animated animate__fadeInUp" style="--kpi-color: var(--edusys-teal); --kpi-color-light: #4db6ac;">
+                    <div class="kpi-header">
+                        <div>
+                            <div class="kpi-number">@ClasesHoy.Count</div>
+                            <div class="kpi-label">Clases Hoy</div>
+                        </div>
+                        <div class="kpi-icon-box">
+                            <MudIcon Icon="@Icons.Material.Filled.Today" Size="Size.Large" />
+                        </div>
                     </div>
-                    <div class="kpi-icon-box">
-                        <MudIcon Icon="@Icons.Material.Filled.Today" Size="Size.Large" />
+                    <div class="kpi-trend kpi-trend-positive">
+                        <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Size="Size.Small" />
+                        <span style="font-size: 0.75rem;">Agenda del día</span>
                     </div>
                 </div>
-                <div class="kpi-trend kpi-trend-positive">
-                    <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Size="Size.Small" />
-                    <span style="font-size: 0.75rem;">Programadas</span>
-                </div>
-            </div>
-        </MudItem>
+            </MudItem>
 
-        <MudItem xs="6" sm="6" md="3">
-            <div class="kpi-card" style="--kpi-color: var(--edusys-success); --kpi-color-light: #66bb6a;">
-                <div class="kpi-header">
-                    <div>
-                        <div class="kpi-number">@ObtenerMateriasUnicas()</div>
-                        <div class="kpi-label">Materias</div>
+            <MudItem xs="6" sm="6" md="3">
+                <div class="kpi-card animate__animated animate__fadeInUp" style="--kpi-color: var(--edusys-success); --kpi-color-light: #66bb6a;">
+                    <div class="kpi-header">
+                        <div>
+                            <div class="kpi-number">@ObtenerMateriasUnicas()</div>
+                            <div class="kpi-label">Materias</div>
+                        </div>
+                        <div class="kpi-icon-box">
+                            <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Large" />
+                        </div>
                     </div>
-                    <div class="kpi-icon-box">
-                        <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Large" />
+                    <div class="kpi-trend kpi-trend-neutral">
+                        <MudIcon Icon="@Icons.Material.Filled.LibraryBooks" Size="Size.Small" />
+                        <span style="font-size: 0.75rem;">Dictando actualmente</span>
                     </div>
                 </div>
-                <div class="kpi-trend kpi-trend-neutral">
-                    <MudIcon Icon="@Icons.Material.Filled.LibraryBooks" Size="Size.Small" />
-                    <span style="font-size: 0.75rem;">Distintas dictando</span>
-                </div>
-            </div>
-        </MudItem>
+            </MudItem>
+        }
     </MudGrid>
 
     <MudGrid Spacing="3">
 
-        <!-- COLUMNA PRINCIPAL -->
         <MudItem xs="12" lg="8">
 
-            <!-- AGENDA DEL DÍA -->
-            <div class="agenda-panel mb-4">
+            <div class="agenda-panel mb-4 animate__animated animate__fadeIn">
                 <div class="panel-header">
                     <div class="panel-title">
                         <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Medium" />
-                        <span>Agenda de Hoy</span>
+                        <span>Agenda de Clases</span>
                     </div>
                     <div class="panel-subtitle">
-                        @DateTime.Now.ToString("dddd, dd 'de' MMMM 'de' yyyy", new CultureInfo("es-ES"))
+                        @DateTime.Now.ToString("dddd, dd 'de' MMMM", new CultureInfo("es-ES")).ToUpper()
                     </div>
                 </div>
 
                 <div class="panel-content">
-                    @if (ClasesHoy.Any())
+                    @if (cargando)
+                    {
+                        <MudSkeleton Height="80px" Class="rounded-lg mb-2" Animation="Animation.Wave" />
+                        <MudSkeleton Height="80px" Class="rounded-lg" Animation="Animation.Wave" />
+                    }
+                    else if (ClasesHoy.Any())
                     {
                         @foreach (var clase in ClasesHoy)
                         {
@@ -685,23 +344,20 @@
                                         <div class="clase-materia">@clase.Materia</div>
                                         <div class="clase-info" style="margin-top: 0.5rem;">
                                             <div class="clase-detalle">
-                                                <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" Style="font-size: 1rem;" />
-                                                <span>@clase.Sede - @clase.Aula</span>
+                                                <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" Style="font-size: 1rem; color: var(--edusys-primary);" />
+                                                <span>@clase.Sede - @(string.IsNullOrWhiteSpace(clase.Aula) ? "A Conf." : clase.Aula)</span>
                                             </div>
                                             <div class="clase-detalle">
-                                                <MudIcon Icon="@Icons.Material.Filled.AccessTime" Size="Size.Small" Style="font-size: 1rem;" />
+                                                <MudIcon Icon="@Icons.Material.Filled.AccessTime" Size="Size.Small" Style="font-size: 1rem; color: var(--edusys-primary);" />
                                                 <span>@clase.Horario</span>
                                             </div>
                                             <div class="clase-detalle">
-                                                <MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Small" Style="font-size: 1rem;" />
+                                                <MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Small" Style="font-size: 1rem; color: var(--edusys-primary);" />
                                                 <span>@clase.CantidadAlumnos alumnos</span>
                                             </div>
                                         </div>
                                     </div>
-                                    <MudChip T="string"
-                                             Size="Size.Small"
-                                             Variant="Variant.Filled"
-                                             Style="background: linear-gradient(135deg, var(--edusys-accent), #4fc3f7); color: white; font-weight: 700;">
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Style="background: linear-gradient(135deg, var(--edusys-primary), var(--edusys-primary-light)); color: white; font-weight: 700;">
                                         @clase.CodigoComision
                                     </MudChip>
                                 </div>
@@ -709,15 +365,11 @@
                                 <div class="clase-actions">
                                     <button class="quick-action-btn" @onclick="@(() => Navegar($"/docente/asistencia/{clase.IdComision}"))">
                                         <MudIcon Icon="@Icons.Material.Filled.FactCheck" Size="Size.Small" />
-                                        <span>Asistencia</span>
+                                        <span>Tomar Asistencia</span>
                                     </button>
                                     <button class="quick-action-btn" @onclick="@(() => Navegar($"/docente/calificaciones/{clase.IdComision}"))">
                                         <MudIcon Icon="@Icons.Material.Filled.Grading" Size="Size.Small" />
-                                        <span>Calificar</span>
-                                    </button>
-                                    <button class="quick-action-btn" @onclick="@(() => Navegar($"/mis-comisiones"))">
-                                        <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" />
-                                        <span>Detalles</span>
+                                        <span>Calificaciones</span>
                                     </button>
                                 </div>
                             </div>
@@ -727,152 +379,71 @@
                     {
                         <div class="empty-state">
                             <MudIcon Icon="@Icons.Material.Filled.EventAvailable" Class="empty-icon" />
-                            <div class="empty-title">No hay clases programadas</div>
+                            <div class="empty-title">Día sin clases programadas</div>
                             <div class="empty-text">
-                                No tienes clases para <strong>@DateTime.Now.ToString("dddd", new CultureInfo("es-ES"))</strong>
+                                No tienes actividad en aula asignada para el día de hoy.
                             </div>
-                            <MudButton Variant="Variant.Outlined"
-                                       Color="Color.Primary"
-                                       OnClick='() => Navegar("/mis-comisiones")'>
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Style="font-weight: 700;" OnClick='() => Navegar("/mis-comisiones")'>
                                 Ver todas mis comisiones
                             </MudButton>
                         </div>
                     }
                 </div>
             </div>
+        </MudItem>
 
-            <!-- ÚLTIMAS NOTIFICACIONES -->
-            <div class="notification-panel">
+        <MudItem xs="12" lg="4">
+
+            <div class="notification-panel mb-6 animate__animated animate__fadeInRight">
                 <div class="panel-header">
                     <div class="panel-title">
-                        <MudIcon Icon="@Icons.Material.Filled.Notifications" Size="Size.Medium" />
-                        <span>Últimas Notificaciones</span>
-                    </div>
-                    <div class="panel-subtitle">
-                        Mantente informado sobre eventos y actualizaciones
+                        <MudIcon Icon="@Icons.Material.Filled.Dashboard" Size="Size.Medium" />
+                        <span>Gestión Directa</span>
                     </div>
                 </div>
 
-                <div>
-                    <!-- Notificación 1 - Urgente -->
-                    <div class="notification-item">
-                        <div class="notification-content">
-                            <div class="notification-icon-wrapper" style="background: linear-gradient(135deg, var(--edusys-danger), #e57373);">
-                                <MudIcon Icon="@Icons.Material.Filled.PriorityHigh" Style="color: white;" Size="Size.Medium" />
-                            </div>
-                            <div class="notification-body">
-                                <div class="notification-title">Cierre de Actas - 1° Cuatrimestre</div>
-                                <div class="notification-text">
-                                    El cierre de actas del primer cuatrimestre vence el <strong>20 de diciembre</strong>. Por favor, asegúrate de haber cargado todas las calificaciones finales antes de esa fecha.
-                                </div>
-                                <div class="notification-time">
-                                    <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Style="font-size: 0.75rem;" />
-                                    <span>Hace 2 horas</span>
-                                </div>
-                            </div>
+                <div style="padding: 1.5rem;">
+                    <div class="quick-access-grid">
+                        <div class="access-card" style="--card-color: var(--edusys-primary); --card-color-light: var(--edusys-primary-light);" @onclick='() => Navegar("/mis-comisiones")'>
+                            <MudIcon Icon="@Icons.Material.Filled.Groups" Class="access-icon" />
+                            <span class="access-label">Mis Comisiones</span>
+                        </div>
+
+                        <div class="access-card" style="--card-color: var(--edusys-purple); --card-color-light: #9f7aea;" @onclick='() => Navegar("/mis-mesas")'>
+                            <MudIcon Icon="@Icons.Material.Filled.EventSeat" Class="access-icon" />
+                            <span class="access-label">Mesas de Final</span>
+                        </div>
+
+                        <div class="access-card access-full-width" style="--card-color: var(--edusys-accent); --card-color-light: #5f8ebf;" @onclick='() => Navegar("/mi-perfil-docente")'>
+                            <MudIcon Icon="@Icons.Material.Filled.Person" Class="access-icon" />
+                            <span class="access-label">Mi Perfil Profesional</span>
                         </div>
                     </div>
 
-                    <!-- Notificación 2 - Evento -->
-                    <div class="notification-item">
-                        <div class="notification-content">
-                            <div class="notification-icon-wrapper" style="background: linear-gradient(135deg, var(--edusys-info), #4fc3f7);">
-                                <MudIcon Icon="@Icons.Material.Filled.Event" Style="color: white;" Size="Size.Medium" />
+                    <div class="mini-stats mt-4">
+                        <div class="mini-stats-grid">
+                            <div class="mini-stat-item">
+                                <div class="mini-stat-value" style="--stat-color: var(--edusys-primary);">
+                                    @(comisiones.Any() ? Math.Round(comisiones.Average(c => c.CantidadAlumnos), 0) : 0)
+                                </div>
+                                <div class="mini-stat-label">Promedio / Aula</div>
                             </div>
-                            <div class="notification-body">
-                                <div class="notification-title">Reunión de Claustro Docente</div>
-                                <div class="notification-text">
-                                    Se convoca a todos los docentes el <strong>viernes 15 de noviembre a las 19:00hs</strong> en el Aula Magna. Asistencia obligatoria. Temas: planificación 2025 y nuevos lineamientos académicos.
+                            <div class="mini-stat-item">
+                                <div class="mini-stat-value" style="--stat-color: var(--edusys-success);">
+                                    @ObtenerSedesDistintas()
                                 </div>
-                                <div class="notification-time">
-                                    <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Style="font-size: 0.75rem;" />
-                                    <span>Hace 1 día</span>
-                                </div>
+                                <div class="mini-stat-label">Sedes Asignadas</div>
                             </div>
                         </div>
-                    </div>
-
-                    <!-- Notificación 3 - Actualización -->
-                    <div class="notification-item">
-                        <div class="notification-content">
-                            <div class="notification-icon-wrapper" style="background: linear-gradient(135deg, var(--edusys-success), #66bb6a);">
-                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Style="color: white;" Size="Size.Medium" />
-                            </div>
-                            <div class="notification-body">
-                                <div class="notification-title">Nueva Funcionalidad Disponible</div>
-                                <div class="notification-text">
-                                    Ya está disponible la funcionalidad de <strong>carga masiva de notas</strong> desde Excel. Podrás importar calificaciones de forma más ágil. Consulta el manual en la sección de ayuda.
-                                </div>
-                                <div class="notification-time">
-                                    <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Style="font-size: 0.75rem;" />
-                                    <span>Hace 3 días</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Notificación 4 - Info -->
-                    <div class="notification-item">
-                        <div class="notification-content">
-                            <div class="notification-icon-wrapper" style="background: linear-gradient(135deg, var(--edusys-purple), #9f7aea);">
-                                <MudIcon Icon="@Icons.Material.Filled.School" Style="color: white;" Size="Size.Medium" />
-                            </div>
-                            <div class="notification-body">
-                                <div class="notification-title">Capacitación Docente</div>
-                                <div class="notification-text">
-                                    Se realizará un taller de <strong>"Evaluación por competencias"</strong> los días 10 y 11 de diciembre. Inscripciones abiertas hasta el 5/12 en secretaría académica.
-                                </div>
-                                <div class="notification-time">
-                                    <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Style="font-size: 0.75rem;" />
-                                    <span>Hace 5 días</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Notificación 5 - Mantenimiento -->
-                    <div class="notification-item">
-                        <div class="notification-content">
-                            <div class="notification-icon-wrapper" style="background: linear-gradient(135deg, var(--edusys-text-secondary), #90a4ae);">
-                                <MudIcon Icon="@Icons.Material.Filled.Build" Style="color: white;" Size="Size.Medium" />
-                            </div>
-                            <div class="notification-body">
-                                <div class="notification-title">Mantenimiento Programado del Sistema</div>
-                                <div class="notification-text">
-                                    El sistema EduSys no estará disponible el <strong>domingo 12/11 de 02:00 a 04:00 AM</strong> por tareas de mantenimiento y actualización de servidores.
-                                </div>
-                                <div class="notification-time">
-                                    <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Style="font-size: 0.75rem;" />
-                                    <span>Hace 1 semana</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Botón Ver Todas -->
-                    <div style="padding: 1rem; text-align: center; border-top: 1px solid var(--edusys-border);">
-                        <MudButton Variant="Variant.Text"
-                                   Color="Color.Primary"
-                                   OnClick='() => Navegar("/notificaciones")'
-                                   Style="font-weight: 600;">
-                            Ver todas las notificaciones
-                            <MudIcon Icon="@Icons.Material.Filled.ArrowForward" Size="Size.Small" Class="ml-2" />
-                        </MudButton>
                     </div>
                 </div>
             </div>
 
-        </MudItem>
-
-        <!-- COLUMNA LATERAL -->
-        <MudItem xs="12" lg="4">
-
-            <!-- ALERTAS RÁPIDAS -->
-            <div class="notification-panel mb-4">
+            <div class="notification-panel animate__animated animate__fadeInRight animate__delay-1s">
                 <div class="panel-header">
                     <div class="panel-title">
                         <MudIcon Icon="@Icons.Material.Filled.Campaign" Size="Size.Medium" />
-                        <span>Alertas Rápidas</span>
+                        <span>Avisos Institucionales</span>
                     </div>
                 </div>
 
@@ -883,10 +454,8 @@
                                 <MudIcon Icon="@Icons.Material.Filled.Warning" Style="color: white;" Size="Size.Small" />
                             </div>
                             <div class="notification-body">
-                                <div class="notification-title">Actas Pendientes</div>
-                                <div class="notification-text">
-                                    Tienes <strong>0 actas</strong> pendientes de cierre.
-                                </div>
+                                <div class="notification-title">Cierre de Actas</div>
+                                <div class="notification-text">Recuerde que el cierre de actas del ciclo lectivo actual vence el viernes 15.</div>
                             </div>
                         </div>
                     </div>
@@ -897,124 +466,57 @@
                                 <MudIcon Icon="@Icons.Material.Filled.Assignment" Style="color: white;" Size="Size.Small" />
                             </div>
                             <div class="notification-body">
-                                <div class="notification-title">Evaluaciones Próximas</div>
-                                <div class="notification-text">
-                                    Consulta el calendario académico para las próximas fechas.
-                                </div>
+                                <div class="notification-title">Mesas Examinadoras</div>
+                                <div class="notification-text">El calendario de mesas de examen final ya se encuentra publicado.</div>
                             </div>
                         </div>
-                    </div>
-
-                    <div class="notification-item">
-                        <div class="notification-content">
-                            <div class="notification-icon-wrapper" style="background: linear-gradient(135deg, var(--edusys-success), #66bb6a);">
-                                <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Style="color: white;" Size="Size.Small" />
-                            </div>
-                            <div class="notification-body">
-                                <div class="notification-title">Asistencias al Día</div>
-                                <div class="notification-text">
-                                    Todos los registros están actualizados.
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ACCESOS RÁPIDOS -->
-            <div class="notification-panel">
-                <div class="panel-header">
-                    <div class="panel-title">
-                        <MudIcon Icon="@Icons.Material.Filled.Dashboard" Size="Size.Medium" />
-                        <span>Accesos Rápidos</span>
-                    </div>
-                </div>
-
-                <div style="padding: 1rem;">
-                    <div class="quick-access-grid">
-                        <div class="access-card"
-                             style="--card-color: var(--edusys-primary); --card-color-light: var(--edusys-primary-light);"
-                             @onclick='() => Navegar("/mis-comisiones")'>
-                            <MudIcon Icon="@Icons.Material.Filled.Groups" Class="access-icon" />
-                            <span class="access-label">Mis Cursos</span>
-                        </div>
-
-                        <div class="access-card"
-                             style="--card-color: var(--edusys-purple); --card-color-light: #9f7aea;"
-                             @onclick='() => Navegar("/mis-mesas")'>
-                            <MudIcon Icon="@Icons.Material.Filled.EventSeat" Class="access-icon" />
-                            <span class="access-label">Mesas Final</span>
-                        </div>
-
-                        <div class="access-card"
-                             style="--card-color: var(--edusys-success); --card-color-light: #66bb6a;"
-                             @onclick='() => Navegar("/docente/calificaciones")'>
-                            <MudIcon Icon="@Icons.Material.Filled.Grade" Class="access-icon" />
-                            <span class="access-label">Calificaciones</span>
-                        </div>
-
-                        <div class="access-card"
-                             style="--card-color: var(--edusys-teal); --card-color-light: #4db6ac;"
-                             @onclick='() => Navegar("/docente/asistencias")'>
-                            <MudIcon Icon="@Icons.Material.Filled.FactCheck" Class="access-icon" />
-                            <span class="access-label">Asistencias</span>
-                        </div>
-
-                        <div class="access-card access-full-width"
-                             style="--card-color: var(--edusys-accent); --card-color-light: #4fc3f7;"
-                             @onclick='() => Navegar("/mi-perfil-docente")'>
-                            <MudIcon Icon="@Icons.Material.Filled.Person" Class="access-icon" />
-                            <span class="access-label">Mi Perfil Profesional</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- MINI STATS -->
-            <div class="mini-stats">
-                <div class="mini-stats-grid">
-                    <div class="mini-stat-item">
-                        <div class="mini-stat-value" style="--stat-color: var(--edusys-accent);">
-                            @(comisiones.Any() ? Math.Round(comisiones.Average(c => c.CantidadAlumnos), 0) : 0)
-                        </div>
-                        <div class="mini-stat-label">Promedio / Comisión</div>
-                    </div>
-                    <div class="mini-stat-item">
-                        <div class="mini-stat-value" style="--stat-color: var(--edusys-success);">
-                            @ObtenerSedesDistintas()
-                        </div>
-                        <div class="mini-stat-label">Sedes Activas</div>
                     </div>
                 </div>
             </div>
 
         </MudItem>
-
     </MudGrid>
 </MudContainer>
 
 @code {
     private string NombreDocente = "Docente";
+    private bool cargando = true;
     private List<ComisionDocenteDTO> comisiones = new();
 
     private List<ComisionDocenteDTO> ClasesHoy => comisiones
-        .Where(c => c.Horario.ToLower().Contains(ObtenerDiaSemanaHoy()))
+        .Where(c => !string.IsNullOrEmpty(c.Horario) && c.Horario.ToLower().Contains(ObtenerDiaSemanaHoy()))
         .ToList();
 
     protected override async Task OnInitializedAsync()
     {
-        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
-        if (user.Identity?.IsAuthenticated == true)
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        if (uri.Query.Contains("login=exito"))
         {
-            NombreDocente = user.FindFirst(ClaimTypes.Name)?.Value ?? "Docente";
+            Snackbar.Add("¡Bienvenido! Acceso concedido.", Severity.Success);
+            Navigation.NavigateTo(uri.GetLeftPart(UriPartial.Path), replace: true);
         }
-
+        cargando = true;
+        
         try
         {
-            comisiones = await DocenteService.GetMisComisionesAsync();
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            
+            if (user.Identity?.IsAuthenticated == true)
+            {
+                NombreDocente = user.FindFirst(ClaimTypes.Name)?.Value ?? "Docente";
+            }
+
+            comisiones = await DocenteService.GetMisComisionesAsync() ?? new List<ComisionDocenteDTO>();
         }
-        catch { /* Manejo silencioso */ }
+        catch (Exception)
+        {
+            Snackbar.Add("Error al sincronizar datos académicos.", Severity.Warning);
+        }
+        finally
+        {
+            cargando = false;
+        }
     }
 
     private void Navegar(string url) => Navigation.NavigateTo(url);
@@ -1036,11 +538,13 @@
 
     private int ObtenerMateriasUnicas()
     {
-        return comisiones.Select(c => c.Materia).Distinct().Count();
+        if (!comisiones.Any()) return 0;
+        return comisiones.Select(c => c.Materia).Where(m => !string.IsNullOrEmpty(m)).Distinct().Count();
     }
 
     private int ObtenerSedesDistintas()
     {
-        return comisiones.Select(c => c.Sede).Distinct().Count();
+        if (!comisiones.Any()) return 0;
+        return comisiones.Select(c => c.Sede).Where(s => !string.IsNullOrEmpty(s)).Distinct().Count();
     }
 }

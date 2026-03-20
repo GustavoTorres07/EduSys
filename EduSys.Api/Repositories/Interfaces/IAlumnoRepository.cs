@@ -1,4 +1,5 @@
 ﻿using EduSys.Shared.DTOs;
+using EduSys.Shared.Models;
 
 namespace EduSys.Api.Repositories.Interfaces
 {
@@ -21,5 +22,9 @@ namespace EduSys.Api.Repositories.Interfaces
 
         // Validación de existencia
         Task<bool> ExisteLegajoAsync(string legajo);
+
+        Task<AlumnoDTO?> GetByUsuarioAsync(int idUsuario);
+
+        Task<Alumno> CrearAsync(Alumno alumno);
     }
 }

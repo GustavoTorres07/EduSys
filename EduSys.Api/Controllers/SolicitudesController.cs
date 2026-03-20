@@ -1,12 +1,10 @@
-﻿using EduSys.Api.Data;
-using EduSys.Api.Helpers;
+﻿using EduSys.Api.Helpers;
 using EduSys.Api.Repositories.Interfaces;
 using EduSys.Api.Services.Interfaces;
 using EduSys.Shared.DTOs;
 using EduSys.Shared.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.IO.Compression;
 
 namespace EduSys.Api.Controllers
 {
@@ -17,7 +15,7 @@ namespace EduSys.Api.Controllers
         private readonly ISolicitudIngresoRepository _solicitudRepo;
         private readonly ICarreraRepository _carreraRepo;
         private readonly IUsuarioRepository _usuarioRepo;
-        private readonly EduSysDbContext _context;
+        private readonly IAlumnoRepository _alumnoRepo; // ✅ Reemplaza a EduSysDbContext
         private readonly FileStorageHelper _fileHelper;
         private readonly IEmailService _emailService;
 
@@ -25,14 +23,14 @@ namespace EduSys.Api.Controllers
             ISolicitudIngresoRepository solicitudRepo,
             ICarreraRepository carreraRepo,
             IUsuarioRepository usuarioRepo,
-            EduSysDbContext context,
+            IAlumnoRepository alumnoRepo,
             FileStorageHelper fileHelper,
             IEmailService emailService)
         {
             _solicitudRepo = solicitudRepo;
             _carreraRepo = carreraRepo;
             _usuarioRepo = usuarioRepo;
-            _context = context;
+            _alumnoRepo = alumnoRepo;
             _fileHelper = fileHelper;
             _emailService = emailService;
         }
@@ -41,21 +39,21 @@ namespace EduSys.Api.Controllers
         // 1. CREAR SOLICITUD (Público)
         // ---------------------------------------------------------
         [HttpPost("solicitar")]
-        [AllowAnonymous]
+        [AllowAnonymous] // 🔓 Abierto al público
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> CrearSolicitud([FromBody] SolicitudIngresoRequestDTO dto)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            // Validar si ya existe
             if (await _solicitudRepo.ExistePendienteAsync(dto.Dni, dto.IdCarreraInteres))
-                return BadRequest("Ya tienes una solicitud pendiente de revisión para esta carrera.");
+                return BadRequest(new { message = "Ya tienes una solicitud pendiente de revisión para esta carrera." });
 
             try
             {
                 var carreraInfo = await _carreraRepo.GetByIdAsync(dto.IdCarreraInteres);
                 string nombreCarrera = carreraInfo?.Nombre ?? "Carrera seleccionada";
 
-                // Subida de archivos (Mantenemos tu lógica existente)
                 string dniFolder = dto.Dni.Trim();
                 string categoria = "documentacion_ingreso";
 
@@ -75,11 +73,8 @@ namespace EduSys.Api.Controllers
                     Email = dto.Email,
                     Telefono = dto.Telefono,
                     Direccion = dto.Direccion,
-
                     IdCarreraInteres = dto.IdCarreraInteres,
-                    // ✅ NUEVO: Guardamos la Sede elegida
                     IdSede = dto.IdSede,
-
                     RutaFotoPerfil = urlPerfil,
                     RutaFotoSosteniendoDNI = urlSosteniendo,
                     RutaFotoDniFrente = urlDniFrente,
@@ -113,13 +108,13 @@ namespace EduSys.Api.Controllers
 
                     await _emailService.SendEmailAsync(dto.Email, "Solicitud Recibida - EduSys", cuerpoEmail);
                 }
-                catch { }
+                catch { /* Ignorar fallo de correo */ }
 
-                return Ok(new { mensaje = "¡Solicitud recibida correctamente! Revisa tu correo." });
+                return Ok(new { message = "¡Solicitud recibida correctamente! Revisa tu correo." });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Error interno: {ex.Message}");
+                return StatusCode(500, new { message = $"Error interno: {ex.Message}" });
             }
         }
 
@@ -127,6 +122,8 @@ namespace EduSys.Api.Controllers
         // 2. LISTAR PENDIENTES
         // ---------------------------------------------------------
         [HttpGet("pendientes")]
+        [Authorize(Roles = "Administrador, Secretaria Academica")] // 🔒
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<SolicitudIngresoDTO>))]
         public async Task<ActionResult<List<SolicitudIngresoDTO>>> GetPendientes()
         {
             var lista = await _solicitudRepo.GetPendientesAsync();
@@ -144,11 +141,8 @@ namespace EduSys.Api.Controllers
                 Estado = x.Estado,
                 RutaFotoPerfil = x.RutaFotoPerfil,
                 IdCarreraInteres = x.IdCarreraInteres,
-
                 NombreCarrera = x.IdCarreraInteresNavigation?.Nombre ?? "-",
-                // ✅ NUEVO: Mostramos el nombre de la Sede si existe
                 NombreSede = x.IdSedeNavigation?.Nombre ?? "-",
-
                 FechaNacimiento = x.FechaNacimiento
             }).ToList();
 
@@ -159,10 +153,13 @@ namespace EduSys.Api.Controllers
         // 3. OBTENER DETALLE
         // ---------------------------------------------------------
         [HttpGet("{id}")]
+        [Authorize(Roles = "Administrador, Secretaria Academica")] // 🔒
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(SolicitudIngresoDTO))]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<SolicitudIngresoDTO>> GetSolicitudById(int id)
         {
             var s = await _solicitudRepo.GetByIdAsync(id);
-            if (s == null) return NotFound("Solicitud no encontrada.");
+            if (s == null) return NotFound(new { message = "Solicitud no encontrada." });
 
             var dto = new SolicitudIngresoDTO
             {
@@ -178,10 +175,8 @@ namespace EduSys.Api.Controllers
                 RutaFotoPerfil = s.RutaFotoPerfil,
                 IdCarreraInteres = s.IdCarreraInteres,
                 NombreCarrera = s.IdCarreraInteresNavigation?.Nombre ?? "-",
-                // ✅ NUEVO: Mostramos Sede
                 IdSede = s.IdSede ?? 0,
                 NombreSede = s.IdSedeNavigation?.Nombre ?? "-",
-
                 FechaNacimiento = s.FechaNacimiento,
                 RutaTituloSecundario = s.RutaTituloSecundario,
                 FechaProcesado = s.FechaProcesado,
@@ -199,13 +194,19 @@ namespace EduSys.Api.Controllers
         // 4. PROCESAR (APROBAR / RECHAZAR)
         // ---------------------------------------------------------
         [HttpPost("procesar")]
+        [Authorize(Roles = "Administrador, Secretaria Academica")] // 🔒
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> ProcesarSolicitud([FromBody] ProcesarSolicitudDTO decision)
         {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
             var solicitud = await _solicitudRepo.GetByIdAsync(decision.SolicitudId);
-            if (solicitud == null) return NotFound("Solicitud no encontrada");
+            if (solicitud == null) return NotFound(new { message = "Solicitud no encontrada." });
 
             if (solicitud.Estado != "Pendiente")
-                return BadRequest($"La solicitud ya fue procesada anteriormente ({solicitud.Estado}).");
+                return BadRequest(new { message = $"La solicitud ya fue procesada anteriormente ({solicitud.Estado})." });
 
             try
             {
@@ -222,22 +223,17 @@ namespace EduSys.Api.Controllers
                         await _emailService.SendEmailAsync(solicitud.Email, "EduSys - Estado de Solicitud",
                             $"<p>Hola {solicitud.Nombre}, lamentamos informarte que tu solicitud ha sido rechazada.</p><p><strong>Motivo:</strong> {decision.MotivoRechazo}</p>");
                     }
-                    catch { }
+                    catch { /* Ignorar fallo correo */ }
 
                     return Ok(new { message = "Solicitud rechazada correctamente." });
                 }
 
                 // === APROBACIÓN ===
                 if (await _usuarioRepo.ExisteEmailAsync(solicitud.Email))
-                    return BadRequest("El email del aspirante ya está registrado como usuario en el sistema.");
+                    return BadRequest(new { message = "El email del aspirante ya está registrado como usuario en el sistema." });
 
                 string nuevoLegajo = $"{DateTime.Now.Year}-{solicitud.Dni}";
-
-                DateOnly? fechaNacimientoDateOnly = null;
-                if (solicitud.FechaNacimiento.HasValue)
-                {
-                    fechaNacimientoDateOnly = DateOnly.FromDateTime(solicitud.FechaNacimiento.Value);
-                }
+                DateOnly? fechaNacimientoDateOnly = solicitud.FechaNacimiento.HasValue ? DateOnly.FromDateTime(solicitud.FechaNacimiento.Value) : null;
 
                 // 1. CREAR USUARIO
                 var nuevoUsuario = new Usuario
@@ -251,7 +247,7 @@ namespace EduSys.Api.Controllers
                     FechaNacimiento = fechaNacimientoDateOnly,
                     FotoPerfilUrl = solicitud.RutaFotoPerfil,
                     ClaveHash = BCrypt.Net.BCrypt.HashPassword(solicitud.Dni),
-                    IdRol = 5, // Alumno
+                    IdRol = 5, // 5 = Alumno
                     IdNacionalidad = 1,
                     Activo = true,
                     FechaRegistro = DateTime.Now,
@@ -260,24 +256,18 @@ namespace EduSys.Api.Controllers
 
                 var usuarioCreado = await _usuarioRepo.CrearAsync(nuevoUsuario);
 
-                // 2. CREAR ALUMNO
+                // 2. CREAR ALUMNO (Usando el Repositorio, NO el DbContext)
                 var nuevoAlumno = new Alumno
                 {
                     IdUsuario = usuarioCreado.Id,
                     Legajo = nuevoLegajo,
-                    IdPlanActual = 1, // Aquí podrías buscar el plan vigente de la carrera
+                    IdPlanActual = 1,
                     EstadoAcademico = "Activo",
                     Activo = true,
                     EstaBloqueado = false,
                     TituloSecundarioEntregado = !string.IsNullOrEmpty(solicitud.RutaTituloSecundario),
                     Observaciones = "Alta automática desde web.",
                     FechaIngreso = DateOnly.FromDateTime(DateTime.Now),
-
-                    // ✅ IMPORTANTE: Aquí podríamos asignar la Sede si la tabla Alumno tuviera IdSedePreferida,
-                    // pero usualmente la sede se define al inscribirse a cursadas.
-                    // Si tu tabla Alumno tiene IdSede, asígnalo aquí:
-                    // IdSede = solicitud.IdSede,
-
                     UrlDniFrente = solicitud.RutaFotoDniFrente,
                     UrlDniDorso = solicitud.RutaFotoDniDorso,
                     UrlTituloSecundario = solicitud.RutaTituloSecundario,
@@ -286,8 +276,7 @@ namespace EduSys.Api.Controllers
                     IdSede = solicitud.IdSede
                 };
 
-                _context.Alumnos.Add(nuevoAlumno);
-                await _context.SaveChangesAsync();
+                await _alumnoRepo.CrearAsync(nuevoAlumno); // ✅ USO DEL REPOSITORIO
 
                 // 3. ACTUALIZAR SOLICITUD
                 solicitud.Estado = "Aprobada";
@@ -315,20 +304,23 @@ namespace EduSys.Api.Controllers
 
                     await _emailService.SendEmailAsync(solicitud.Email, "¡Bienvenido a EduSys! - Alta Exitosa", cuerpoEmail);
                 }
-                catch { }
+                catch { /* Ignorar fallo correo */ }
 
                 return Ok(new { message = "Alumno dado de alta exitosamente." });
             }
             catch (Exception ex)
             {
                 var innerMessage = ex.InnerException != null ? ex.InnerException.Message : ex.Message;
-                return StatusCode(500, $"Error BD: {innerMessage}");
+                return StatusCode(500, new { message = $"Error al procesar: {innerMessage}" });
             }
         }
 
-        // ... (El resto de métodos GetHistorial y DescargarZip se mantienen igual) ...
-        // GET: api/inscripciones/historial
+        // ---------------------------------------------------------
+        // 5. HISTORIAL DE SOLICITUDES
+        // ---------------------------------------------------------
         [HttpGet("historial")]
+        [Authorize(Roles = "Administrador, Secretaria Academica")] // 🔒
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<SolicitudIngresoDTO>))]
         public async Task<ActionResult<List<SolicitudIngresoDTO>>> GetHistorial()
         {
             var lista = await _solicitudRepo.GetHistorialAsync();
@@ -344,7 +336,7 @@ namespace EduSys.Api.Controllers
                 FechaProcesado = x.FechaProcesado,
                 Estado = x.Estado,
                 NombreCarrera = x.IdCarreraInteresNavigation?.Nombre ?? "-",
-                NombreSede = x.IdSedeNavigation?.Nombre ?? "-", // ✅ Ver Sede en historial
+                NombreSede = x.IdSedeNavigation?.Nombre ?? "-",
                 ObservacionAdmin = x.ObservacionAdmin
             }).ToList();
 

@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace EduSys.Shared.DTOs
 {
@@ -16,7 +11,7 @@ namespace EduSys.Shared.DTOs
         public int IdDocente { get; set; }
 
         [Required(ErrorMessage = "Debe asignar un rol (Titular, Adjunto, etc)")]
-        public int IdRolDocente { get; set; } // 1: Titular, 2: Adjunto, 3: JTP, 4: Ayudante
+        public int IdRolDocente { get; set; } 
     }
 }
 

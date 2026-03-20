@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace EduSys.Shared.DTOs
+﻿namespace EduSys.Shared.DTOs
 {
     public class HistoriaAcademicaDTO
     {
@@ -9,14 +6,10 @@ namespace EduSys.Shared.DTOs
         public string Legajo { get; set; } = string.Empty;
         public string Carrera { get; set; } = string.Empty;
         public string Plan { get; set; } = string.Empty;
-
-        // Estadísticas
         public decimal PromedioGeneral { get; set; }
         public int MateriasAprobadas { get; set; }
         public int TotalMateriasPlan { get; set; }
         public double PorcentajeAvance { get; set; }
-
-        // Lista de materias del plan
         public List<DetalleMateriaAvanceDTO> Detalle { get; set; } = new();
     }
 

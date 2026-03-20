@@ -4,14 +4,16 @@ namespace EduSys.Web.Services.Interfaces
 {
     public interface IAlumnoService
     {
-        // Obtiene el listado para la tabla (legajo, nombre, dni, carrera)
-        Task<List<AlumnoListadoDTO>> GetAlumnosAsync();
-
-        // Obtiene el detalle completo para el Modal de Legajo (incluyendo foto, datos, etc.)
-        Task<AlumnoRequestDTO> GetAlumnoByIdAsync(int id);
-        Task<bool> CrearAsync(AlumnoRequestDTO dto);
-        Task<bool> EditarAsync(AlumnoRequestDTO dto);
-        Task<AlumnoDTO?> GetByUsuarioIdAsync(int idUsuario);
+        // Unificamos GetAlumnosAsync y GetAllAsync en uno solo
         Task<List<AlumnoListadoDTO>> GetAllAsync();
+
+        // Obtiene el detalle completo para el Modal de Legajo
+        Task<AlumnoRequestDTO?> GetByIdAsync(int id);
+
+        Task<bool> CrearAsync(AlumnoRequestDTO dto);
+
+        Task<bool> EditarAsync(AlumnoRequestDTO dto);
+
+        Task<AlumnoDTO?> GetByUsuarioIdAsync(int idUsuario);
     }
 }

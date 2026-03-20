@@ -23,7 +23,6 @@ namespace EduSys.Api.Repositories
 
         public async Task<SesionDTO> LoginAsync(LoginDTO login)
         {
-            // 1. Buscamos el usuario por Email
             var usuario = await _context.Usuarios
                 .Include(u => u.IdRolNavigation)
                     .ThenInclude(r => r.IdPermisos)
@@ -31,40 +30,33 @@ namespace EduSys.Api.Repositories
 
             if (usuario == null) return null;
 
-            // 2. Verificamos la contraseña
             bool claveCorrecta = BCrypt.Net.BCrypt.Verify(login.Clave, usuario.ClaveHash);
             if (!claveCorrecta) return null;
 
-            // 3. Generamos Token
             string token = GenerarTokenJWT(usuario);
-            var listaPermisos = usuario.IdRolNavigation.IdPermisos.Select(p => p.Codigo).ToList();
 
-            // 4. LÓGICA DE CLAVE INICIAL (NUEVO)
-            // Verificamos si la contraseña actual coincide con el hash del DNI.
-            // Si da True, significa que nunca la cambió.
+            // Validación segura de nulos por si el rol no tiene permisos asignados
+            var listaPermisos = usuario.IdRolNavigation?.IdPermisos?.Select(p => p.Codigo).ToList() ?? new List<string>();
+
             bool esClaveInicial = BCrypt.Net.BCrypt.Verify(usuario.Dni, usuario.ClaveHash);
 
-            // 5. Retornamos DTO completo
             return new SesionDTO
             {
                 Nombre = usuario.Nombre,
                 Apellido = usuario.Apellido,
                 Email = usuario.Email,
-                Rol = usuario.IdRolNavigation.Nombre,
+                Rol = usuario.IdRolNavigation?.Nombre ?? "Sin Rol",
                 Token = token,
                 Permisos = listaPermisos,
-                DebeCambiarPass = usuario.DebeCambiarPass,
-                FotoPerfilUrl = usuario.FotoPerfilUrl
+                DebeCambiarPass = usuario.DebeCambiarPass || esClaveInicial, // Forzamos cambio si es la inicial
+                FotoPerfilUrl = usuario.FotoPerfilUrl ?? string.Empty
             };
         }
 
         public async Task<Usuario> RegistrarAsync(Usuario usuario, string claveTextoPlano)
         {
-            // Encriptamos la clave antes de guardarla
             usuario.ClaveHash = BCrypt.Net.BCrypt.HashPassword(claveTextoPlano);
-
-            // Configuraciones por defecto
-            usuario.FechaRegistro = DateTime.Now;
+            usuario.FechaRegistro = DateTime.UtcNow; // 🚀 Mejor UTC para servidores
             usuario.Activo = true;
 
             _context.Usuarios.Add(usuario);
@@ -74,7 +66,6 @@ namespace EduSys.Api.Repositories
 
         public async Task<Usuario> CrearAsync(Usuario usuario)
         {
-            // NOTA: Asumimos que el usuario ya viene con la ClaveHash lista desde el Controlador
             _context.Usuarios.Add(usuario);
             await _context.SaveChangesAsync();
             return usuario;
@@ -82,17 +73,32 @@ namespace EduSys.Api.Repositories
 
         public async Task<bool> ExisteEmailAsync(string email)
         {
-            return await _context.Usuarios.AnyAsync(u => u.Email == email);
+            // 🚀 AsNoTracking para validaciones instantáneas
+            return await _context.Usuarios
+                .AsNoTracking()
+                .AnyAsync(u => u.Email.ToLower() == email.ToLower());
         }
+
+        public async Task<bool> RestablecerClaveAsync(string email, string nuevaClaveHash)
+        {
+            var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == email);
+            if (usuario == null) return false;
+
+            usuario.ClaveHash = nuevaClaveHash;
+            usuario.DebeCambiarPass = true;
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
         private string GenerarTokenJWT(Usuario usuario)
         {
             var key = _configuration.GetValue<string>("Jwt:Key");
+            if (string.IsNullOrEmpty(key)) throw new InvalidOperationException("Falta configurar Jwt:Key");
+
             var keyBytes = Encoding.ASCII.GetBytes(key);
+            var claims = new List<Claim>();
 
-            var claims = new List<Claim>(); // Usamos List<Claim> en lugar de ClaimsIdentity directo para mayor control
-
-            // 1. EL ID DE USUARIO (CRÍTICO PARA QUE FUNCIONE TODO)
-            // Usamos usuario.Id.ToString() que es el entero (ej: "6")
             claims.Add(new Claim(ClaimTypes.NameIdentifier, usuario.Id.ToString()));
 
             if (!string.IsNullOrWhiteSpace(usuario.FotoPerfilUrl))
@@ -100,15 +106,20 @@ namespace EduSys.Api.Repositories
                 claims.Add(new Claim("FotoPerfilUrl", usuario.FotoPerfilUrl));
             }
 
-            // 2. Otros datos útiles
             claims.Add(new Claim(ClaimTypes.Email, usuario.Email));
             claims.Add(new Claim(ClaimTypes.Name, $"{usuario.Apellido}, {usuario.Nombre}"));
-            claims.Add(new Claim(ClaimTypes.Role, usuario.IdRolNavigation.Nombre));
 
-            // 3. Permisos
-            foreach (var permiso in usuario.IdRolNavigation.IdPermisos)
+            if (usuario.IdRolNavigation != null)
             {
-                claims.Add(new Claim("Permiso", permiso.Codigo));
+                claims.Add(new Claim(ClaimTypes.Role, usuario.IdRolNavigation.Nombre));
+
+                if (usuario.IdRolNavigation.IdPermisos != null)
+                {
+                    foreach (var permiso in usuario.IdRolNavigation.IdPermisos)
+                    {
+                        claims.Add(new Claim("Permiso", permiso.Codigo));
+                    }
+                }
             }
 
             var credenciales = new SigningCredentials(
@@ -121,8 +132,8 @@ namespace EduSys.Api.Repositories
                 Subject = new ClaimsIdentity(claims),
                 Expires = DateTime.UtcNow.AddHours(4),
                 SigningCredentials = credenciales,
-                Issuer = _configuration["Jwt:Issuer"],    // Asegúrate de incluir esto
-                Audience = _configuration["Jwt:Audience"] // Y esto
+                Issuer = _configuration["Jwt:Issuer"],
+                Audience = _configuration["Jwt:Audience"]
             };
 
             var tokenHandler = new JwtSecurityTokenHandler();
@@ -131,17 +142,32 @@ namespace EduSys.Api.Repositories
             return tokenHandler.WriteToken(tokenConfig);
         }
 
-        public async Task<bool> RestablecerClaveAsync(string email, string nuevaClaveHash)
+        public async Task<bool> CambiarClaveDesdePerfilAsync(int idUsuario, string nuevaClaveHash)
         {
-            var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == email);
-
+            var usuario = await _context.Usuarios.FindAsync(idUsuario);
             if (usuario == null) return false;
 
             usuario.ClaveHash = nuevaClaveHash;
-            usuario.DebeCambiarPass = true; // Forzamos el cambio al entrar
+            usuario.DebeCambiarPass = false;
 
             await _context.SaveChangesAsync();
             return true;
+        }
+
+        public async Task<Usuario?> GetByIdAsync(int id)
+        {
+            // Traemos el usuario con su Rol y Nacionalidad (por si los necesitas)
+            return await _context.Usuarios
+                .Include(u => u.IdRolNavigation)
+                .Include(u => u.IdNacionalidadNavigation)
+                .FirstOrDefaultAsync(u => u.Id == id);
+        }
+
+        public async Task<bool> UpdateAsync(Usuario usuario)
+        {
+            _context.Usuarios.Update(usuario);
+            var resultado = await _context.SaveChangesAsync();
+            return resultado > 0;
         }
     }
 }

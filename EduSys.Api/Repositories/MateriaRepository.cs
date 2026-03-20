@@ -16,12 +16,19 @@ namespace EduSys.Api.Repositories
 
         public async Task<List<Materia>> GetAllAsync()
         {
-            return await _context.Materia.ToListAsync();
+            // 🚀 OPTIMIZADO: AsNoTracking y OrderBy
+            return await _context.Materia
+                .AsNoTracking()
+                .OrderBy(m => m.Nombre)
+                .ToListAsync();
         }
 
         public async Task<Materia?> GetByIdAsync(int id)
         {
-            return await _context.Materia.FindAsync(id);
+            // 🚀 OPTIMIZADO: AsNoTracking para lectura rápida
+            return await _context.Materia
+                .AsNoTracking()
+                .FirstOrDefaultAsync(m => m.Id == id);
         }
 
         public async Task<Materia> CreateAsync(Materia materia)
@@ -33,10 +40,16 @@ namespace EduSys.Api.Repositories
 
         public async Task<bool> UpdateAsync(Materia materia)
         {
-            var existe = await _context.Materia.AnyAsync(m => m.Id == materia.Id);
-            if (!existe) return false;
+            // Buscamos la materia para que EF la rastree
+            var existing = await _context.Materia.FirstOrDefaultAsync(m => m.Id == materia.Id);
+            if (existing == null) return false;
 
-            _context.Entry(materia).State = EntityState.Modified;
+            // 🚀 EF Core detectará solo los campos cambiados al hacer SaveChanges
+            existing.Nombre = materia.Nombre;
+            existing.Codigo = materia.Codigo;
+            existing.Activo = materia.Activo;
+            existing.Descripcion = materia.Descripcion;
+
             await _context.SaveChangesAsync();
             return true;
         }
@@ -53,7 +66,10 @@ namespace EduSys.Api.Repositories
 
         public async Task<bool> ExisteCodigoAsync(string codigo, int idExcluir = 0)
         {
-            return await _context.Materia.AnyAsync(m => m.Codigo == codigo && m.Id != idExcluir);
+            // 🚀 OPTIMIZADO: AsNoTracking y comparación insensible a mayúsculas
+            return await _context.Materia
+                .AsNoTracking()
+                .AnyAsync(m => m.Codigo.ToLower() == codigo.ToLower() && m.Id != idExcluir);
         }
     }
 }

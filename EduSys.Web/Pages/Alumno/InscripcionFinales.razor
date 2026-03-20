@@ -12,158 +12,124 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IInscripcionFinalService InscripcionFinalService
 @inject IPeriodoService PeriodoService
-@inject IAuthService AuthService
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 
 <style>
+    /* --- HEADER INSTITUCIONAL --- */
     .doc-header {
-        background-color: #002147;
+        background: linear-gradient(135deg, #1e3a58 0%, #2c5282 100%);
         color: white;
-        padding: 1.5rem 2rem;
-        border-radius: 8px 8px 0 0;
+        padding: 2rem;
+        border-radius: 12px;
         display: flex;
         align-items: center;
-        gap: 1rem;
+        gap: 1.5rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        margin-bottom: 1rem;
     }
 
     .doc-subheader {
         background-color: white;
-        border: 1px solid #E2E8F0;
-        border-top: none;
-        padding: 1.2rem;
+        border: 1px solid #e2e8f0;
+        padding: 1rem;
         text-align: center;
-        font-weight: 700;
-        color: #334155;
-        font-size: 1.1rem;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        border-radius: 0 0 8px 8px;
+        font-weight: 800;
+        color: #456990;
+        border-radius: 8px;
         margin-bottom: 2rem;
+        letter-spacing: 1px;
     }
 
+    /* --- SEPARADORES --- */
     .year-separator {
-        text-align: left;
         margin: 2rem 0 1rem 0;
         font-weight: 800;
-        color: #0F172A;
-        font-size: 1.1rem;
+        color: #1e3a58;
+        font-size: 0.9rem;
         text-transform: uppercase;
-        letter-spacing: 1px;
-        border-bottom: 2px solid #E2E8F0;
-        padding-bottom: 8px;
-    }
-
-    .mesa-card {
-        transition: all 0.3s ease;
-        border-radius: 12px;
-        border: 1px solid #E2E8F0;
-        background: white;
-    }
-
-        .mesa-card:hover {
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
-            transform: translateY(-2px);
-            border-color: #CBD5E1;
-        }
-
-        .mesa-card.inscripto {
-            border: 2px solid #10B981;
-            background-color: #F0FDF4;
-        }
-
-        .mesa-card.bloqueado {
-            opacity: 0.85;
-            background-color: #F8FAFC;
-        }
-
-    .status-badge {
-        padding: 4px 10px;
-        border-radius: 20px;
-        font-size: 0.75rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-
-    .status-inscripto {
-        background-color: #D1FAE5;
-        color: #047857;
-    }
-
-    .status-disponible {
-        background-color: #E0F2FE;
-        color: #0369A1;
-    }
-
-    .status-bloqueado {
-        background-color: #FEE2E2;
-        color: #B91C1C;
-    }
-
-    .info-row {
+        letter-spacing: 1.5px;
         display: flex;
         align-items: center;
-        gap: 8px;
-        margin-bottom: 8px;
-        color: #475569;
-        font-size: 0.9rem;
+        gap: 10px;
     }
+    .year-separator::after { content: ""; flex: 1; height: 2px; background: #e2e8f0; }
 
-    .info-icon {
-        color: #64748B;
-        font-size: 1.2rem;
+    /* --- TARJETAS --- */
+    .mesa-card {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        background: white;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
     }
+    .mesa-card:hover { transform: translateY(-4px); box-shadow: 0 12px 20px rgba(0,0,0,0.08) !important; border-color: #456990; }
+    .mesa-card.inscripto { border: 2px solid #10b981; background-color: #f0fdf4; }
 
-    .bloqueo-box {
-        background-color: #FEF2F2;
-        border-left: 4px solid #EF4444;
-        padding: 12px;
-        border-radius: 0 8px 8px 0;
-        margin-top: 1rem;
-    }
+    /* --- BADGES --- */
+    .status-badge { padding: 4px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; }
+    .status-inscripto { background-color: #10b981; color: white; }
+    .status-disponible { background-color: #e0f2fe; color: #0369a1; }
+    .status-bloqueado { background-color: #f1f5f9; color: #64748b; }
+
+    .info-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; color: #475569; font-size: 0.9rem; }
+    .bloqueo-box { background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 12px; border-radius: 4px; margin-top: 1rem; }
 </style>
 
-<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4 pb-10">
+@* --- OVERLAY DE PROCESAMIENTO --- *@
+<MudOverlay Visible="procesando" DarkBackground="true" Absolute="false" ZIndex="9999">
+    <MudStack AlignItems="AlignItems.Center">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+        <MudText Typo="Typo.h6" Style="color: white; font-weight: 600;">Procesando solicitud...</MudText>
+    </MudStack>
+</MudOverlay>
 
-    <div class="doc-header">
-        <MudIcon Icon="@Icons.Material.Filled.AssignmentTurnedIn" Size="Size.Large" />
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-6 pb-10">
+
+    <div class="doc-header animate__animated animate__fadeInDown">
+        <MudIcon Icon="@Icons.Material.Filled.AssignmentTurnedIn" Style="font-size: 3rem;" />
         <div>
-            <MudText Typo="Typo.h5" Style="font-weight: 700; letter-spacing: 1px;">INSCRIPCIÓN A EXÁMENES FINALES</MudText>
-            <MudText Typo="Typo.body2" Style="color: #94A3B8;">Gestiona tu presentación a las mesas de examen habilitadas.</MudText>
+            <MudText Typo="Typo.h4" Style="font-weight: 800; letter-spacing: -1px;">Mesas de Examen Final</MudText>
+            <MudText Style="opacity: 0.8;">Inscríbete a los exámenes finales de las asignaturas regularizadas.</MudText>
         </div>
     </div>
 
     @if (loading)
     {
-        <div class="d-flex justify-center align-center" style="height: 300px;">
-            <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
-        </div>
+        <MudGrid Class="mt-4">
+            @for (int i = 0; i < 3; i++)
+            {
+                <MudItem xs="12" md="4">
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" Class="rounded-lg" />
+                </MudItem>
+            }
+        </MudGrid>
     }
     else if (periodoActual == null)
     {
-        <div class="doc-subheader" style="color: #EF4444;">
-            <MudIcon Icon="@Icons.Material.Filled.Warning" Class="mr-2" /> NO HAY UN PERÍODO ACADÉMICO ACTIVO.
-        </div>
+        <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Class="mt-4 rounded-lg">
+            No hay un período académico activo configurado en el sistema.
+        </MudAlert>
     }
     else
     {
-        <div class="doc-subheader">
-            PERÍODO ACTIVO: <span style="color: #002147;">@periodoActual.Nombre</span>
+        <div class="doc-subheader animate__animated animate__fadeIn">
+            TURNO ACTUAL: <span style="color: #1e3a58;">@periodoActual.Nombre.ToUpper()</span>
         </div>
 
-        @if (ofertaMesas.Count == 0)
+        @if (!ofertaMesas.Any())
         {
-            <div class="d-flex flex-column align-center justify-center pa-10" style="background: white; border: 1px dashed #CBD5E1; border-radius: 12px;">
-                <MudIcon Icon="@Icons.Material.Filled.EventBusy" Style="font-size: 4rem; color: #94A3B8;" Class="mb-4" />
-                <MudText Typo="Typo.h6" Style="color: #475569; font-weight: 600;">No hay mesas de finales programadas</MudText>
-                <MudText Typo="Typo.body2" Style="color: #64748B;">Actualmente no existen mesas disponibles para las asignaturas de tu plan de estudios.</MudText>
+            <div class="d-flex flex-column align-center justify-center pa-12 mt-4" style="background: white; border: 2px dashed #cbd5e1; border-radius: 16px;">
+                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Style="font-size: 5rem; color: #cbd5e1;" Class="mb-4" />
+                <MudText Typo="Typo.h5" Style="font-weight: 700; color: #475569;">No hay mesas disponibles</MudText>
+                <MudText Style="color: #94a3b8;">No se encontraron mesas programadas para tus asignaturas vigentes.</MudText>
             </div>
         }
         else
         {
-            <MudGrid Spacing="3">
+            <MudGrid Spacing="4">
                 @foreach (var grupoAnio in ofertaMesas.GroupBy(m => m.AnioCursada).OrderBy(g => g.Key))
                 {
                     <MudItem xs="12">
@@ -174,47 +140,33 @@
                     {
                         string cardClass = "mesa-card";
                         if (mesa.YaInscripto) cardClass += " inscripto";
-                        else if (!mesa.PuedeInscribirse) cardClass += " bloqueado";
 
                         <MudItem xs="12" md="6" lg="4">
-                            <MudCard Elevation="0" Class="@cardClass">
-                                <MudCardHeader Class="pb-0">
-                                    <CardHeaderContent>
-                                        <MudText Typo="Typo.subtitle1" Style="font-weight: 800; color: #1E293B; line-height: 1.2;">
+                            <div class="@cardClass animate__animated animate__fadeInUp">
+                                <div class="pa-5 flex-grow-1">
+                                    <div class="d-flex justify-space-between align-start mb-4">
+                                        <MudText Typo="Typo.h6" Style="font-weight: 800; color: #1e293b; line-height: 1.2; flex: 1;">
                                             @mesa.MateriaNombre
                                         </MudText>
-                                    </CardHeaderContent>
-                                    <CardHeaderActions>
-                                        @if (mesa.YaInscripto)
-                                        {
-                                            <span class="status-badge status-inscripto">Inscripto</span>
-                                        }
-                                        else if (mesa.PuedeInscribirse)
-                                        {
-                                            <span class="status-badge status-disponible">Disponible</span>
-                                        }
-                                        else
-                                        {
-                                            <span class="status-badge status-bloqueado">Bloqueado</span>
-                                        }
-                                    </CardHeaderActions>
-                                </MudCardHeader>
+                                        <div class="status-badge @(mesa.YaInscripto ? "status-inscripto" : (mesa.PuedeInscribirse ? "status-disponible" : "status-bloqueado"))">
+                                            @(mesa.YaInscripto ? "Inscripto" : (mesa.PuedeInscribirse ? "Disponible" : "Bloqueado"))
+                                        </div>
+                                    </div>
 
-                                <MudCardContent Class="pt-3">
                                     <div class="info-row">
-                                        <MudIcon Icon="@Icons.Material.Filled.Event" Class="info-icon" />
-                                        <span><b>Fecha:</b> @mesa.FechaHora.ToString("dd/MM/yyyy") a las @mesa.FechaHora.ToString("HH:mm") hs.</span>
+                                        <MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Small" Color="Color.Primary" />
+                                        <MudText Typo="Typo.body2"><b>Fecha:</b> @mesa.FechaHora.ToString("dd/MM/yyyy HH:mm") hs.</MudText>
                                     </div>
                                     <div class="info-row">
-                                        <MudIcon Icon="@Icons.Material.Filled.Groups" Class="info-icon" />
-                                        <span><b>Tribunal:</b> @mesa.Tribunal</span>
+                                        <MudIcon Icon="@Icons.Material.Filled.PersonSearch" Size="Size.Small" Color="Color.Primary" />
+                                        <MudText Typo="Typo.body2" Class="text-truncate"><b>Tribunal:</b> @mesa.Tribunal</MudText>
                                     </div>
 
                                     @if (mesa.PuedeInscribirse || mesa.YaInscripto)
                                     {
-                                        <div class="info-row">
-                                            <MudIcon Icon="@Icons.Material.Filled.AssignmentInd" Class="info-icon" Style="color: #0284c7;" />
-                                            <span style="color: #0284c7;"><b>Rindes como Alumno:</b> @mesa.Condicion</span>
+                                        <div class="info-row" style="background: #e0f2fe; padding: 8px; border-radius: 6px; margin-top: 10px;">
+                                            <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Style="color: #0369a1;" />
+                                            <MudText Typo="Typo.body2" Style="color: #0369a1;"><b>Tu Condición:</b> @mesa.Condicion</MudText>
                                         </div>
                                     }
 
@@ -222,45 +174,40 @@
                                     {
                                         <div class="bloqueo-box">
                                             <div class="d-flex align-center gap-2 mb-1">
-                                                <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" Style="color: #B91C1C;" />
-                                                <MudText Typo="Typo.subtitle2" Style="color: #B91C1C; font-weight: 700;">Inscripción Bloqueada</MudText>
+                                                <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Size="Size.Small" Color="Color.Error" />
+                                                <MudText Typo="Typo.caption" Style="font-weight: 800;">REQUISITO NO CUMPLIDO</MudText>
                                             </div>
-                                            <MudText Typo="Typo.body2" Style="color: #991B1B; line-height: 1.3;">
-                                                @mesa.MotivoBloqueo
-                                            </MudText>
+                                            <MudText Typo="Typo.caption" Style="line-height: 1.2;">@mesa.MotivoBloqueo</MudText>
                                         </div>
                                     }
-                                </MudCardContent>
+                                </div>
 
-                                <MudCardActions Class="justify-end pa-4 pt-0" Style="border-top: 1px solid #F1F5F9; margin-top: 8px;">
+                                <div class="pa-4 d-flex gap-2" style="background: #f8fafc; border-top: 1px solid #e2e8f0; border-radius: 0 0 12px 12px;">
                                     @if (mesa.YaInscripto)
                                     {
-                                        <MudButton Variant="Variant.Text" Color="Color.Error" Size="Size.Small" StartIcon="@Icons.Material.Filled.Cancel"
+                                        <MudButton Variant="Variant.Text" Color="Color.Error" StartIcon="@Icons.Material.Filled.Delete" 
                                                    OnClick="@(() => CancelarInscripcion(mesa.IdInscripcionFinal!.Value))" Disabled="procesando" Class="font-weight-bold">
-                                            Anular Inscripción
+                                            Darse de Baja
                                         </MudButton>
                                         <MudSpacer />
-                                        @* AQUÍ PONDREMOS EL BOTÓN DE DESCARGAR CONSTANCIA EN EL PRÓXIMO PASO *@
-                                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.PictureAsPdf"
+                                        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Download" 
                                                    OnClick="@(() => DescargarConstanciaPDF(mesa.IdInscripcionFinal!.Value, mesa.MateriaNombre))" Disabled="procesando">
-                                            Constancia
+                                            Comprobante
                                         </MudButton>
                                     }
                                     else if (mesa.PuedeInscribirse)
                                     {
-                                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Medium" StartIcon="@Icons.Material.Filled.CheckCircle"
-                                                   OnClick="@(() => Inscribirse(mesa.IdMesaFinal, mesa.Condicion))" Disabled="procesando" Class="rounded-lg px-6 font-weight-bold w-100">
-                                            Inscribirse al Final
+                                        <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" StartIcon="@Icons.Material.Filled.AssignmentTurnedIn"
+                                                   OnClick="@(() => Inscribirse(mesa.IdMesaFinal, mesa.Condicion))" Disabled="procesando" Style="font-weight: 700;">
+                                            Confirmar Inscripción
                                         </MudButton>
                                     }
                                     else
                                     {
-                                        <MudButton Variant="Variant.Filled" Disabled="true" Size="Size.Medium" Class="rounded-lg w-100" Style="background-color: #F1F5F9; color: #94A3B8;">
-                                            No habilitado
-                                        </MudButton>
+                                        <MudButton Variant="Variant.Outlined" FullWidth="true" Disabled="true">No Habilitado</MudButton>
                                     }
-                                </MudCardActions>
-                            </MudCard>
+                                </div>
+                            </div>
                         </MudItem>
                     }
                 }
@@ -289,9 +236,9 @@
             var authState = await AuthStateProvider.GetAuthenticationStateAsync();
             var user = authState.User;
 
-            if (user.Identity != null && user.Identity.IsAuthenticated)
+            if (user.Identity?.IsAuthenticated == true)
             {
-                var idUsuarioClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                var idUsuarioClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value;
 
                 if (int.TryParse(idUsuarioClaim, out int idUsuario))
                 {
@@ -308,94 +255,79 @@
                             ofertaMesas = await InscripcionFinalService.GetOfertaAsync(idAlumnoActual, periodoActual.Id);
                         }
                     }
-                    else
-                    {
-                        Snackbar.Add("No se encontró el perfil de alumno asociado a tu usuario.", Severity.Error);
-                    }
                 }
             }
         }
         catch (Exception)
         {
-            Snackbar.Add("Error al cargar los datos de inscripción.", Severity.Error);
+            Snackbar.Add("No se pudo conectar con el servicio de inscripciones.", Severity.Error);
         }
-        loading = false;
+        finally { loading = false; }
     }
 
     private async Task Inscribirse(int idMesa, string condicion)
     {
         procesando = true;
-        var request = new InscripcionFinalRequestDTO
+        try
         {
-            IdAlumno = idAlumnoActual,
-            IdMesaFinal = idMesa,
-            Condicion = condicion
-        };
+            var request = new InscripcionFinalRequestDTO
+            {
+                IdAlumno = idAlumnoActual,
+                IdMesaFinal = idMesa,
+                Condicion = condicion
+            };
 
-        var res = await InscripcionFinalService.InscribirAsync(request);
-        if (res.Exito)
-        {
-            Snackbar.Add(res.Mensaje, Severity.Success);
-            await CargarDatos();
+            var res = await InscripcionFinalService.InscribirAsync(request);
+            if (res.Exito)
+            {
+                Snackbar.Add("¡Inscripción exitosa!", Severity.Success);
+                await CargarDatos();
+            }
+            else Snackbar.Add(res.Mensaje, Severity.Warning);
         }
-        else
-        {
-            Snackbar.Add(res.Mensaje, Severity.Error);
-        }
-        procesando = false;
+        finally { procesando = false; }
     }
 
     private async Task CancelarInscripcion(int idInscripcion)
     {
         bool? result = await DialogService.ShowMessageBox(
-            "Confirmar Baja",
-            "¿Estás seguro que deseas darte de baja de este examen final? Perderás tu turno asignado.",
-            yesText: "Sí, dar de baja", cancelText: "Volver");
+            "Confirmar Acción",
+            "¿Deseas anular tu inscripción a esta mesa de examen?",
+            yesText: "Sí, anular", cancelText: "Volver");
 
         if (result == true)
         {
             procesando = true;
-            var res = await InscripcionFinalService.CancelarInscripcionAsync(idInscripcion, idAlumnoActual);
-
-            if (res.Exito)
+            try
             {
-                Snackbar.Add("Te has dado de baja de la mesa correctamente.", Severity.Success);
-                await CargarDatos();
+                var res = await InscripcionFinalService.CancelarInscripcionAsync(idInscripcion, idAlumnoActual);
+                if (res.Exito)
+                {
+                    Snackbar.Add("Inscripción anulada.", Severity.Info);
+                    await CargarDatos();
+                }
+                else Snackbar.Add(res.Mensaje, Severity.Error);
             }
-            else
-            {
-                Snackbar.Add(res.Mensaje, Severity.Error);
-            }
-            procesando = false;
+            finally { procesando = false; }
         }
     }
 
-    // ✅ DESCARGA CONSTANCIA DE INSCRIPCIÓN A FINAL (DESDE LA TARJETA)
     private async Task DescargarConstanciaPDF(int idInscripcion, string materia)
     {
         procesando = true;
         try
         {
-            Snackbar.Add("Generando constancia...", Severity.Info);
-
+            Snackbar.Add("Generando PDF...", Severity.Info);
             var pdfBytes = await ReportesService.DescargarConstanciaFinalAsync(idInscripcion);
 
-            // Reutilizamos la función de JS para descargar el archivo
             using var stream = new MemoryStream(pdfBytes);
             using var streamRef = new DotNetStreamReference(stream);
-            string fileName = $"Constancia_Examen_{materia.Replace(" ", "_")}.pdf";
+            string fileName = $"Comprobante_Mesa_{materia.Replace(" ", "_")}.pdf";
 
             await JS.InvokeVoidAsync("downloadFileFromStream", fileName, streamRef);
-
-            Snackbar.Add("Constancia descargada exitosamente.", Severity.Success);
+            Snackbar.Add("Comprobante descargado.", Severity.Success);
         }
-        catch (Exception ex)
-        {
-            Snackbar.Add("No se pudo generar la constancia.", Severity.Error);
-        }
-        finally
-        {
-            procesando = false;
-        }
+        catch (Exception) { Snackbar.Add("Error al generar el documento.", Severity.Error); }
+        finally { procesando = false; }
     }
 }

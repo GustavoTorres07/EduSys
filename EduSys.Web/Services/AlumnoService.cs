@@ -1,5 +1,6 @@
 ﻿using EduSys.Shared.DTOs;
 using EduSys.Web.Services.Interfaces;
+using Microsoft.Extensions.Logging;
 using System.Net.Http.Json;
 
 namespace EduSys.Web.Services
@@ -7,70 +8,93 @@ namespace EduSys.Web.Services
     public class AlumnoService : IAlumnoService
     {
         private readonly HttpClient _http;
+        private readonly ILogger<AlumnoService> _logger; // ✅ Inyectado para depuración
 
-        public AlumnoService(HttpClient http)
+        public AlumnoService(HttpClient http, ILogger<AlumnoService> logger)
         {
             _http = http;
-        }
-
-        public async Task<List<AlumnoListadoDTO>> GetAlumnosAsync()
-        {
-            // Llama al endpoint GET api/alumnos
-            var response = await _http.GetFromJsonAsync<List<AlumnoListadoDTO>>("api/alumnos");
-            return response ?? new List<AlumnoListadoDTO>();
-        }
-
-        public async Task<AlumnoRequestDTO> GetAlumnoByIdAsync(int id)
-        {
-            // Llama al endpoint GET api/alumnos/{id}
-            var response = await _http.GetFromJsonAsync<AlumnoRequestDTO>($"api/alumnos/{id}");
-
-            if (response == null)
-                throw new Exception("No se pudo obtener la información del alumno.");
-
-            return response;
-        }
-
-        public async Task<bool> CrearAsync(AlumnoRequestDTO dto)
-        {
-            var response = await _http.PostAsJsonAsync("api/alumnos", dto);
-            return response.IsSuccessStatusCode;
-        }
-
-        // ✅ IMPLEMENTACIÓN DE EDITAR
-        public async Task<bool> EditarAsync(AlumnoRequestDTO dto)
-        {
-            // Nota: Asumimos que el endpoint es PUT api/alumnos
-            var response = await _http.PutAsJsonAsync("api/alumnos", dto);
-            return response.IsSuccessStatusCode;
+            _logger = logger;
         }
 
         public async Task<List<AlumnoListadoDTO>> GetAllAsync()
         {
-            // Llamamos al endpoint del backend. 
-            // Asegúrate de que tu AlumnosController tenga un [HttpGet] que devuelva la lista.
-            var response = await _http.GetFromJsonAsync<List<AlumnoListadoDTO>>("api/alumnos");
-            return response ?? new List<AlumnoListadoDTO>();
+            try
+            {
+                var response = await _http.GetFromJsonAsync<List<AlumnoListadoDTO>>("api/alumnos");
+                return response ?? new List<AlumnoListadoDTO>();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al obtener la lista general de alumnos.");
+                return new List<AlumnoListadoDTO>();
+            }
         }
+
+        public async Task<AlumnoRequestDTO?> GetByIdAsync(int id)
+        {
+            try
+            {
+                return await _http.GetFromJsonAsync<AlumnoRequestDTO>($"api/alumnos/{id}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al obtener la información detallada del alumno con ID {Id}.", id);
+                return null;
+            }
+        }
+
+        public async Task<bool> CrearAsync(AlumnoRequestDTO dto)
+        {
+            try
+            {
+                var response = await _http.PostAsJsonAsync("api/alumnos", dto);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    // 💡 Si falla, leemos el mensaje de la API ("El legajo ya existe", etc.)
+                    var errorMessage = await response.Content.ReadAsStringAsync();
+                    _logger.LogWarning("Fallo al crear alumno: {ErrorMessage}", errorMessage);
+                }
+
+                return response.IsSuccessStatusCode;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Excepción crítica al intentar crear el alumno.");
+                return false;
+            }
+        }
+
+        public async Task<bool> EditarAsync(AlumnoRequestDTO dto)
+        {
+            try
+            {
+                var response = await _http.PutAsJsonAsync("api/alumnos", dto);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorMessage = await response.Content.ReadAsStringAsync();
+                    _logger.LogWarning("Fallo al editar alumno {Id}: {ErrorMessage}", dto.IdAlumno, errorMessage);
+                }
+
+                return response.IsSuccessStatusCode;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Excepción crítica al intentar editar el alumno con ID {Id}.", dto.IdAlumno);
+                return false;
+            }
+        }
+
         public async Task<AlumnoDTO?> GetByUsuarioIdAsync(int idUsuario)
         {
             try
             {
-                // Opción A: Si creaste el endpoint en backend (Recomendado)
-                // return await _http.GetFromJsonAsync<AlumnoDTO>($"api/alumnos/usuario/{idUsuario}");
-
-                // Opción B: Filtrado en cliente (Rápido para salir del paso)
-                // Nota: Esto requiere que tengas un endpoint que devuelva DTOs completos, 
-                // o mapear de AlumnoListadoDTO si tiene IdUsuario.
-
-                // Vamos a asumir que necesitas crear el endpoint en el Backend para hacerlo bien.
-                // Mientras tanto, si usas la Opción B, asegúrate que el DTO de listado tenga IdUsuario.
-
-                // MÉTODO RECOMENDADO: Llamar a un endpoint específico que vamos a crear ahora.
                 return await _http.GetFromJsonAsync<AlumnoDTO>($"api/alumnos/usuario/{idUsuario}");
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error al obtener el perfil del alumno asociado al usuario {IdUsuario}.", idUsuario);
                 return null;
             }
         }

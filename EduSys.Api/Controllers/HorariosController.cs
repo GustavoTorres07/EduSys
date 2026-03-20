@@ -1,12 +1,14 @@
 ﻿using EduSys.Api.Repositories.Interfaces;
 using EduSys.Shared.DTOs;
 using EduSys.Shared.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EduSys.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize] // 🔒 Aseguramos que solo usuarios del sistema vean los horarios
     public class HorariosController : ControllerBase
     {
         private readonly IHorarioRepository _repo;
@@ -17,7 +19,9 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpGet("comision/{idComision}")]
-        public async Task<IActionResult> GetByComision(int idComision)
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(IEnumerable<HorarioComisionDTO>))]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult<IEnumerable<HorarioComisionDTO>>> GetByComision(int idComision)
         {
             var lista = await _repo.GetByComisionAsync(idComision);
 
@@ -37,12 +41,18 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Create(HorarioComisionDTO dto)
+        [Authorize(Roles = "Administrador, Secretaria Academica")] // 🔒 Solo gestión puede asignar horarios
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)] // Para cuando el aula está ocupada
+        public async Task<IActionResult> Create([FromBody] HorarioComisionDTO dto)
         {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
             try
             {
                 if (dto.HoraInicio >= dto.HoraFin)
-                    return BadRequest("La hora de inicio debe ser menor a la de fin.");
+                    return BadRequest(new { message = "La hora de inicio debe ser menor a la de fin." });
 
                 var nuevo = new HorarioComision
                 {
@@ -54,30 +64,34 @@ namespace EduSys.Api.Controllers
                 };
 
                 await _repo.CreateAsync(nuevo);
-                return Ok();
+                return Ok(new { message = "Horario asignado correctamente." });
             }
             catch (InvalidOperationException ex)
             {
-                // Devolvemos el mensaje de validación (Aula ocupada)
-                return Conflict(ex.Message);
+                // Devolvemos el mensaje de validación (Ej: Choque de aulas)
+                return Conflict(new { message = ex.Message });
             }
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Administrador, Secretaria Academica")] // 🔒 Solo gestión puede borrar
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Delete(int id)
         {
-            if (await _repo.DeleteAsync(id)) return Ok();
-            return BadRequest();
+            if (await _repo.DeleteAsync(id))
+                return NoContent();
+
+            return NotFound(new { message = "El horario no existe o ya fue eliminado." });
         }
 
         // ✅ ESTE ES EL MÉTODO CORRECTO (Con Sede)
         [HttpGet("visualizacion/periodo/{idPeriodo}/carrera/{idCarrera}/sede/{idSede}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> GetVisualizacion(int idPeriodo, int idCarrera, int idSede)
         {
             var list = await _repo.GetHorariosByCarreraAndPeriodoAsync(idPeriodo, idCarrera, idSede);
             return Ok(list);
         }
-
-        // ❌ EL MÉTODO VIEJO FUE ELIMINADO AQUÍ PORQUE CAUSABA EL ERROR DE COMPILACIÓN
     }
 }

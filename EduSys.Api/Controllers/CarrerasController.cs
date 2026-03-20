@@ -21,7 +21,8 @@ namespace EduSys.Api.Controllers
         // GET: api/carreras
         [HttpGet]
         [AllowAnonymous]
-        public async Task<IActionResult> Get()
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<CarreraDTO>))]
+        public async Task<ActionResult<List<CarreraDTO>>> Get()
         {
             var lista = await _repo.GetAllAsync();
 
@@ -35,16 +36,15 @@ namespace EduSys.Api.Controllers
                 Descripcion = c.Descripcion,
                 ResolucionMinisterial = c.ResolucionMinisterial,
 
-                // --- MAPEO DE MODALIDADES (Relación Tabla -> Lista Nombres) ---
-                // Ahora traemos los nombres desde la tabla relacionada para mostrarlos en los Chips
+                // Modalidades
                 Modalidades = c.CarreraModalidads
                                .Where(cm => cm.IdModalidadNavigation.Activo == true)
                                .Select(cm => cm.IdModalidadNavigation.Nombre)
                                .ToList(),
 
-                // --- CARGA DE SEDES ---
+                // Sedes
                 NombresSedes = c.CarreraSedes
-                                .Where(cs => cs.Activo == true && (cs.IdSedeNavigation.Activo == true))
+                                .Where(cs => cs.Activo == true && cs.IdSedeNavigation.Activo == true)
                                 .Select(cs => cs.IdSedeNavigation.Nombre)
                                 .ToList()
             }).ToList();
@@ -53,11 +53,14 @@ namespace EduSys.Api.Controllers
         }
 
         // GET: api/carreras/5
+        [AllowAnonymous]
         [HttpGet("{id}")]
-        public async Task<IActionResult> Get(int id)
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(CarreraDTO))]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<CarreraDTO>> Get(int id)
         {
             var carrera = await _repo.GetByIdAsync(id);
-            if (carrera == null) return NotFound();
+            if (carrera == null) return NotFound(new { message = "Carrera no encontrada." });
 
             var dto = new CarreraDTO
             {
@@ -69,7 +72,6 @@ namespace EduSys.Api.Controllers
                 Descripcion = carrera.Descripcion,
                 ResolucionMinisterial = carrera.ResolucionMinisterial,
 
-                // --- MAPEO DE MODALIDADES ---
                 Modalidades = carrera.CarreraModalidads
                                      .Where(cm => cm.IdModalidadNavigation.Activo == true)
                                      .Select(cm => cm.IdModalidadNavigation.Nombre)
@@ -80,15 +82,17 @@ namespace EduSys.Api.Controllers
 
         // POST: api/carreras
         [HttpPost]
+        [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(CarreraDTO))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Post([FromBody] CarreraDTO dto)
         {
-            // 1. VALIDACIÓN DE DUPLICADOS
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
             if (await _repo.ExisteNombreAsync(dto.Nombre))
             {
-                return BadRequest($"Ya existe una carrera llamada '{dto.Nombre}'.");
+                return BadRequest(new { message = $"Ya existe una carrera llamada '{dto.Nombre}'." });
             }
 
-            // 2. CREACIÓN (La Carrera limpia, sin relaciones aún)
             var nuevaCarrera = new Carrera
             {
                 Nombre = dto.Nombre,
@@ -97,20 +101,14 @@ namespace EduSys.Api.Controllers
                 Activo = true,
                 Descripcion = dto.Descripcion,
                 ResolucionMinisterial = dto.ResolucionMinisterial
-                // Nota: Ya no asignamos 'Modalidad' string aquí.
             };
 
             var resultado = await _repo.CreateAsync(nuevaCarrera);
 
-            // 3. RESPUESTA
-            // Nota: Al crear, la lista de modalidades vuelve vacía inicialmente. 
-            // El frontend deberá llamar a UpdateModalidades si quiere asignarlas en el mismo paso,
-            // o hacerlo en un segundo paso como con Sedes.
             var resultadoDto = new CarreraDTO
             {
                 Id = resultado.Id,
                 Nombre = resultado.Nombre,
-                // ... resto de campos ...
                 Activo = true
             };
 
@@ -119,11 +117,16 @@ namespace EduSys.Api.Controllers
 
         // PUT: api/carreras
         [HttpPut]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(CarreraDTO))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Put([FromBody] CarreraDTO dto)
         {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
             if (await _repo.ExisteNombreAsync(dto.Nombre, dto.Id))
             {
-                return BadRequest($"La carrera '{dto.Nombre}' ya existe.");
+                return BadRequest(new { message = $"La carrera '{dto.Nombre}' ya existe." });
             }
 
             var carrera = new Carrera
@@ -135,21 +138,22 @@ namespace EduSys.Api.Controllers
                 Activo = dto.Activo,
                 Descripcion = dto.Descripcion,
                 ResolucionMinisterial = dto.ResolucionMinisterial
-                // Nota: No tocamos relaciones aquí
             };
 
             var resultado = await _repo.UpdateAsync(carrera);
-            if (!resultado) return NotFound();
+            if (!resultado) return NotFound(new { message = "Carrera no encontrada para actualizar." });
 
             return Ok(dto);
         }
 
         // DELETE: api/carreras/5
         [HttpDelete("{id}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Delete(int id)
         {
             var resultado = await _repo.DeleteAsync(id);
-            if (!resultado) return NotFound();
+            if (!resultado) return NotFound(new { message = "Carrera no encontrada." });
 
             return NoContent();
         }
@@ -159,58 +163,59 @@ namespace EduSys.Api.Controllers
         // ---------------------------------------------------------
 
         [HttpGet("{id}/sedes")]
-        public async Task<IActionResult> GetSedes(int id)
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<int>))]
+        public async Task<ActionResult<List<int>>> GetSedes(int id)
         {
             var listaIds = await _repo.GetSedesIdsByCarreraAsync(id);
             return Ok(listaIds);
         }
 
         [HttpPost("{id}/sedes")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> UpdateSedes(int id, [FromBody] List<int> idsSedes)
         {
             var resultado = await _repo.ActualizarSedesAsync(id, idsSedes);
-            if (!resultado) return BadRequest("No se pudo actualizar las sedes");
-            return Ok();
+            if (!resultado) return BadRequest(new { message = "No se pudo actualizar las sedes." });
+            return Ok(new { message = "Sedes actualizadas correctamente." });
         }
 
-        // --- NUEVOS: IGUAL QUE SEDES PERO PARA MODALIDADES ---
-
         [HttpGet("{id}/modalidades")]
-        public async Task<IActionResult> GetModalidades(int id)
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<int>))]
+        public async Task<ActionResult<List<int>>> GetModalidades(int id)
         {
-            // Necesitas agregar este método en tu ICarreraRepository
             var listaIds = await _repo.GetModalidadesIdsByCarreraAsync(id);
             return Ok(listaIds);
         }
 
         [HttpPost("{id}/modalidades")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> UpdateModalidades(int id, [FromBody] List<int> idsModalidades)
         {
-            // Necesitas agregar este método en tu ICarreraRepository
             var resultado = await _repo.ActualizarModalidadesAsync(id, idsModalidades);
-            if (!resultado) return BadRequest("No se pudo actualizar las modalidades");
-            return Ok();
+            if (!resultado) return BadRequest(new { message = "No se pudo actualizar las modalidades." });
+            return Ok(new { message = "Modalidades actualizadas correctamente." });
         }
+
         // GET: api/carreras/por-sede/5
         [HttpGet("por-sede/{idSede}")]
-        [AllowAnonymous] // Permitimos anónimo porque es para la solicitud de ingreso pública
-        public async Task<IActionResult> GetPorSede(int idSede)
+        [AllowAnonymous]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<CarreraDTO>))]
+        public async Task<ActionResult<List<CarreraDTO>>> GetPorSede(int idSede)
         {
             var lista = await _repo.GetCarrerasPorSedeAsync(idSede);
 
-            // Mapeamos a DTO para no devolver ciclos o datos innecesarios
             var listaDto = lista.Select(c => new CarreraDTO
             {
                 Id = c.Id,
                 Nombre = c.Nombre,
                 Titulo = c.Titulo,
                 DuracionAnios = c.DuracionAnios,
-                Activo = true,
-                // Solo llenamos lo necesario para el combo
+                Activo = true
             }).ToList();
 
             return Ok(listaDto);
         }
-
     }
 }

@@ -5,7 +5,7 @@ namespace EduSys.Web.Services.Interfaces
     public interface ICarreraService
     {
         Task<List<CarreraDTO>> GetAllAsync();
-        Task<CarreraDTO> GetByIdAsync(int id);
+        Task<CarreraDTO?> GetByIdAsync(int id); // ✅ Nulable para mayor seguridad
         Task<string> CreateAsync(CarreraDTO carrera);
         Task<string> UpdateAsync(CarreraDTO carrera);
         Task<bool> DeleteAsync(int id);
@@ -14,6 +14,5 @@ namespace EduSys.Web.Services.Interfaces
         Task<List<int>> GetModalidadesIdsAsync(int carreraId);
         Task<bool> ActualizarModalidadesAsync(int carreraId, List<int> idsModalidades);
         Task<List<CarreraDTO>> GetCarrerasPorSedeAsync(int idSede);
-
     }
 }

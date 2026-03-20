@@ -9,8 +9,6 @@ namespace EduSys.Shared.Models
         public bool EsAprobatoria { get; set; }
         public bool HabilitaFinal { get; set; }
         public bool Activo { get; set; }
-
-        // Relación: Un Estado puede estar en muchas Inscripciones a Cursadas
         public virtual ICollection<InscripcionCursada> InscripcionCursadas { get; set; } = new List<InscripcionCursada>();
     }
 }

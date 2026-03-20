@@ -16,14 +16,19 @@ namespace EduSys.Api.Repositories
 
         public async Task<List<Modalidad>> GetAllAsync()
         {
-            // Retorna todas. Si quisieras solo las activas por defecto:
-            // return await _context.Modalidads.Where(m => m.Activo == true).ToListAsync();
-            return await _context.Modalidads.ToListAsync();
+            // 🚀 OPTIMIZADO: AsNoTracking para velocidad y OrderBy para consistencia en la UI
+            return await _context.Modalidads
+                .AsNoTracking()
+                .OrderBy(m => m.Nombre)
+                .ToListAsync();
         }
 
         public async Task<Modalidad?> GetByIdAsync(int id)
         {
-            return await _context.Modalidads.FindAsync(id);
+            // 🚀 OPTIMIZADO: FirstOrDefaultAsync con AsNoTracking es preferible a FindAsync para lecturas puras
+            return await _context.Modalidads
+                .AsNoTracking()
+                .FirstOrDefaultAsync(m => m.Id == id);
         }
 
         public async Task<Modalidad> CreateAsync(Modalidad modalidad)
@@ -35,10 +40,15 @@ namespace EduSys.Api.Repositories
 
         public async Task<bool> UpdateAsync(Modalidad modalidad)
         {
-            var existe = await _context.Modalidads.AnyAsync(m => m.Id == modalidad.Id);
-            if (!existe) return false;
+            // Buscamos la entidad para que EF la rastree (Tracking)
+            var existing = await _context.Modalidads.FirstOrDefaultAsync(m => m.Id == modalidad.Id);
+            if (existing == null) return false;
 
-            _context.Entry(modalidad).State = EntityState.Modified;
+            // 🚀 Actualizamos campos. EF detectará automáticamente qué cambió.
+            existing.Nombre = modalidad.Nombre;
+            existing.Codigo = modalidad.Codigo;
+            existing.Activo = modalidad.Activo;
+
             await _context.SaveChangesAsync();
             return true;
         }
@@ -48,18 +58,18 @@ namespace EduSys.Api.Repositories
             var modalidad = await _context.Modalidads.FindAsync(id);
             if (modalidad == null) return false;
 
-            // Baja Lógica (Soft Delete): Solo marcamos Activo como false
+            // Baja Lógica: Mantenemos la integridad referencial desactivando el registro
             modalidad.Activo = false;
 
-            await _context.SaveChangesAsync();
-            return true;
+            return await _context.SaveChangesAsync() > 0;
         }
 
         public async Task<bool> ExisteNombreAsync(string nombre, int idExcluir = 0)
         {
-            // Verifica si existe alguna OTRA modalidad con ese nombre
+            // 🚀 OPTIMIZADO: Comparación insensible a mayúsculas y AsNoTracking
             return await _context.Modalidads
-                                 .AnyAsync(m => m.Nombre == nombre && m.Id != idExcluir);
+                .AsNoTracking()
+                .AnyAsync(m => m.Nombre.ToLower() == nombre.ToLower() && m.Id != idExcluir);
         }
     }
 }

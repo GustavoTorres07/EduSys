@@ -12,16 +12,26 @@
                     }
                     else
                     {
-                        <p>No tienes permisos para ver esta página.</p>
+                        <MudContainer MaxWidth="MaxWidth.Medium" Class="mt-16">
+                            <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mt-4">
+                                Acceso Denegado: No tienes los permisos o roles necesarios para ver esta página.
+                            </MudAlert>
+                        </MudContainer>
                     }
                 </NotAuthorized>
             </AuthorizeRouteView>
             <FocusOnNavigate RouteData="@routeData" Selector="h1" />
         </Found>
         <NotFound>
-            <PageTitle>No encontrado</PageTitle>
+            <PageTitle>Página no encontrada</PageTitle>
             <LayoutView Layout="@typeof(MainLayout)">
-                <p>Lo sentimos, no hay nada en esta dirección.</p>
+                <MudContainer MaxWidth="MaxWidth.Medium" Class="mt-16 d-flex flex-column align-center">
+                    <MudText Typo="Typo.h1" Color="Color.Primary" Class="mb-4">404</MudText>
+                    <MudText Typo="Typo.h5" Class="mb-6">Lo sentimos, la página que intentas buscar no existe o fue movida.</MudText>
+                    <MudButton Href="/" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large">
+                        Volver al Inicio
+                    </MudButton>
+                </MudContainer>
             </LayoutView>
         </NotFound>
     </Router>

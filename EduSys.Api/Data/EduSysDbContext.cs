@@ -214,12 +214,16 @@ public partial class EduSysDbContext : DbContext
             entity.ToTable("Correlatividad");
             entity.Property(e => e.TipoRequisito).HasMaxLength(20);
 
-            entity.HasOne(d => d.IdPlanMateriaOrigenNavigation).WithMany(p => p.CorrelatividadIdPlanMateriaOrigenNavigations)
+            // ✅ ANTES: .WithMany()  ← EF creaba relaciones shadow duplicadas
+            // ✅ AHORA: referenciar las colecciones reales del modelo PlanMateria
+            entity.HasOne(d => d.IdPlanMateriaOrigenNavigation)
+                .WithMany(p => p.CorrelativasComoOrigen)
                 .HasForeignKey(d => d.IdPlanMateriaOrigen)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_Corr_Origen");
 
-            entity.HasOne(d => d.IdPlanMateriaRequisitoNavigation).WithMany(p => p.CorrelatividadIdPlanMateriaRequisitoNavigations)
+            entity.HasOne(d => d.IdPlanMateriaRequisitoNavigation)
+                .WithMany(p => p.CorrelativasComoRequisito)
                 .HasForeignKey(d => d.IdPlanMateriaRequisito)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_Corr_Requisito");
@@ -279,9 +283,9 @@ public partial class EduSysDbContext : DbContext
             // ✅ AQUÍ ESTÁ LA SOLUCIÓN: MAPEO DE LA RELACIÓN PADRE-HIJO
             // ==============================================================
             entity.HasOne(d => d.IdEvaluacionPadreNavigation)
-                .WithMany(p => p.InverseIdEvaluacionPadreNavigation)
-                .HasForeignKey(d => d.IdEvaluacionPadre)
-                .HasConstraintName("FK_Evaluacion_Padre");
+                            .WithMany(e => e.EvaluacionesHijas)   // ← reemplazá el WithMany() vacío por esto
+                            .HasForeignKey(d => d.IdEvaluacionPadre)
+                            .HasConstraintName("FK_Evaluacion_Padre");
 
             entity.HasOne(d => d.IdComisionNavigation).WithMany(p => p.Evaluacions)
                 .HasForeignKey(d => d.IdComision)

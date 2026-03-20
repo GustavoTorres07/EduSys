@@ -1,45 +1,122 @@
 ﻿@using EduSys.Shared.DTOs
 @using EduSys.Web.Services.Interfaces
-@inject IAlumnoPortalService AlumnoPortalService  
-@inject AuthenticationStateProvider AuthStateProvider  
-@inject NavigationManager NavManager
+@using Microsoft.Extensions.Logging
 
-<MudMenu Direction="Direction.Left" OffsetX="true" Dense="true" Class="mt-1">
+@inject IAlumnoPortalService AlumnoPortalService
+@* 💡 INYECTA AQUÍ TU SERVICIO DE DOCENTES O ADMINS (Ej: @inject IDocenteService DocenteService) *@
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager NavManager
+@inject ILogger<NotificacionesMenu> Logger
+@inject ISnackbar Snackbar
+
+@implements IDisposable
+
+<style>
+    .noti-menu-header {
+        padding: 12px 16px;
+        border-bottom: 1px solid #e2e8f0;
+        background-color: #f8fafc;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .noti-item {
+        padding: 12px 16px;
+        transition: background-color 0.2s;
+        border-bottom: 1px solid #f1f5f9;
+        cursor: pointer;
+    }
+
+        .noti-item:hover {
+            background-color: #f1f5f9;
+        }
+
+        .noti-item.unread {
+            background-color: #f0f9ff; /* Azul muy clarito */
+            border-left: 3px solid #0ea5e9;
+        }
+
+        .noti-item.read {
+            opacity: 0.7;
+            border-left: 3px solid transparent;
+        }
+</style>
+
+<MudMenu Direction="Direction.Bottom" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Dense="true" Class="mt-1" PopoverClass="rounded-lg shadow-lg">
     <ActivatorContent>
-        <MudBadge Content="@cantNoLeidas" Color="Color.Error" Overlap="true" Visible="@(cantNoLeidas > 0)">
+        <MudBadge Content="@cantNoLeidas" Color="Color.Error" Overlap="true" Visible="@(cantNoLeidas > 0)" Class="mx-2">
             <MudIconButton Icon="@Icons.Material.Filled.Notifications" Color="Color.Inherit" />
         </MudBadge>
     </ActivatorContent>
+    
     <ChildContent>
-        <MudPaper Width="320px" MaxHeight="400px" Class="overflow-auto pa-2">
-            @if (notificaciones == null || !notificaciones.Any())
-            {
-                <div class="d-flex flex-column align-center pa-4">
-                    <MudIcon Icon="@Icons.Material.Filled.NotificationsNone" Size="Size.Large" Color="Color.Default" />
-                    <MudText Typo="Typo.body2" Class="mt-2 text-muted">Sin novedades.</MudText>
-                </div>
-            }
-            else
-            {
-                <MudList T="string" Clickable="true">
-                    @foreach (var noti in notificaciones)
-                    {
-                        <MudListItem OnClick="@(() => VerNotificacion(noti))" 
-                                     Style="@(noti.Leida ? "opacity: 0.6;" : "background-color: #f0f9ff;")">
-                            <div class="d-flex gap-2">
-                                <MudIcon Icon="@GetIcono(noti.Tipo)" Color="@GetColor(noti.Tipo)" Size="Size.Small" Class="mt-1"/>
-                                <div class="d-flex flex-column" style="width: 100%;">
-                                    <div class="d-flex justify-space-between">
-                                        <MudText Typo="Typo.subtitle2" Style="font-weight:bold; font-size: 0.85rem;">@noti.Titulo</MudText>
-                                        <MudText Typo="Typo.caption" Style="font-size: 0.7rem;">@noti.Fecha.ToString("dd/MM HH:mm")</MudText>
+        <MudPaper Width="350px" MaxHeight="450px" Class="d-flex flex-column" Elevation="0">
+            
+            @* --- CABECERA UX --- *@
+            <div class="noti-menu-header rounded-t-lg">
+                <MudText Typo="Typo.subtitle2" Style="font-weight: 700; color: #1e293b;">Notificaciones</MudText>
+                @if (cantNoLeidas > 0)
+                {
+                    <MudTooltip Text="Marcar todas como leídas">
+                        <MudIconButton Icon="@Icons.Material.Filled.Checklist" Size="Size.Small" Color="Color.Primary" OnClick="MarcarTodasComoLeidas" />
+                    </MudTooltip>
+                }
+            </div>
+
+            <div class="overflow-auto flex-grow-1">
+                @if (_cargando)
+                {
+                    <div class="d-flex justify-center align-center pa-6">
+                        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Small" />
+                    </div>
+                }
+                else if (notificaciones == null || !notificaciones.Any())
+                {
+                    <div class="d-flex flex-column align-center pa-8 text-center">
+                        <MudIcon Icon="@Icons.Material.Filled.NotificationsNone" Size="Size.Large" Style="color: #cbd5e1;" Class="mb-2" />
+                        <MudText Typo="Typo.body2" Style="color: #64748b; font-weight: 500;">Estás al día</MudText>
+                        <MudText Typo="Typo.caption" Style="color: #94a3b8;">No tienes notificaciones nuevas.</MudText>
+                    </div>
+                }
+                else
+                {
+                    <div class="d-flex flex-column">
+                        @foreach (var noti in notificaciones)
+                        {
+                            <div class="noti-item @(noti.Leida ? "read" : "unread")" @onclick="() => VerNotificacion(noti)">
+                                <div class="d-flex gap-3">
+                                    <MudAvatar Size="Size.Small" Color="@GetColor(noti.Tipo)" Variant="Variant.Filled" Style="margin-top: 2px;">
+                                        <MudIcon Icon="@GetIcono(noti.Tipo)" Size="Size.Small" />
+                                    </MudAvatar>
+                                    
+                                    <div class="d-flex flex-column flex-grow-1">
+                                        <div class="d-flex justify-space-between align-center mb-1">
+                                            <MudText Typo="Typo.subtitle2" Style="font-weight: 700; font-size: 0.85rem; color: #1e293b; line-height: 1.1;">
+                                                @noti.Titulo
+                                            </MudText>
+                                            <MudText Typo="Typo.caption" Style="font-size: 0.7rem; color: #94a3b8; white-space: nowrap; margin-left: 8px;">
+                                                @FormatearFecha(noti.Fecha)
+                                            </MudText>
+                                        </div>
+                                        <MudText Typo="Typo.body2" Style="font-size: 0.8rem; color: #475569; line-height: 1.3;">
+                                            @noti.Mensaje
+                                        </MudText>
                                     </div>
-                                    <MudText Typo="Typo.body2" Style="font-size: 0.8rem; line-height: 1.2;" Class="mt-1">@noti.Mensaje</MudText>
                                 </div>
                             </div>
-                        </MudListItem>
-                        <MudDivider />
-                    }
-                </MudList>
+                        }
+                    </div>
+                }
+            </div>
+            
+            @if (notificaciones != null && notificaciones.Any())
+            {
+                <div class="pa-2 text-center" style="border-top: 1px solid #e2e8f0; background-color: #f8fafc;">
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" FullWidth="true" Style="font-weight: 600;">
+                        Ver Historial Completo
+                    </MudButton>
+                </div>
             }
         </MudPaper>
     </ChildContent>
@@ -48,41 +125,126 @@
 @code {
     private List<NotificacionDTO> notificaciones = new();
     private int cantNoLeidas => notificaciones.Count(n => !n.Leida);
-
-    // Timer para polling (opcional, para que se actualice solo cada X tiempo)
+    private bool _cargando = true;
     private System.Threading.Timer? _timer;
 
     protected override async Task OnInitializedAsync()
     {
-        await CargarNotificaciones();
-        // Opcional: Actualizar cada 60 segundos
-        // _timer = new System.Threading.Timer(async _ => await InvokeAsync(CargarNotificaciones), null, 60000, 60000);
+        await CargarNotificacionesSegunRol();
+
+        // Polling seguro: Ejecuta cada 2 minutos (120,000 ms)
+        _timer = new System.Threading.Timer(async _ =>
+        {
+            await InvokeAsync(CargarNotificacionesSegunRol);
+        }, null, 120000, 120000);
     }
 
-    private async Task CargarNotificaciones()
+    private async Task CargarNotificacionesSegunRol()
     {
-        notificaciones = await AlumnoPortalService.GetNotificacionesAsync();
-        StateHasChanged();
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+
+            if (!user.Identity?.IsAuthenticated ?? true) return;
+
+            // 💡 AQUÍ ESTÁ LA MAGIA DEL ROL:
+            if (user.IsInRole("Alumno"))
+            {
+                notificaciones = await AlumnoPortalService.GetNotificacionesAsync();
+            }
+            else if (user.IsInRole("Docente"))
+            {
+                // TODO: Reemplaza esto con tu servicio real de docentes
+                // notificaciones = await DocenteService.GetNotificacionesAsync();
+                notificaciones = new List<NotificacionDTO>();
+            }
+            else
+            {
+                // Administradores u otros roles
+                // notificaciones = await AdminService.GetNotificacionesAsync();
+                notificaciones = new List<NotificacionDTO>();
+            }
+
+            // Ordenamos para que las no leídas o las más recientes salgan arriba
+            notificaciones = notificaciones.OrderBy(n => n.Leida).ThenByDescending(n => n.Fecha).ToList();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Fallo silencioso al intentar cargar notificaciones en segundo plano.");
+        }
+        finally
+        {
+            _cargando = false;
+            StateHasChanged(); // Forzamos redibujado de la UI
+        }
     }
 
     private async Task VerNotificacion(NotificacionDTO noti)
     {
-        if (!noti.Leida)
+        if (noti.Leida) return;
+
+        try
         {
-            await AlumnoPortalService.MarcarLeidaAsync(noti.Id);
-            noti.Leida = true; // Feedback inmediato en UI
+            // Feedback inmediato en UI para que se sienta súper rápido
+            noti.Leida = true;
+            StateHasChanged();
+
+            // Llamada al backend según el rol
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            if (authState.User.IsInRole("Alumno"))
+            {
+                await AlumnoPortalService.MarcarLeidaAsync(noti.Id);
+            }
+            // else if (authState.User.IsInRole("Docente")) { await DocenteService... }
+
+        }
+        catch (Exception ex)
+        {
+            noti.Leida = false; // Revertimos si falla
+            Logger.LogError(ex, "No se pudo marcar la notificación {Id} como leída.", noti.Id);
         }
     }
 
-    private string GetIcono(string tipo) => tipo switch {
+    private void MarcarTodasComoLeidas()
+    {
+        // Esto es opcional, pero mejora mucho la UX.
+        // Idealmente tendrías un endpoint en tu API como MarcarTodasLeidasAsync()
+        foreach (var n in notificaciones.Where(x => !x.Leida))
+        {
+            _ = VerNotificacion(n); // Disparamos las tareas en segundo plano
+        }
+        Snackbar.Add("Todas las notificaciones marcadas como leídas.", Severity.Success);
+    }
+
+    private string FormatearFecha(DateTime fecha)
+    {
+        if (fecha.Date == DateTime.Today) return fecha.ToString("HH:mm");
+        if (fecha.Date == DateTime.Today.AddDays(-1)) return "Ayer";
+        return fecha.ToString("dd/MM");
+    }
+
+    private string GetIcono(string tipo) => tipo switch
+    {
         "Examen" => Icons.Material.Filled.Assignment,
         "Asistencia" => Icons.Material.Filled.FactCheck,
+        "Mensaje" => Icons.Material.Filled.Message,
+        "Alerta" => Icons.Material.Filled.Warning,
         _ => Icons.Material.Filled.Info
     };
 
-    private Color GetColor(string tipo) => tipo switch {
-        "Examen" => Color.Warning,
+    private Color GetColor(string tipo) => tipo switch
+    {
+        "Examen" => Color.Secondary,
         "Asistencia" => Color.Error,
+        "Mensaje" => Color.Primary,
+        "Alerta" => Color.Warning,
         _ => Color.Info
     };
+
+    // Es VITAL limpiar el timer cuando el componente se destruye para evitar memory leaks
+    public void Dispose()
+    {
+        _timer?.Dispose();
+    }
 }

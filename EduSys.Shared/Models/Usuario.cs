@@ -15,18 +15,14 @@ public partial class Usuario
     public int IdNacionalidad { get; set; }
     public bool? Activo { get; set; }
     public DateTime? FechaRegistro { get; set; }
-
-    // --- NUEVOS CAMPOS ---
     public string? Sexo { get; set; }
     public string? LugarNacimiento { get; set; }
     public string? EstadoCivil { get; set; }
     public string? Localidad { get; set; }
-    // ---------------------
     public string? FotoPerfilUrl { get; set; }
     public string? NombreContactoEmergencia { get; set; }
     public string? TelefonoContactoEmergencia { get; set; }
     public bool DebeCambiarPass { get; set; } = false;
-
     public virtual Nacionalidad IdNacionalidadNavigation { get; set; } = null!;
     public virtual Rol IdRolNavigation { get; set; } = null!;
     public virtual Alumno? Alumno { get; set; }

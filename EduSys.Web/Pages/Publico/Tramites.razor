@@ -10,170 +10,298 @@
 
 @inject IPeriodoService PeriodoService
 @inject IAlumnoService AlumnoService
-@inject IReportesService ReportesService 
-@inject IInscripcionFinalService InscripcionFinalService 
+@inject IReportesService ReportesService
+@inject IInscripcionFinalService InscripcionFinalService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 
 <style>
+    /* =================================================================
+           SISTEMA DE DISEÑO EDUSYS - TRÁMITES Y CERTIFICADOS
+           ================================================================= */
+    :root {
+        --edusys-primary: #1e3a58;
+        --edusys-primary-light: #456990;
+        --edusys-bg: #f8fafc;
+        --edusys-border: #cbd5e1;
+        --edusys-text-main: #1e293b;
+        --edusys-text-muted: #64748b;
+    }
+
     .tramites-container {
-        max-width: 1200px;
+        max-width: 1400px;
         margin: 0 auto;
         padding: 2rem;
     }
 
+    /* --- TARJETAS DE DOCUMENTOS --- */
     .doc-card {
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
-        transition: all 0.3s ease;
+        border: 1px solid var(--edusys-border);
+        border-radius: 16px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         background: white;
         height: 100%;
         display: flex;
         flex-direction: column;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        overflow: hidden;
     }
 
         .doc-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
-            border-color: #456990;
+            transform: translateY(-6px);
+            box-shadow: 0 20px 25px -5px rgba(30, 58, 88, 0.1);
+            border-color: var(--edusys-primary-light);
         }
 
+    .doc-header {
+        padding: 1.5rem 1.5rem 0 1.5rem;
+    }
+
     .doc-icon-box {
-        height: 60px;
-        width: 60px;
-        border-radius: 12px;
+        height: 64px;
+        width: 64px;
+        border-radius: 14px;
         display: flex;
         align-items: center;
         justify-content: center;
-        margin-bottom: 1rem;
+        margin-bottom: 1.25rem;
+        box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.5);
+    }
+
+    .doc-body {
+        padding: 0 1.5rem 1.5rem 1.5rem;
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .doc-footer {
+        padding: 1.25rem 1.5rem;
+        background-color: var(--edusys-bg);
+        border-top: 1px dashed var(--edusys-border);
+        margin-top: auto;
+    }
+
+    /* Select forzados (para el card de finales) */
+    .custom-select-doc .mud-input-outlined-border {
+        border-color: var(--edusys-border) !important;
+        background-color: white;
+    }
+    
+    .custom-select-doc.mud-input-control.mud-input-focused .mud-input-outlined-border {
+        border-color: #9333ea !important; /* Purple for finals */
+        border-width: 2px !important;
+    }
+
+    .custom-select-doc input {
+        font-weight: 600 !important;
+        color: var(--edusys-text-main) !important;
     }
 </style>
 
-<div class="tramites-container">
-    <MudText Typo="Typo.h4" Class="mb-2" Style="font-weight: 700; color: #456990;">Trámites y Certificados</MudText>
-    <MudText Typo="Typo.body1" Class="mb-8 text-muted">Descarga tus documentos académicos firmados digitalmente.</MudText>
+@* OVERLAY DE PROTECCIÓN DURANTE LA GENERACIÓN DEL PDF *@
+<MudOverlay Visible="procesando" DarkBackground="true" Absolute="false" ZIndex="9999">
+    <MudStack AlignItems="AlignItems.Center">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+        <MudText Typo="Typo.h6" Style="color: white; font-weight: 600;">Generando documento PDF...</MudText>
+        <MudText Typo="Typo.body2" Style="color: #cbd5e1;">Esto puede demorar unos segundos.</MudText>
+    </MudStack>
+</MudOverlay>
+
+<div class="tramites-container animate__animated animate__fadeIn">
+    
+    @* --- ENCABEZADO --- *@
+    <div class="mb-10">
+        <MudText Typo="Typo.h4" Style="font-weight: 800; color: var(--edusys-primary); letter-spacing: -0.5px;">Trámites y Certificados</MudText>
+        <MudText Typo="Typo.subtitle1" Class="mud-text-secondary">Gestión y descarga de documentación académica con validación digital.</MudText>
+    </div>
 
     @if (loading)
     {
-        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+        <MudGrid Spacing="4">
+            @for (int i = 0; i < 4; i++)
+            {
+                <MudItem xs="12" sm="6" md="4">
+                    <MudCard Elevation="0" Class="rounded-lg pa-4" Style="border: 1px solid #e2e8f0;">
+                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="64px" Height="64px" Class="rounded-lg mb-4" />
+                        <MudSkeleton Width="80%" Height="24px" Class="mb-2" />
+                        <MudSkeleton Width="100%" Height="60px" Class="mb-6" />
+                        <MudSkeleton Width="100%" Height="40px" Class="rounded-lg" />
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
     }
     else
     {
-        <MudGrid>
-            @* 1. CONSTANCIA DE INSCRIPCIÓN A CURSADA *@
-            <MudItem xs="12" sm="6" md="4">
-                <div class="doc-card pa-6">
-                    <div class="doc-icon-box" style="background-color: #e0f2fe;">
-                        <MudIcon Icon="@Icons.Material.Filled.AssignmentInd" Size="Size.Large" Style="color: #0284c7;" />
+        <MudGrid Spacing="4">
+            
+            @* -------------------------------------------------------- *@
+            @* 1. CONSTANCIA DE INSCRIPCIÓN A CURSADA                   *@
+            @* -------------------------------------------------------- *@
+            <MudItem xs="12" sm="6" lg="4">
+                <div class="doc-card animate__animated animate__fadeInUp">
+                    <div class="doc-header">
+                        <div class="doc-icon-box" style="background: linear-gradient(135deg, #e0f2fe, #bae6fd); border: 1px solid #7dd3fc;">
+                            <MudIcon Icon="@Icons.Material.Filled.AssignmentInd" Size="Size.Large" Style="color: #0284c7;" />
+                        </div>
+                        <MudText Typo="Typo.h6" Style="font-weight: 800; color: var(--edusys-text-main); line-height: 1.2;">Constancia de Cursada</MudText>
                     </div>
-                    <MudText Typo="Typo.h6" Style="font-weight: 700;">Constancia de Cursada</MudText>
-                    <MudText Typo="Typo.body2" Class="mt-2 mb-4" Style="color: #64748b;">
-                        Documento que acredita las materias que estás cursando actualmente en el ciclo <strong>@periodoActual?.Nombre</strong>.
-                    </MudText>
-                    <div class="mt-auto">
-                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true"
+                    <div class="doc-body">
+                        <MudText Typo="Typo.body2" Class="mt-2" Style="color: var(--edusys-text-muted); line-height: 1.5;">
+                            Documento que acredita las asignaturas en las que te encuentras inscripto/a actualmente para cursar.
+                        </MudText>
+                        
+                        <div class="mt-4 pa-3 rounded-lg" style="background-color: #f8fafc; border: 1px dashed #cbd5e1;">
+                            <MudText Typo="Typo.caption" Style="color: #64748b; font-weight: 700; text-transform: uppercase;">Ciclo Lectivo</MudText>
+                            <MudText Typo="Typo.body2" Style="font-weight: 800; color: var(--edusys-primary);">
+                                @(periodoActual?.Nombre ?? "No hay ciclo activo")
+                            </MudText>
+                        </div>
+                    </div>
+                    <div class="doc-footer">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
                                    StartIcon="@Icons.Material.Filled.Download"
+                                   Style="font-weight: 700; letter-spacing: 0.5px; border-radius: 8px;"
                                    OnClick="DescargarConstanciaInscripcion"
                                    Disabled="@(periodoActual == null || procesando)">
-                            Descargar PDF
+                            GENERAR PDF
                         </MudButton>
                     </div>
                 </div>
             </MudItem>
 
-            @* 2. CERTIFICADO ALUMNO REGULAR *@
-            <MudItem xs="12" sm="6" md="4">
-                <div class="doc-card pa-6">
-                    <div class="doc-icon-box" style="background-color: #f0fdf4;">
-                        <MudIcon Icon="@Icons.Material.Filled.School" Size="Size.Large" Style="color: #16a34a;" />
+            @* -------------------------------------------------------- *@
+            @* 2. CERTIFICADO ALUMNO REGULAR                            *@
+            @* -------------------------------------------------------- *@
+            <MudItem xs="12" sm="6" lg="4">
+                <div class="doc-card animate__animated animate__fadeInUp" style="animation-delay: 0.1s;">
+                    <div class="doc-header">
+                        <div class="doc-icon-box" style="background: linear-gradient(135deg, #f0fdf4, #bbf7d0); border: 1px solid #86efac;">
+                            <MudIcon Icon="@Icons.Material.Filled.School" Size="Size.Large" Style="color: #16a34a;" />
+                        </div>
+                        <MudText Typo="Typo.h6" Style="font-weight: 800; color: var(--edusys-text-main); line-height: 1.2;">Alumno Regular</MudText>
                     </div>
-                    <MudText Typo="Typo.h6" Style="font-weight: 700;">Certificado Alumno Regular</MudText>
-                    <MudText Typo="Typo.body2" Class="mt-2 mb-4" Style="color: #64748b;">
-                        Acredita tu condición de regularidad ante obras sociales y organismos.
-                    </MudText>
-                    <div class="mt-auto">
-                        <MudButton Variant="Variant.Outlined" Color="Color.Success" FullWidth="true"
+                    <div class="doc-body">
+                        <MudText Typo="Typo.body2" Class="mt-2" Style="color: var(--edusys-text-muted); line-height: 1.5;">
+                            Certificado oficial para presentar ante obras sociales, empleadores o asignaciones familiares (Progresar/Becas).
+                        </MudText>
+                        
+                        <div class="mt-4 pa-3 rounded-lg d-flex align-start gap-2" style="background-color: #f0fdf4; border: 1px solid #bbf7d0;">
+                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" Style="color: #16a34a; margin-top: 2px;" />
+                            <MudText Typo="Typo.caption" Style="color: #166534; font-weight: 600; line-height: 1.4;">
+                                Requiere tener al menos una inscripción activa en el presente ciclo.
+                            </MudText>
+                        </div>
+                    </div>
+                    <div class="doc-footer">
+                        <MudButton Variant="Variant.Filled" Color="Color.Success" FullWidth="true"
                                    StartIcon="@Icons.Material.Filled.RequestQuote"
+                                   Style="font-weight: 700; letter-spacing: 0.5px; border-radius: 8px;"
                                    OnClick="DescargarCertificadoRegular"
                                    Disabled="@(periodoActual == null || procesando)">
-                            Solicitar
+                            SOLICITAR CERTIFICADO
                         </MudButton>
                     </div>
                 </div>
             </MudItem>
 
-            @* 3. CONSTANCIA DE EXAMEN FINAL (¡NUEVO!) *@
-            <MudItem xs="12" sm="6" md="4">
-                <div class="doc-card pa-6">
-                    <div class="doc-icon-box" style="background-color: #f3e8ff;">
-                        <MudIcon Icon="@Icons.Material.Filled.FactCheck" Size="Size.Large" Style="color: #9333ea;" />
-                    </div>
-                    <MudText Typo="Typo.h6" Style="font-weight: 700;">Constancia Examen Final</MudText>
-                    <MudText Typo="Typo.body2" Class="mt-2 mb-2" Style="color: #64748b;">
-                        Comprobante oficial de tu turno para rendir.
-                    </MudText>
-                    @if (misInscripcionesAFinales != null && misInscripcionesAFinales.Any())
-                    {
-                        <div class="mb-4">
-                            <MudSelect T="int" @bind-Value="idFinalSeleccionado"
-                                       Label="Seleccione un Final"
-                                       Variant="Variant.Outlined"
-                                       AnchorOrigin="Origin.BottomCenter"
-                                       Margin="Margin.Dense"
-                                       Style="background-color: white; border-color: #456990;"
-                                       Class="rounded-lg">
-                                <MudSelectItem Value="0">
-                                    <span style="color: #94a3b8; font-style: italic;">-- Elija un Final --</span>
-                                </MudSelectItem>
-                                @foreach (var final in misInscripcionesAFinales)
-                                {
-                                    <MudSelectItem Value="@final.IdInscripcionFinal!.Value">
-                                        <span style="font-weight: 600; color: #1e293b;">@final.MateriaNombre</span>
-                                        <span style="font-size: 0.8rem; color: #64748b;">(@final.FechaHora.ToString("dd/MM/yyyy"))</span>
-                                    </MudSelectItem>
-                                }
-                            </MudSelect>
+            @* -------------------------------------------------------- *@
+            @* 3. CONSTANCIA DE EXAMEN FINAL                            *@
+            @* -------------------------------------------------------- *@
+            <MudItem xs="12" sm="6" lg="4">
+                <div class="doc-card animate__animated animate__fadeInUp" style="animation-delay: 0.2s;">
+                    <div class="doc-header">
+                        <div class="doc-icon-box" style="background: linear-gradient(135deg, #f3e8ff, #e9d5ff); border: 1px solid #d8b4fe;">
+                            <MudIcon Icon="@Icons.Material.Filled.FactCheck" Size="Size.Large" Style="color: #9333ea;" />
                         </div>
-                    }
-                    else
-                    {
-                        <MudAlert Severity="Severity.Normal" Class="mb-4 py-2" Style="font-size:0.8rem; background-color: #f8fafc; border: 1px dashed #cbd5e1;">
-                            No tienes finales inscriptos vigentes.
-                        </MudAlert>
-                    }
-
-                    <div class="mt-auto">
-                        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" FullWidth="true"
+                        <MudText Typo="Typo.h6" Style="font-weight: 800; color: var(--edusys-text-main); line-height: 1.2;">Turno de Examen Final</MudText>
+                    </div>
+                    <div class="doc-body">
+                        <MudText Typo="Typo.body2" Class="mt-2 mb-3" Style="color: var(--edusys-text-muted); line-height: 1.5;">
+                            Comprobante para presentar ante empleadores justificando el día de estudio/examen.
+                        </MudText>
+                        
+                        @if (misInscripcionesAFinales != null && misInscripcionesAFinales.Any())
+                        {
+                            <div class="mt-auto">
+                                <MudSelect T="int" @bind-Value="idFinalSeleccionado"
+                                           Label="Mesa Examinadora"
+                                           Variant="Variant.Outlined"
+                                           AnchorOrigin="Origin.BottomCenter"
+                                           Margin="Margin.Dense"
+                                           Class="custom-select-doc">
+                                    <MudSelectItem Value="0" Disabled="true">
+                                        <span style="color: #94a3b8;">-- Seleccione el turno --</span>
+                                    </MudSelectItem>
+                                    @foreach (var final in misInscripcionesAFinales)
+                                    {
+                                        <MudSelectItem Value="@final.IdInscripcionFinal!.Value">
+                                            <div class="d-flex flex-column">
+                                                @* ✅ CAMBIO AQUÍ: MateriaNombre *@
+                                                <span style="font-weight: 700; color: #1e293b;">@final.MateriaNombre</span>
+                                                <span style="font-size: 0.75rem; color: #64748b;">@final.FechaHora.ToString("dd/MM/yyyy HH:mm") hs</span>
+                                            </div>
+                                        </MudSelectItem>
+                                    }
+                                </MudSelect>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="mt-auto pa-3 rounded-lg d-flex align-center justify-center gap-2" style="background-color: #f8fafc; border: 1px dashed #cbd5e1; height: 56px;">
+                                <MudIcon Icon="@Icons.Material.Filled.EventBusy" Size="Size.Small" Style="color: #94a3b8;" />
+                                <MudText Typo="Typo.caption" Style="color: #64748b; font-weight: 600;">No tienes finales inscriptos.</MudText>
+                            </div>
+                        }
+                    </div>
+                    <div class="doc-footer">
+                        <MudButton Variant="Variant.Filled" Style="background-color: #9333ea; color: white; font-weight: 700; letter-spacing: 0.5px; border-radius: 8px;" FullWidth="true"
                                    StartIcon="@Icons.Material.Filled.PictureAsPdf"
                                    OnClick="DescargarConstanciaExamenFinal"
                                    Disabled="@(idFinalSeleccionado == 0 || procesando)">
-                            Generar PDF
+                            GENERAR CONSTANCIA
                         </MudButton>
                     </div>
                 </div>
             </MudItem>
 
-            @* 4. HISTORIA ACADÉMICA (Placeholder) *@
-            <MudItem xs="12" sm="6" md="4">
-                <div class="doc-card pa-6">
-                    <div class="doc-icon-box" style="background-color: #fff7ed;">
-                        <MudIcon Icon="@Icons.Material.Filled.HistoryEdu" Size="Size.Large" Style="color: #ea580c;" />
+            @* -------------------------------------------------------- *@
+            @* 4. HISTORIA ACADÉMICA / ANALÍTICO                        *@
+            @* -------------------------------------------------------- *@
+            <MudItem xs="12" sm="6" lg="4">
+                <div class="doc-card animate__animated animate__fadeInUp" style="animation-delay: 0.3s;">
+                    <div class="doc-header">
+                        <div class="doc-icon-box" style="background: linear-gradient(135deg, #fff7ed, #ffedd5); border: 1px solid #fdba74;">
+                            <MudIcon Icon="@Icons.Material.Filled.HistoryEdu" Size="Size.Large" Style="color: #ea580c;" />
+                        </div>
+                        <MudText Typo="Typo.h6" Style="font-weight: 800; color: var(--edusys-text-main); line-height: 1.2;">Analítico Provisorio</MudText>
                     </div>
-                    <MudText Typo="Typo.h6" Style="font-weight: 700;">Analítico Provisorio</MudText>
-                    <MudText Typo="Typo.body2" Class="mt-2 mb-4" Style="color: #64748b;">
-                        Listado de materias aprobadas con nota final y promedio general.
-                    </MudText>
-                    <div class="mt-auto">
-                        <MudButton Variant="Variant.Outlined" Color="Color.Warning" FullWidth="true"
-                                   StartIcon="@Icons.Material.Filled.Download"
+                    <div class="doc-body">
+                        <MudText Typo="Typo.body2" Class="mt-2" Style="color: var(--edusys-text-muted); line-height: 1.5;">
+                            Listado completo de materias aprobadas con su calificación final, fecha de acta y promedio general histórico.
+                        </MudText>
+                        
+                        <div class="mt-4 pa-3 rounded-lg d-flex align-start gap-2" style="background-color: #fff7ed; border: 1px solid #fed7aa;">
+                            <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Style="color: #ea580c; margin-top: 2px;" />
+                            <MudText Typo="Typo.caption" Style="color: #c2410c; font-weight: 600; line-height: 1.4;">
+                                Este documento es de carácter informativo. Para un analítico oficial legalizado, acérquese a Bedelía.
+                            </MudText>
+                        </div>
+                    </div>
+                    <div class="doc-footer">
+                        <MudButton Variant="Variant.Filled" Color="Color.Warning" FullWidth="true"
+                                   StartIcon="@Icons.Material.Filled.MenuBook"
+                                   Style="font-weight: 700; letter-spacing: 0.5px; border-radius: 8px;"
                                    OnClick="DescargarAnalitico"
                                    Disabled="procesando">
-                            Generar Analítico
+                            DESCARGAR HISTORIAL
                         </MudButton>
                     </div>
                 </div>
             </MudItem>
+
         </MudGrid>
     }
 </div>
@@ -184,7 +312,6 @@
     private AlumnoDTO? alumnoActual;
     private PeriodoAcademicoDTO? periodoActual;
 
-    // Variables para la Constancia de Finales
     private List<MesaFinalOfertaDTO> misInscripcionesAFinales = new();
     private int idFinalSeleccionado = 0;
 
@@ -204,18 +331,16 @@
                 periodoActual = periodos.FirstOrDefault(p => p.Activo && p.Estado == "Abierto"
                                                         && p.FechaInicio <= DateTime.Now && p.FechaFin >= DateTime.Now);
 
-                // Si hay periodo, buscamos sus inscripciones a finales
                 if (alumnoActual != null && periodoActual != null)
                 {
-                    // Llamamos al servicio que devuelve la oferta y filtramos los que ya está inscripto
                     var oferta = await InscripcionFinalService.GetOfertaAsync(alumnoActual.Id, periodoActual.Id);
                     misInscripcionesAFinales = oferta.Where(o => o.YaInscripto).ToList();
                 }
             }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            Snackbar.Add("Error al cargar datos.", Severity.Error);
+            Snackbar.Add("Error de conexión al cargar la información disponible.", Severity.Error);
         }
         finally
         {
@@ -223,17 +348,18 @@
         }
     }
 
-    // ✅ DESCARGA CONSTANCIA DE EXAMEN FINAL
     private async Task DescargarConstanciaExamenFinal()
     {
         if (idFinalSeleccionado == 0) return;
 
         procesando = true;
+        StateHasChanged();
+
         try
         {
-            Snackbar.Add("Generando comprobante de mesa...", Severity.Info);
-
             var pdfBytes = await ReportesService.DescargarConstanciaFinalAsync(idFinalSeleccionado);
+        
+            // ✅ CAMBIO AQUÍ: .MateriaNombre en lugar de .Materia
             var nombreMateria = misInscripcionesAFinales.First(m => m.IdInscripcionFinal == idFinalSeleccionado).MateriaNombre;
             var fileName = $"Constancia_Examen_{nombreMateria.Replace(" ", "_")}.pdf";
 
@@ -241,8 +367,8 @@
             using var streamRef = new DotNetStreamReference(stream);
             await JS.InvokeVoidAsync("downloadFileFromStream", fileName, streamRef);
 
-            Snackbar.Add("Descarga finalizada.", Severity.Success);
-            idFinalSeleccionado = 0; // Reiniciamos el combo
+            Snackbar.Add("Constancia descargada exitosamente.", Severity.Success);
+            idFinalSeleccionado = 0;
         }
         catch (Exception)
         {
@@ -251,45 +377,46 @@
         finally
         {
             procesando = false;
+            StateHasChanged();
         }
     }
 
-    // ✅ DESCARGA CONSTANCIA DE INSCRIPCIÓN (CURSADA)
     private async Task DescargarConstanciaInscripcion()
     {
         if (!ValidarRequisitos()) return;
 
         procesando = true;
+        StateHasChanged();
+
         try
         {
-            Snackbar.Add("Generando constancia...", Severity.Info);
             var pdfBytes = await ReportesService.DescargarConstanciaInscripcionPdfAsync(alumnoActual!.Id, periodoActual!.Id);
-            var fileName = $"Constancia_Inscripcion_{DateTime.Now:yyyy}.pdf";
+            var fileName = $"Constancia_Inscripcion_{periodoActual.Nombre.Replace(" ", "_")}.pdf";
 
             using var stream = new MemoryStream(pdfBytes);
             using var streamRef = new DotNetStreamReference(stream);
             await JS.InvokeVoidAsync("downloadFileFromStream", fileName, streamRef);
 
-            Snackbar.Add("Descarga finalizada.", Severity.Success);
+            Snackbar.Add("Constancia de cursada descargada.", Severity.Success);
         }
         catch (Exception ex)
         {
-            // Ahora mostrará el mensaje real: "No tienes materias inscriptas..."
             Snackbar.Add(ex.Message, Severity.Warning);
         }
         finally
         {
             procesando = false;
+            StateHasChanged();
         }
     }
 
-    // ✅ DESCARGA ANALÍTICO PROVISORIO
     private async Task DescargarAnalitico()
     {
         procesando = true;
+        StateHasChanged();
+
         try
         {
-            Snackbar.Add("Compilando historia académica...", Severity.Info);
             var pdfBytes = await ReportesService.DescargarAnaliticoProvisorioAsync();
             var fileName = $"Analitico_Provisorio_{DateTime.Now:yyyyMMdd}.pdf";
 
@@ -301,31 +428,32 @@
         }
         catch (Exception ex)
         {
-            Snackbar.Add(ex.Message, Severity.Error);
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
         }
         finally
         {
             procesando = false;
+            StateHasChanged();
         }
     }
 
-    // ✅ DESCARGA CERTIFICADO ALUMNO REGULAR
     private async Task DescargarCertificadoRegular()
     {
         if (!ValidarRequisitos()) return;
 
         procesando = true;
+        StateHasChanged();
+
         try
         {
-            Snackbar.Add("Generando certificado...", Severity.Info);
             var pdfBytes = await ReportesService.DescargarCertificadoRegularPdfAsync(alumnoActual!.Id, periodoActual!.Id);
-            var fileName = $"Certificado_Regular_{DateTime.Now:yyyy}.pdf";
+            var fileName = $"Certificado_Alumno_Regular_{DateTime.Now:yyyy}.pdf";
 
             using var stream = new MemoryStream(pdfBytes);
             using var streamRef = new DotNetStreamReference(stream);
             await JS.InvokeVoidAsync("downloadFileFromStream", fileName, streamRef);
 
-            Snackbar.Add("Descarga finalizada.", Severity.Success);
+            Snackbar.Add("Certificado descargado exitosamente.", Severity.Success);
         }
         catch (Exception)
         {
@@ -334,6 +462,7 @@
         finally
         {
             procesando = false;
+            StateHasChanged();
         }
     }
 
@@ -341,7 +470,7 @@
     {
         if (periodoActual == null || alumnoActual == null)
         {
-            Snackbar.Add("No hay un periodo activo o no se encontraron datos del alumno.", Severity.Warning);
+            Snackbar.Add("No se detecta un ciclo lectivo activo para procesar el trámite.", Severity.Warning);
             return false;
         }
         return true;

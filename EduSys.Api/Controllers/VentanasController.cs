@@ -8,7 +8,7 @@ namespace EduSys.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+    [Authorize] // 🔒 Protección base
     public class VentanasController : ControllerBase
     {
         private readonly IVentanaOperativaRepository _repo;
@@ -19,14 +19,16 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAll()
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(IEnumerable<VentanaOperativaDTO>))]
+        public async Task<ActionResult<IEnumerable<VentanaOperativaDTO>>> GetAll()
         {
             var lista = await _repo.GetAllAsync();
+
             var dtos = lista.Select(v => new VentanaOperativaDTO
             {
                 Id = v.Id,
                 IdPeriodo = v.IdPeriodo,
-                NombrePeriodo = v.IdPeriodoNavigation.Nombre,
+                NombrePeriodo = v.IdPeriodoNavigation?.Nombre ?? "Sin Periodo",
                 TipoAccion = v.TipoAccion,
                 FechaInicio = v.FechaInicio,
                 FechaFin = v.FechaFin,
@@ -35,15 +37,23 @@ namespace EduSys.Api.Controllers
                 IdSede = v.IdSede,
                 NombreSede = v.IdSedeNavigation?.Nombre ?? "Todas"
             });
+
             return Ok(dtos);
         }
 
         [HttpPost]
-        [Authorize(Roles = "Administrador, Secretaria Academica")]
-        public async Task<IActionResult> Create(VentanaOperativaDTO dto)
+        [Authorize(Roles = "Administrador, Secretaria Academica")] // 🔒 Solo gestión
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> Create([FromBody] VentanaOperativaDTO dto)
         {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
             if (dto.FechaInicio == null || dto.FechaFin == null)
-                return BadRequest("Fechas requeridas");
+                return BadRequest(new { message = "Las fechas de inicio y fin son obligatorias." });
+
+            if (dto.FechaInicio >= dto.FechaFin)
+                return BadRequest(new { message = "La fecha de fin debe ser posterior a la fecha de inicio." });
 
             var nueva = new VentanaOperativa
             {
@@ -56,20 +66,29 @@ namespace EduSys.Api.Controllers
             };
 
             await _repo.CreateAsync(nueva);
-            return Ok();
+            return Ok(new { message = "Ventana operativa creada exitosamente." });
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Administrador, Secretaria Academica")]
+        [Authorize(Roles = "Administrador, Secretaria Academica")] // 🔒 Solo gestión
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Delete(int id)
         {
-            if (await _repo.DeleteAsync(id)) return Ok();
-            return BadRequest();
+            if (await _repo.DeleteAsync(id))
+                return NoContent();
+
+            return NotFound(new { message = "La ventana operativa no existe o ya fue eliminada." });
         }
 
         // Endpoint para verificar si se puede inscribir (Usado por el Front)
         [HttpGet("verificar")]
-        public async Task<IActionResult> Verificar(string accion, int periodo, int? carrera = null, int? sede = null)
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(bool))]
+        public async Task<ActionResult<bool>> Verificar(
+            [FromQuery] string accion,
+            [FromQuery] int periodo,
+            [FromQuery] int? carrera = null,
+            [FromQuery] int? sede = null)
         {
             bool habilitado = await _repo.IsHabilitadoAsync(accion, periodo, carrera, sede);
             return Ok(habilitado);

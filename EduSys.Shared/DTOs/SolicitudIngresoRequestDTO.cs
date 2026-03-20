@@ -4,7 +4,6 @@ namespace EduSys.Shared.DTOs
 {
     public class SolicitudIngresoRequestDTO
     {
-        // --- DATOS PERSONALES ---
         [Required(ErrorMessage = "El nombre es obligatorio.")]
         public string Nombre { get; set; } = string.Empty;
 
@@ -19,18 +18,14 @@ namespace EduSys.Shared.DTOs
         public string Email { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "La fecha de nacimiento es obligatoria.")]
-        public DateTime? FechaNacimiento { get; set; } // <--- AGREGAR ESTO
+        public DateTime? FechaNacimiento { get; set; } 
 
         public string? Telefono { get; set; } 
         public string? Direccion { get; set; }
 
-        // --- CARRERA ELEGIDA ---
         [Required(ErrorMessage = "Debes seleccionar una carrera.")]
         [Range(1, int.MaxValue, ErrorMessage = "Selecciona una carrera válida.")]
         public int IdCarreraInteres { get; set; }
-
-        // --- ARCHIVOS (Base64) ---
-        // Estos strings contendrán el archivo codificado que viene del InputFile de Blazor.
 
         [Required(ErrorMessage = "La foto de perfil es obligatoria.")]
         public string FotoPerfilBase64 { get; set; } = string.Empty;
@@ -47,7 +42,6 @@ namespace EduSys.Shared.DTOs
         [Required(ErrorMessage = "El título secundario (o constancia) es obligatorio.")]
         public string TituloSecundarioBase64 { get; set; } = string.Empty;
 
-        // Opcional o Requerido según tu regla de negocio (lo dejo requerido por seguridad)
         [Required(ErrorMessage = "El certificado de antecedentes es obligatorio.")]
         public string AntecedentesPenalesBase64 { get; set; } = string.Empty;
 

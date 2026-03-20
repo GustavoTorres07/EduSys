@@ -10,7 +10,7 @@ namespace EduSys.Shared.DTOs
         public int IdComision { get; set; }
 
         [Required(ErrorMessage = "El día es obligatorio")]
-        public string DiaSemana { get; set; } = null!; // Lunes, Martes, etc.
+        public string DiaSemana { get; set; } = null!; 
 
         [Required(ErrorMessage = "La hora de inicio es obligatoria")]
         public TimeSpan HoraInicio { get; set; }
@@ -20,11 +20,8 @@ namespace EduSys.Shared.DTOs
 
         [Required(ErrorMessage = "Debes asignar un aula")]
         public int IdAula { get; set; }
-
-        public string? AulaNombre { get; set; } // Para mostrar "Aula 1 - Planta Baja"
-        public string? SedeNombre { get; set; } // Para contexto visual
-
-        // Validación simple para UI
+        public string? AulaNombre { get; set; } 
+        public string? SedeNombre { get; set; }
         public bool EsHorarioValido => HoraFin > HoraInicio;
     }
 }

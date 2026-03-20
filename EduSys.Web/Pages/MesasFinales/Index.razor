@@ -2,73 +2,304 @@
 @using EduSys.Shared.DTOs
 @using EduSys.Web.Services.Interfaces
 @using Microsoft.AspNetCore.Authorization
+
 @attribute [Authorize(Roles = "Administrador, Secretaria Academica, Coordinador")]
 
 @inject IMesaFinalService MesaFinalService
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 
-<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
-    <div class="d-flex justify-space-between align-center mb-4">
+<style>
+    /* --- ESTILOS ESTÁNDAR EDUSYS --- */
+    .table-header-custom .mud-table-head .mud-table-cell {
+        color: #456990 !important;
+        font-weight: 800 !important;
+        background-color: #f8fafc !important;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.5px;
+    }
+
+    .row-hover-effect:hover {
+        background-color: #f1f5f9 !important;
+    }
+
+    /* Buscador y Selects consistentes */
+    .custom-filter-input .mud-input-outlined-border {
+        border-color: #cbd5e1 !important;
+        transition: border-color 0.2s;
+    }
+    
+    .custom-filter-input:hover .mud-input-outlined-border {
+        border-color: #456990 !important;
+    }
+
+    .custom-filter-input.mud-input-control.mud-input-focused .mud-input-outlined-border {
+        border-color: #456990 !important;
+        border-width: 2px !important;
+    }
+
+    /* ✅ FIX PRINCIPAL: texto visible en el buscador y selects */
+    .custom-filter-input input,
+    .custom-filter-input textarea,
+    .custom-filter-input .mud-select-input,
+    .custom-filter-input .mud-input-slot,
+    .custom-filter-input .mud-input input,
+    .custom-filter-input .mud-input textarea,
+    .custom-filter-input .mud-input .mud-select-input {
+        color: #1e293b !important;
+        font-weight: 600 !important;
+        -webkit-text-fill-color: #1e293b !important;
+    }
+
+    /* ✅ FIX: Visibilidad de iconos en los inputs (Lupa) */
+    .custom-filter-input .mud-icon-root,
+    .custom-filter-input .mud-input-adornment .mud-icon-root,
+    .custom-filter-input .mud-select-icon {
+        color: #456990 !important;
+        opacity: 1 !important;
+    }
+
+    /* ✅ FIX: evita fondo oscuro por autofill del navegador */
+    .custom-filter-input input:-webkit-autofill,
+    .custom-filter-input input:-webkit-autofill:hover,
+    .custom-filter-input input:-webkit-autofill:focus {
+        -webkit-text-fill-color: #1e293b !important;
+        -webkit-box-shadow: 0 0 0px 1000px white inset !important;
+        transition: background-color 5000s ease-in-out 0s;
+    }
+
+    /* ✅ FIX VISIBILIDAD: Paginador (Filas por página y números) */
+    .mud-table-pager {
+        color: #1e293b !important;
+    }
+    
+        .mud-table-pager .mud-input-slot,
+        .mud-table-pager .mud-select-input {
+            color: #1e293b !important;
+            -webkit-text-fill-color: #1e293b !important;
+            font-weight: 600 !important;
+        }
+    
+        .mud-table-pager .mud-icon-root {
+            color: #456990 !important;
+        }
+
+    /* Botones de Filtro Tipo Segmented Control */
+    .filter-group {
+        display: flex;
+        background-color: #f1f5f9;
+        border-radius: 8px;
+        padding: 4px;
+        border: 1px solid #e2e8f0;
+    }
+
+    .filter-btn {
+        border-radius: 6px !important;
+        text-transform: none !important;
+        font-weight: 700 !important;
+        padding: 4px 16px !important;
+    }
+
+    /* --- MODALES --- */
+    .unified-dialog-card {
+        background-color: white !important;
+        border-radius: 16px !important;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .modal-title-warning {
+        color: #d97706;
+        font-weight: 800;
+        font-size: 1.5rem;
+        letter-spacing: -0.5px;
+    }
+</style>
+
+@* OVERLAY DE PROTECCIÓN DURANTE PROCESAMIENTO *@
+<MudOverlay Visible="_procesando" DarkBackground="true" Absolute="false" ZIndex="9999">
+    <MudStack AlignItems="AlignItems.Center">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+        <MudText Typo="Typo.h6" Style="color: white; font-weight: 600;">Procesando operación...</MudText>
+    </MudStack>
+</MudOverlay>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-6 mb-10">
+
+    @* --- ENCABEZADO DE PÁGINA --- *@
+    <div class="d-flex align-center justify-space-between mb-6 flex-wrap gap-4">
         <div>
-            <MudText Typo="Typo.h5" Color="Color.Primary"><b>Gestión de Mesas Finales</b></MudText>
-            <MudText Typo="Typo.body2" Color="Color.Secondary">Administra los tribunales y fechas de exámenes.</MudText>
+            <MudText Typo="Typo.h4" Style="font-weight: 800; color: #456990; letter-spacing: -0.5px;">Gestión de Mesas Finales</MudText>
+            <MudText Typo="Typo.subtitle1" Class="mud-text-secondary">Administración de tribunales, fechas e inscripciones a exámenes.</MudText>
         </div>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="AbrirModalNuevo">
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   Size="Size.Large"
+                   Style="font-weight: 700; border-radius: 8px;"
+                   OnClick="AbrirModalNuevo"
+                   Disabled="loading">
             Nueva Mesa
         </MudButton>
     </div>
 
-    <MudTable Items="@mesas" Hover="true" Loading="@loading" Elevation="2" Class="rounded-lg">
+    @* --- TABLA PRINCIPAL --- *@
+    <MudTable Items="@mesas"
+              Hover="true"
+              Loading="@loading"
+              RowsPerPage="15"
+              Filter="new Func<MesaFinalDTO, bool>(FilterFunc)"
+              Elevation="2"
+              Class="rounded-lg table-header-custom overflow-hidden"
+              RowClass="row-hover-effect">
+        
+        <ToolBarContent>
+            <div class="d-flex flex-wrap align-center gap-4 w-100 mb-2">
+                
+                @* 1. Filtro Estado (Segmented Control) *@
+                <div class="filter-group">
+                    <MudButton OnClick="@(() => CambiarFiltro("Todas"))" Variant="@(filtroEstado == "Todas" ? Variant.Filled : Variant.Text)" Color="@(filtroEstado == "Todas" ? Color.Primary : Color.Default)" Size="Size.Small" Class="filter-btn" DisableElevation="true">Todas</MudButton>
+                    <MudButton OnClick="@(() => CambiarFiltro("Abiertas"))" Variant="@(filtroEstado == "Abiertas" ? Variant.Filled : Variant.Text)" Color="@(filtroEstado == "Abiertas" ? Color.Success : Color.Default)" Size="Size.Small" Class="filter-btn" DisableElevation="true">Abiertas</MudButton>
+                    <MudButton OnClick="@(() => CambiarFiltro("Cerradas"))" Variant="@(filtroEstado == "Cerradas" ? Variant.Filled : Variant.Text)" Color="@(filtroEstado == "Cerradas" ? Color.Error : Color.Default)" Size="Size.Small" Class="filter-btn" DisableElevation="true">Cerradas</MudButton>
+                </div>
+
+                <MudSpacer />
+
+                @* 2. Buscador General *@
+                <MudTextField @bind-Value="searchString"
+                              Placeholder="Buscar materia, carrera o docente..."
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              AdornmentColor="Color.Primary"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Class="custom-filter-input mt-0"
+                              Style="min-width: 320px; background-color: white; border-radius: 8px;"
+                              Immediate="true"
+                              DebounceInterval="300"
+                              Clearable="true" />
+            </div>
+        </ToolBarContent>
+
         <HeaderContent>
-            <MudTh>Fecha y Hora</MudTh>
-            <MudTh>Materia</MudTh>
-            <MudTh>Carrera</MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<MesaFinalDTO, object>(x => x.FechaHora)">Fecha y Hora</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<MesaFinalDTO, object>(x => x.MateriaNombre)">Asignatura</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<MesaFinalDTO, object>(x => x.CarreraNombre)">Carrera</MudTableSortLabel></MudTh>
             <MudTh>Tribunal (Presidente)</MudTh>
-            <MudTh>Inscriptos</MudTh>
-            <MudTh>Estado</MudTh>
+            <MudTh Style="text-align:center">Inscriptos</MudTh>
+            <MudTh Style="text-align:center">Estado</MudTh>
             <MudTh Style="text-align:center">Acciones</MudTh>
         </HeaderContent>
+
         <RowTemplate>
-            <MudTd>
-                <MudText Typo="Typo.body2" Style="font-weight:600">@context.FechaHora.ToString("dd/MM/yyyy")</MudText>
-                <MudText Typo="Typo.caption" Color="Color.Secondary">@context.FechaHora.ToString("HH:mm") hs</MudText>
+            <MudTd DataLabel="Fecha y Hora">
+                <MudText Typo="Typo.body2" Style="font-weight: 800; color: #1e293b;">@context.FechaHora.ToString("dd/MM/yyyy")</MudText>
+                <MudText Typo="Typo.caption" Style="color: #64748b; font-weight: 600;">
+                    <MudIcon Icon="@Icons.Material.Filled.AccessTime" Size="Size.Small" Style="font-size: 0.7rem; vertical-align: middle;" />
+                    @context.FechaHora.ToString("HH:mm") hs
+                </MudText>
             </MudTd>
-            <MudTd><b>@context.MateriaNombre</b></MudTd>
-            <MudTd>@context.CarreraNombre</MudTd>
-            <MudTd>
-                <MudIcon Icon="@Icons.Material.Filled.Gavel" Size="Size.Small" Class="mr-1" /> @context.PresidenteNombre
+            
+            <MudTd DataLabel="Asignatura">
+                <MudText Typo="Typo.body2" Style="font-weight: 700; color: #456990;">@context.MateriaNombre</MudText>
             </MudTd>
-            <MudTd>
-                <MudChip T="string" Size="Size.Small" Color="@(context.CantidadInscriptos > 0 ? Color.Info : Color.Default)">
+
+            <MudTd DataLabel="Carrera">
+                <MudText Typo="Typo.caption" Style="color: #475569;">@context.CarreraNombre</MudText>
+            </MudTd>
+
+            <MudTd DataLabel="Tribunal">
+                <div class="d-flex align-center gap-2">
+                    <MudIcon Icon="@Icons.Material.Filled.Gavel" Size="Size.Small" Style="color: #64748b;" />
+                    <MudText Typo="Typo.body2" Style="font-weight: 500;">
+                        @(string.IsNullOrWhiteSpace(context.PresidenteNombre) ? "Sin Asignar" : context.PresidenteNombre)
+                    </MudText>
+                </div>
+            </MudTd>
+
+            <MudTd DataLabel="Inscriptos" Style="text-align:center">
+                <MudChip T="string" Size="Size.Small" Variant="@(context.CantidadInscriptos > 0 ? Variant.Filled : Variant.Outlined)" Color="@(context.CantidadInscriptos > 0 ? Color.Info : Color.Default)" Style="font-weight: 700;">
                     @context.CantidadInscriptos alumnos
                 </MudChip>
             </MudTd>
-            <MudTd>
+
+            <MudTd DataLabel="Estado" Style="text-align:center">
                 @if (context.Estado == "Abierta")
                 {
-                    <MudChip T="string" Color="Color.Success" Size="Size.Small">Abierta</MudChip>
+                    <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Outlined" Style="font-weight: 700;">ABIERTA</MudChip>
                 }
                 else
                 {
-
-                    <MudChip T="string" Color="Color.Error" Size="Size.Small">Cerrada</MudChip>
+                    <MudChip T="string" Color="Color.Error" Size="Size.Small" Variant="Variant.Filled" Style="font-weight: 700;">CERRADA</MudChip>
                 }
             </MudTd>
-            <MudTd Style="text-align:center">
-                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" OnClick="@(() => AbrirModalEditar(context))" />
-                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => Eliminar(context.Id))" />
+
+            <MudTd DataLabel="Acciones" Style="text-align:center">
+                <div class="d-flex justify-center gap-1">
+                    <MudTooltip Text="Editar Mesa">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" OnClick="@(() => AbrirModalEditar(context))" Disabled="_procesando" />
+                    </MudTooltip>
+                    
+                    <MudTooltip Text="Eliminar Mesa">
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => AbrirModalEliminar(context))" Disabled="_procesando" />
+                    </MudTooltip>
+                </div>
             </MudTd>
         </RowTemplate>
+
+        <LoadingContent>
+            <MudText Typo="Typo.body1" Class="pa-4 text-center" Style="color: #64748b;">Cargando mesas de examen...</MudText>
+        </LoadingContent>
         <NoRecordsContent>
-            <MudText Class="pa-4">No hay mesas finales registradas.</MudText>
+            <div class="d-flex flex-column align-center justify-center pa-8">
+                <MudIcon Icon="@Icons.Material.Filled.EventSeat" Style="font-size: 4rem; color: #cbd5e1;" Class="mb-3" />
+                <MudText Typo="Typo.h6" Style="font-weight: 700; color: #475569;">No se encontraron mesas</MudText>
+                <MudText Typo="Typo.body2" Style="color: #64748b;">No hay registros que coincidan con los filtros actuales.</MudText>
+            </div>
         </NoRecordsContent>
+        <PagerContent>
+            <MudTablePager RowsPerPageString="Filas por página:" InfoFormat="{first_item}-{last_item} de {all_items}" />
+        </PagerContent>
     </MudTable>
 </MudContainer>
 
+@* --- MODAL: CONFIRMAR ELIMINACIÓN --- *@
+<MudDialog @bind-Visible="mostrarDialogoEliminar" Options="optionsEliminar" Class="unified-dialog-card pb-2">
+    <DialogContent>
+        <div class="pa-4 d-flex flex-column align-center text-center">
+            <div style="background-color: #fffbeb; padding: 16px; border-radius: 50%; margin-bottom: 16px;">
+                <MudIcon Icon="@Icons.Material.Filled.WarningAmber" Color="Color.Warning" Style="font-size: 3rem;" />
+            </div>
+            <MudText Class="modal-title-warning mb-2">Eliminar Mesa Final</MudText>
+            <MudText Typo="Typo.body1" Style="color: #334155; font-weight: 600;" Class="mb-2">
+                Estás por eliminar la mesa de <b>@mesaParaEliminar?.MateriaNombre</b>.
+            </MudText>
+            <MudText Typo="Typo.caption" Style="color: #64748b; line-height: 1.4;">
+                ADVERTENCIA: Se eliminarán también las inscripciones de los alumnos asociados a este tribunal. Esta acción no se puede deshacer.
+            </MudText>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <div class="px-4 pb-4 d-flex justify-center gap-3 w-100">
+            <MudButton OnClick="CerrarModalEliminar" Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg font-weight-bold" Disabled="_procesando">Cancelar</MudButton>
+            <MudButton OnClick="ConfirmarEliminar" Variant="Variant.Filled" Color="Color.Error" Class="rounded-lg font-weight-bold px-6" Disabled="_procesando">
+                @(_procesando ? "Eliminando..." : "Confirmar Eliminación")
+            </MudButton>
+        </div>
+    </DialogActions>
+</MudDialog>
+
 @code {
     private bool loading = true;
+    private bool _procesando = false;
     private List<MesaFinalDTO> mesas = new();
+
+    private string searchString = "";
+    private string filtroEstado = "Todas";
+
+    private bool mostrarDialogoEliminar = false;
+    private MesaFinalDTO? mesaParaEliminar;
+    private DialogOptions optionsEliminar = new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true, BackdropClick = false, CloseButton = false };
 
     protected override async Task OnInitializedAsync()
     {
@@ -78,37 +309,119 @@
     private async Task CargarDatos()
     {
         loading = true;
-        mesas = await MesaFinalService.GetAllAsync();
-        loading = false;
+        StateHasChanged();
+
+        try
+        {
+            mesas = await MesaFinalService.GetAllAsync();
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Error al comunicarse con el servidor.", Severity.Error);
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void CambiarFiltro(string estado)
+    {
+        filtroEstado = estado;
+        StateHasChanged();
+    }
+
+    private bool FilterFunc(MesaFinalDTO m)
+    {
+        // 1. Filtro de Estado
+        if (filtroEstado == "Abiertas" && m.Estado != "Abierta") return false;
+        if (filtroEstado == "Cerradas" && m.Estado != "Cerrada") return false;
+
+        // 2. Buscador de Texto
+        if (!string.IsNullOrWhiteSpace(searchString))
+        {
+            var term = searchString.Trim().ToLower();
+            bool match = (m.MateriaNombre?.ToLower().Contains(term) ?? false) ||
+                         (m.CarreraNombre?.ToLower().Contains(term) ?? false) ||
+                         (m.PresidenteNombre?.ToLower().Contains(term) ?? false);
+            if (!match) return false;
+        }
+
+        return true;
     }
 
     private async Task AbrirModalNuevo()
     {
-        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, NoHeader = true }; 
-        var dialog = await DialogService.ShowAsync<DialogoMesaFinal>("Nueva Mesa de Examen", options);
+        // En tu componente DialogoMesaFinal asumo que recibe la Mesa en caso de edición,
+        // y como usas NoHeader=true, todo el diseño interno ya debería estar encapsulado allí.
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, NoHeader = true, BackdropClick = false };
+        var dialog = await DialogService.ShowAsync<DialogoMesaFinal>("", options);
         var result = await dialog.Result;
 
-        if (!result.Canceled) await CargarDatos();
+        if (!result.Canceled)
+        {
+            _procesando = true;
+            await CargarDatos();
+            _procesando = false;
+        }
     }
 
     private async Task AbrirModalEditar(MesaFinalDTO mesa)
     {
         var parameters = new DialogParameters { ["MesaAEditar"] = mesa };
-        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, NoHeader = true };
-        var dialog = await DialogService.ShowAsync<DialogoMesaFinal>("Editar Mesa de Examen", parameters, options);
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, NoHeader = true, BackdropClick = false };
+        var dialog = await DialogService.ShowAsync<DialogoMesaFinal>("", parameters, options);
         var result = await dialog.Result;
 
-        if (!result.Canceled) await CargarDatos();
+        if (!result.Canceled)
+        {
+            _procesando = true;
+            await CargarDatos();
+            _procesando = false;
+        }
     }
 
-    private async Task Eliminar(int id)
+    private void AbrirModalEliminar(MesaFinalDTO mesa)
     {
-        bool? confirm = await DialogService.ShowMessageBox("Confirmar", "¿Eliminar esta mesa final?", yesText: "Eliminar", cancelText: "Cancelar");
-        if (confirm == true)
+        mesaParaEliminar = mesa;
+        mostrarDialogoEliminar = true;
+    }
+
+    private async Task ConfirmarEliminar()
+    {
+        if (mesaParaEliminar == null) return;
+
+        _procesando = true;
+        StateHasChanged();
+
+        try
         {
-            var res = await MesaFinalService.DeleteAsync(id);
-            if (res.Exito) { Snackbar.Add("Mesa eliminada", Severity.Success); await CargarDatos(); }
-            else { Snackbar.Add(res.Mensaje, Severity.Error); }
+            var res = await MesaFinalService.DeleteAsync(mesaParaEliminar.Id);
+            if (res.Exito)
+            {
+                Snackbar.Add("La mesa de examen fue eliminada exitosamente.", Severity.Success);
+                await CargarDatos();
+            }
+            else
+            {
+                Snackbar.Add(res.Mensaje, Severity.Error);
+            }
         }
+        catch (Exception)
+        {
+            Snackbar.Add("Ocurrió un error inesperado al intentar eliminar.", Severity.Error);
+        }
+        finally
+        {
+            _procesando = false;
+            mostrarDialogoEliminar = false;
+            StateHasChanged();
+        }
+    }
+
+    private void CerrarModalEliminar()
+    {
+        if (!_procesando) mostrarDialogoEliminar = false;
     }
 }

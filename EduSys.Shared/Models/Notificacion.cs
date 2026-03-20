@@ -11,9 +11,7 @@ namespace EduSys.Shared.Models
         public string Mensaje { get; set; } = null!;
         public DateTime Fecha { get; set; }
         public bool Leida { get; set; }
-        public string? Tipo { get; set; } // Ej: "Examen", "Asistencia", "Sistema"
-
-        // Relación de navegación
+        public string? Tipo { get; set; } 
         public virtual Usuario IdUsuarioNavigation { get; set; } = null!;
     }
 }

@@ -3,71 +3,194 @@
 @using EduSys.Web.Services.Interfaces
 @using EduSys.Web.Pages.Admin.Components
 @using Microsoft.AspNetCore.Authorization
-@attribute [Authorize(Roles = "Administrador, Secretaria Academica")]
 
 @inject IAlumnoService AlumnoService
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
-    <MudText Typo="Typo.h5" GutterBottom="true" Color="Color.Primary">
-        <MudIcon Icon="@Icons.Material.Filled.AppRegistration" Class="mr-2" /> Gestión de Inscripciones Administrativas
-    </MudText>
-    <MudText Typo="Typo.body2" Class="mb-4">
-        Busque un alumno para realizar inscripciones manuales (Forzar cupo, ignorar correlativas, fuera de término).
-    </MudText>
+@attribute [Authorize(Roles = "Administrador, Secretaria Academica")]
 
-    @if (loading)
-    {
-        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+<style>
+    /* Estilos de tabla consistentes */
+    .table-header-custom .mud-table-head .mud-table-cell {
+        color: #456990 !important;
+        font-weight: 800 !important;
+        background-color: #f8fafc !important;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.5px;
     }
-    else
-    {
-        <MudTable Items="@alumnos" Dense="true" Hover="true" Bordered="true" Striped="true" Filter="new Func<AlumnoListadoDTO,bool>(FilterFunc)">
-            <ToolBarContent>
-                <MudText Typo="Typo.h6">Listado de Alumnos Activos</MudText>
-                <MudSpacer />
-                <MudTextField @bind-Value="searchString" Placeholder="Buscar por Nombre, DNI o Legajo..." Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
-            </ToolBarContent>
-            <HeaderContent>
-                <MudTh>Legajo</MudTh>
-                <MudTh>DNI</MudTh>
-                <MudTh>Alumno</MudTh>
-                <MudTh>Carrera / Plan</MudTh>
-                <MudTh>Sede</MudTh>
-                <MudTh Style="text-align:center">Acciones</MudTh>
-            </HeaderContent>
-            <RowTemplate>
-                <MudTd DataLabel="Legajo">
-                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Primary">@context.Legajo</MudChip>
-                </MudTd>
-                <MudTd DataLabel="DNI">@context.Dni</MudTd>
-                <MudTd DataLabel="Alumno">
-                    <div class="d-flex align-center">
-                        <MudAvatar Size="Size.Small" Class="mr-2">@(context.NombreCompleto.Substring(0, 1))</MudAvatar>
-                        @context.NombreCompleto
-                    </div>
-                </MudTd>
-                <MudTd DataLabel="Carrera">
-                    <MudText Typo="Typo.caption">@context.NombreCarrera</MudText><br />
-                    <MudText Typo="Typo.caption" Color="Color.Secondary">@context.NombrePlan</MudText>
-                </MudTd>
-                <MudTd DataLabel="Sede">@context.NombreSede</MudTd>
-                <MudTd DataLabel="Acciones" Style="text-align:center">
-                    <MudTooltip Text="Gestionar Inscripciones / Forzar Alta">
-                        <MudIconButton Icon="@Icons.Material.Filled.PostAdd" 
-                                       Color="Color.Success" 
-                                       Variant="Variant.Filled" 
-                                       Size="Size.Small"
-                                       OnClick="@(() => AbrirInscripcionManual(context))" />
-                    </MudTooltip>
-                </MudTd>
-            </RowTemplate>
-            <PagerContent>
-                <MudTablePager RowsPerPageString="Filas por pág." />
-            </PagerContent>
-        </MudTable>
+
+    .row-hover-effect:hover {
+        background-color: #f1f5f9 !important;
     }
+
+    /* Buscador consistente */
+    .custom-filter-input .mud-input-outlined-border {
+        border-color: #cbd5e1 !important;
+        transition: border-color 0.2s;
+    }
+    
+    .custom-filter-input:hover .mud-input-outlined-border {
+        border-color: #456990 !important;
+    }
+
+    .custom-filter-input.mud-input-control.mud-input-focused .mud-input-outlined-border {
+        border-color: #456990 !important;
+        border-width: 2px !important;
+    }
+
+    /* ✅ FIX VISIBILIDAD: texto visible en el buscador */
+    .custom-filter-input input {
+        color: #1e293b !important;
+        font-weight: 600 !important;
+        -webkit-text-fill-color: #1e293b !important;
+    }
+
+    /* ✅ FIX: Visibilidad del icono de la lupa */
+    .custom-filter-input .mud-input-adornment .mud-icon-root {
+        color: #456990 !important;
+        opacity: 1 !important;
+    }
+
+    /* ✅ FIX VISIBILIDAD: Paginador (Filas por página y números) */
+    .mud-table-pager {
+        color: #1e293b !important;
+    }
+    
+        .mud-table-pager .mud-input-slot,
+        .mud-table-pager .mud-select-input {
+            color: #1e293b !important;
+            -webkit-text-fill-color: #1e293b !important;
+            font-weight: 600 !important;
+        }
+    
+        .mud-table-pager .mud-icon-root {
+            color: #456990 !important;
+        }
+</style>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-6 mb-10">
+    
+    @* --- ENCABEZADO --- *@
+    <div class="d-flex align-center justify-space-between mb-6 flex-wrap gap-4">
+        <div>
+            <MudText Typo="Typo.h4" Style="font-weight: 800; color: #456990; letter-spacing: -0.5px;">Gestión de Inscripciones</MudText>
+            <MudText Typo="Typo.subtitle1" Class="mud-text-secondary">Inscripciones manuales (Forzar cupo, excepciones de correlativas, fuera de término).</MudText>
+        </div>
+        <MudButton Variant="Variant.Filled"
+                   StartIcon="@Icons.Material.Filled.Refresh"
+                   Color="Color.Primary"
+                   OnClick="CargarAlumnos"
+                   Disabled="@loading"
+                   Size="Size.Large"
+                   Style="font-weight: 700; border-radius: 8px;">
+            Actualizar
+        </MudButton>
+    </div>
+
+    @* --- TABLA DE DATOS --- *@
+    <MudTable Items="@alumnos"
+              Dense="true"
+              Hover="true"
+              Bordered="false"
+              Striped="false"
+              Filter="new Func<AlumnoListadoDTO, bool>(FilterFunc)"
+              Loading="@loading"
+              LoadingProgressColor="Color.Primary"
+              Elevation="2"
+              Class="rounded-lg table-header-custom overflow-hidden"
+              RowClass="row-hover-effect">
+        
+        <ToolBarContent>
+            <MudIcon Icon="@Icons.Material.Filled.AppRegistration" Color="Color.Primary" Class="mr-2" />
+            <MudText Typo="Typo.h6" Style="font-weight: 700; color: #1e293b;">Padrón de Alumnos Activos</MudText>
+            <MudSpacer />
+            
+            @* BUSCADOR OPTIMIZADO *@
+            <MudTextField @bind-Value="searchString"
+                          Placeholder="Buscar por Nombre, DNI o Legajo..."
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          AdornmentColor="Color.Primary"
+                          Class="custom-filter-input mt-0"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Style="min-width: 350px; background-color: white; border-radius: 8px;"
+                          Immediate="true"
+                          DebounceInterval="300"
+                          Clearable="true" />
+        </ToolBarContent>
+
+        <HeaderContent>
+            <MudTh><MudTableSortLabel SortBy="new Func<AlumnoListadoDTO, object>(x => x.Legajo)">Legajo</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<AlumnoListadoDTO, object>(x => x.NombreCompleto)">Alumno</MudTableSortLabel></MudTh>
+            <MudTh>DNI</MudTh>
+            <MudTh>Carrera / Plan</MudTh>
+            <MudTh>Sede</MudTh>
+            <MudTh Style="text-align:center">Acciones</MudTh>
+        </HeaderContent>
+
+        <RowTemplate>
+            <MudTd DataLabel="Legajo">
+                <MudText Typo="Typo.body2" Style="font-weight: 700; color: #456990;">@context.Legajo</MudText>
+            </MudTd>
+            
+            <MudTd DataLabel="Alumno">
+                <div class="d-flex align-center">
+                    <MudAvatar Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled" Class="mr-3" Style="font-weight: 600;">
+                        @(string.IsNullOrWhiteSpace(context.NombreCompleto) ? "?" : context.NombreCompleto.Trim().Substring(0, 1).ToUpper())
+                    </MudAvatar>
+                    <MudText Typo="Typo.body2" Style="font-weight: 600; color: #1e293b;">@context.NombreCompleto</MudText>
+                </div>
+            </MudTd>
+
+            <MudTd DataLabel="DNI">
+                <MudText Typo="Typo.body2" Style="color: #475569;">@context.Dni</MudText>
+            </MudTd>
+
+            <MudTd DataLabel="Carrera / Plan">
+                <MudText Typo="Typo.caption" Style="font-weight:700; color: #334155;">@context.NombreCarrera</MudText><br />
+                <MudText Typo="Typo.caption" Class="d-block" Style="color: #94a3b8;">Plan: @context.NombrePlan</MudText>
+            </MudTd>
+
+            <MudTd DataLabel="Sede">
+                <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined" Style="font-weight: 600; color: #475569;">
+                    @(string.IsNullOrWhiteSpace(context.NombreSede) ? "No asignada" : context.NombreSede)
+                </MudChip>
+            </MudTd>
+
+            <MudTd DataLabel="Acciones" Style="text-align:center">
+                <MudTooltip Text="Gestionar Inscripciones / Forzar Alta">
+                    <MudIconButton Icon="@Icons.Material.Filled.PostAdd"
+                                   Color="Color.Success"
+                                   Variant="Variant.Filled"
+                                   Size="Size.Small"
+                                   Style="border-radius: 6px; box-shadow: none;"
+                                   OnClick="@(() => AbrirInscripcionManual(context))" />
+                </MudTooltip>
+            </MudTd>
+        </RowTemplate>
+
+        <LoadingContent>
+            <MudText Typo="Typo.body1" Class="pa-4 text-center" Style="color: #64748b;">
+                Cargando padrón de alumnos...
+            </MudText>
+        </LoadingContent>
+
+        <NoRecordsContent>
+            <div class="d-flex flex-column align-center justify-center pa-8">
+                <MudIcon Icon="@Icons.Material.Filled.PersonSearch" Style="font-size: 4rem; color: #cbd5e1;" Class="mb-3" />
+                <MudText Typo="Typo.h6" Style="font-weight: 700; color: #475569;">No hay resultados</MudText>
+                <MudText Typo="Typo.body2" Style="color: #94a3b8;">No se encontraron alumnos con los datos ingresados.</MudText>
+            </div>
+        </NoRecordsContent>
+
+        <PagerContent>
+            <MudTablePager RowsPerPageString="Filas por página:" InfoFormat="{first_item}-{last_item} de {all_items}" />
+        </PagerContent>
+
+    </MudTable>
 </MudContainer>
 
 @code {
@@ -85,54 +208,51 @@
         try
         {
             loading = true;
-            // Usamos el método GetAllAsync que corregimos en el AlumnoRepository
+            // Para asegurar que la UI muestre el loader si tarda
+            StateHasChanged();
+            
             alumnos = await AlumnoService.GetAllAsync();
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            Snackbar.Add($"Error al cargar alumnos: {ex.Message}", Severity.Error);
+            Snackbar.Add("Error al cargar la lista de alumnos. Verifique la conexión.", Severity.Error);
         }
         finally
         {
             loading = false;
+            StateHasChanged();
         }
     }
 
-    // Lógica de filtrado para la tabla
+    // Filtro seguro contra nulos y tolerante a mayúsculas/minúsculas
     private bool FilterFunc(AlumnoListadoDTO element)
     {
-        if (string.IsNullOrWhiteSpace(searchString))
-            return true;
+        if (string.IsNullOrWhiteSpace(searchString)) return true;
         
-        if (element.NombreCompleto.Contains(searchString, StringComparison.OrdinalIgnoreCase))
-            return true;
-        if (element.Dni.Contains(searchString, StringComparison.OrdinalIgnoreCase))
-            return true;
-        if (element.Legajo.Contains(searchString, StringComparison.OrdinalIgnoreCase))
-            return true;
-            
-        return false;
+        var term = searchString.Trim().ToLower();
+
+        return (element.NombreCompleto?.ToLower().Contains(term) ?? false) ||
+               (element.Dni?.Contains(term) ?? false) ||
+               (element.Legajo?.ToLower().Contains(term) ?? false) ||
+               (element.NombreCarrera?.ToLower().Contains(term) ?? false); // Añadimos la carrera al buscador
     }
 
-    // Abre el diálogo que creamos anteriormente
     private async Task AbrirInscripcionManual(AlumnoListadoDTO alumno)
     {
         var parameters = new DialogParameters
         {
-            { "IdAlumno", alumno.IdAlumno },
-            { "NombreAlumno", alumno.NombreCompleto },
-            { "IdSede", alumno.IdSede },
-            { "NombreSede", alumno.NombreSede ?? "Sede Central" } // <-- CLAVE: Evita enviar un NULL
+            ["IdAlumno"] = alumno.IdAlumno,
+            ["NombreAlumno"] = alumno.NombreCompleto,
+            ["IdSede"] = alumno.IdSede,
+            ["NombreSede"] = string.IsNullOrWhiteSpace(alumno.NombreSede) ? "Sede Central" : alumno.NombreSede
         };
 
-        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        // Cambiamos BackdropClick a false para evitar que se cierre el modal por accidente
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true, BackdropClick = false };
+        
+        // Asumimos que el diálogo se encarga de todo. Si cerrarlo requiere refrescar la tabla,
+        // puedes llamar a "await CargarAlumnos()" dentro del if(!result.Canceled).
         var dialog = DialogService.Show<GestionInscripcionesDialog>("", parameters, options);
-        var result = await dialog.Result;
-
-        if (!result.Canceled)
-        {
-            // Opcional: Si necesitas recargar algo tras la inscripción
-            // En este caso, como es una acción directa, no hace falta recargar la lista de alumnos
-        }
+        await dialog.Result;
     }
 }

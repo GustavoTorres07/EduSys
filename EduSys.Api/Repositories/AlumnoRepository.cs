@@ -16,31 +16,27 @@ namespace EduSys.Api.Repositories
         }
 
         // =========================================================
-        // 1. LISTADO (Grilla Principal)
+        // 1. LISTADO (Grilla Principal) - 🚀 OPTIMIZADO: Proyección Directa SQL
         // =========================================================
         public async Task<List<AlumnoListadoDTO>> GetAllAsync()
         {
             return await _context.Alumnos
-                .Include(a => a.IdUsuarioNavigation)
-                .Include(a => a.IdSedeNavigation) // Necesario para el nombre de la sede
-                .Include(a => a.IdPlanActualNavigation)
-                    .ThenInclude(p => p.IdCarreraNavigation)
+                .AsNoTracking() // Libera memoria RAM
                 .Where(a => a.Activo == true)
                 .Select(a => new AlumnoListadoDTO
                 {
-                    // 1. Mapeo correcto de IDs y Legajo
-                    IdAlumno = a.Id,      // En tu DTO se llama IdAlumno, no Id
+                    // Al mapear directamente aquí, EF Core traduce esto a un "SELECT a.Id, u.Dni..." 
+                    // en SQL y no trae las columnas pesadas (como Urls o Hash de claves).
+                    IdAlumno = a.Id,
                     Legajo = a.Legajo,
                     Activo = a.Activo ?? true,
 
-                    // 2. Mapeo de Usuario (Concatenamos NombreCompleto)
-                    // IMPORTANTE: Usamos 'Dni' (minúscula) como está en tu Usuario.cs
                     Dni = a.IdUsuarioNavigation.Dni,
                     NombreCompleto = a.IdUsuarioNavigation.Apellido + ", " + a.IdUsuarioNavigation.Nombre,
                     Email = a.IdUsuarioNavigation.Email,
                     FotoPerfilUrl = a.IdUsuarioNavigation.FotoPerfilUrl,
 
-                    // 3. Mapeo seguro de Carrera y Plan (Validando Nulos)
+                    // Mapeo seguro con chequeo de nulos
                     NombreCarrera = a.IdPlanActualNavigation != null
                                     ? a.IdPlanActualNavigation.IdCarreraNavigation.Nombre
                                     : "Sin Carrera Asignada",
@@ -49,7 +45,6 @@ namespace EduSys.Api.Repositories
                                  ? a.IdPlanActualNavigation.Nombre
                                  : "Sin Plan",
 
-                    // 4. Mapeo de Sede
                     NombreSede = a.IdSedeNavigation != null
                                  ? a.IdSedeNavigation.Nombre
                                  : "Sin Sede"
@@ -63,8 +58,9 @@ namespace EduSys.Api.Repositories
         public async Task<AlumnoRequestDTO?> GetByIdAsync(int id)
         {
             var alumno = await _context.Alumnos
+                .AsNoTracking() // Lectura limpia y rápida
                 .Include(a => a.IdUsuarioNavigation)
-                .Include(a => a.IdSedeNavigation) // ✅ AGREGADO
+                .Include(a => a.IdSedeNavigation)
                 .FirstOrDefaultAsync(a => a.Id == id);
 
             if (alumno == null) return null;
@@ -72,11 +68,8 @@ namespace EduSys.Api.Repositories
             return new AlumnoRequestDTO
             {
                 IdAlumno = alumno.Id,
-
-                // ✅ MAPEAMOS LA SEDE (Asegúrate de tener IdSede en AlumnoRequestDTO)
                 IdSede = alumno.IdSede ?? 0,
 
-                // --- Datos Usuario (Tabla Usuario) ---
                 Nombre = alumno.IdUsuarioNavigation.Nombre,
                 Apellido = alumno.IdUsuarioNavigation.Apellido,
                 Dni = alumno.IdUsuarioNavigation.Dni,
@@ -86,16 +79,13 @@ namespace EduSys.Api.Repositories
                 Localidad = alumno.IdUsuarioNavigation.Localidad,
                 FechaNacimiento = alumno.IdUsuarioNavigation.FechaNacimiento?.ToDateTime(TimeOnly.MinValue),
                 IdNacionalidad = alumno.IdUsuarioNavigation.IdNacionalidad,
-
                 EstadoCivil = alumno.IdUsuarioNavigation.EstadoCivil,
                 Sexo = alumno.IdUsuarioNavigation.Sexo,
                 LugarNacimiento = alumno.IdUsuarioNavigation.LugarNacimiento,
-
                 FotoPerfilUrl = alumno.IdUsuarioNavigation.FotoPerfilUrl,
                 NombreContactoEmergencia = alumno.IdUsuarioNavigation.NombreContactoEmergencia,
                 TelefonoContactoEmergencia = alumno.IdUsuarioNavigation.TelefonoContactoEmergencia,
 
-                // --- Datos Alumno (Tabla Alumno) ---
                 Legajo = alumno.Legajo,
                 IdPlanActual = alumno.IdPlanActual ?? 0,
                 Ocupacion = alumno.Ocupacion,
@@ -105,7 +95,6 @@ namespace EduSys.Api.Repositories
                 Activo = alumno.Activo ?? true,
                 Observaciones = alumno.Observaciones,
                 FechaIngreso = alumno.FechaIngreso?.ToDateTime(TimeOnly.MinValue),
-
                 FechaEgreso = alumno.FechaEgreso?.ToDateTime(TimeOnly.MinValue),
                 EstaBloqueado = alumno.EstaBloqueado,
                 MotivoBloqueo = alumno.MotivoBloqueo,
@@ -119,14 +108,13 @@ namespace EduSys.Api.Repositories
         }
 
         // =========================================================
-        // 3. CREAR ALUMNO (Transacción Usuario + Alumno)
+        // 3. CREAR ALUMNO (Transacción)
         // =========================================================
         public async Task<bool> CrearAsync(AlumnoRequestDTO dto)
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                // A. Crear Usuario
                 var usuario = new Usuario
                 {
                     Nombre = dto.Nombre,
@@ -153,16 +141,12 @@ namespace EduSys.Api.Repositories
                 _context.Usuarios.Add(usuario);
                 await _context.SaveChangesAsync();
 
-                // B. Crear Alumno
                 var alumno = new Alumno
                 {
                     IdUsuario = usuario.Id,
                     Legajo = string.IsNullOrEmpty(dto.Legajo) ? $"TMP-{dto.Dni}" : dto.Legajo,
                     IdPlanActual = dto.IdPlanActual,
-
-                    // ✅ GUARDAR SEDE (Si se crea manualmente desde Admin)
                     IdSede = dto.IdSede > 0 ? dto.IdSede : (int?)null,
-
                     EstadoAcademico = dto.Activo ? "Activo" : "Inactivo",
                     Activo = dto.Activo,
                     EstaBloqueado = dto.EstaBloqueado ?? false,
@@ -207,7 +191,6 @@ namespace EduSys.Api.Repositories
 
             var u = alumno.IdUsuarioNavigation;
 
-            // A. Actualizar Usuario
             u.Nombre = dto.Nombre;
             u.Apellido = dto.Apellido;
             u.Dni = dto.Dni;
@@ -216,7 +199,7 @@ namespace EduSys.Api.Repositories
             u.Direccion = dto.Direccion;
             u.Localidad = dto.Localidad;
             u.Activo = dto.Activo;
-            u.FotoPerfilUrl = dto.FotoPerfilUrl;
+            u.FotoPerfilUrl = dto.FotoPerfilUrl ?? u.FotoPerfilUrl; // Mantiene el original si llega null
             u.IdNacionalidad = dto.IdNacionalidad;
             u.NombreContactoEmergencia = dto.NombreContactoEmergencia;
             u.TelefonoContactoEmergencia = dto.TelefonoContactoEmergencia;
@@ -225,12 +208,9 @@ namespace EduSys.Api.Repositories
             u.LugarNacimiento = dto.LugarNacimiento;
             if (dto.FechaNacimiento.HasValue) u.FechaNacimiento = DateOnly.FromDateTime(dto.FechaNacimiento.Value);
 
-            // B. Actualizar Alumno
             if (!string.IsNullOrEmpty(dto.Legajo)) alumno.Legajo = dto.Legajo;
 
             alumno.IdPlanActual = dto.IdPlanActual;
-
-            // ✅ ACTUALIZAR SEDE
             if (dto.IdSede > 0) alumno.IdSede = dto.IdSede;
 
             alumno.TituloSecundarioEntregado = dto.TituloSecundarioEntregado;
@@ -242,11 +222,12 @@ namespace EduSys.Api.Repositories
             alumno.HorarioLaboral = dto.HorarioLaboral;
             alumno.LugarTrabajo = dto.LugarTrabajo;
             alumno.FechaEgreso = dto.FechaEgreso.HasValue ? DateOnly.FromDateTime(dto.FechaEgreso.Value) : null;
-            alumno.UrlDniFrente = dto.UrlDniFrente;
-            alumno.UrlDniDorso = dto.UrlDniDorso;
-            alumno.UrlTituloSecundario = dto.UrlTituloSecundario;
-            alumno.UrlAntecedentesPenales = dto.UrlAntecedentesPenales;
-            alumno.UrlValidacionIdentidad = dto.UrlValidacionIdentidad;
+
+            alumno.UrlDniFrente = dto.UrlDniFrente ?? alumno.UrlDniFrente;
+            alumno.UrlDniDorso = dto.UrlDniDorso ?? alumno.UrlDniDorso;
+            alumno.UrlTituloSecundario = dto.UrlTituloSecundario ?? alumno.UrlTituloSecundario;
+            alumno.UrlAntecedentesPenales = dto.UrlAntecedentesPenales ?? alumno.UrlAntecedentesPenales;
+            alumno.UrlValidacionIdentidad = dto.UrlValidacionIdentidad ?? alumno.UrlValidacionIdentidad;
 
             await _context.SaveChangesAsync();
             return true;
@@ -270,13 +251,50 @@ namespace EduSys.Api.Repositories
             return true;
         }
 
+        // Agrégalo dentro de la clase AlumnoRepository
+        public async Task<AlumnoDTO?> GetByUsuarioAsync(int idUsuario)
+        {
+            var alumno = await _context.Alumnos
+                .AsNoTracking()
+                .Include(a => a.IdUsuarioNavigation)
+                .Include(a => a.IdSedeNavigation)
+                .Include(a => a.IdPlanActualNavigation)
+                    .ThenInclude(p => p.IdCarreraNavigation)
+                .FirstOrDefaultAsync(a => a.IdUsuario == idUsuario);
+
+            if (alumno == null) return null;
+
+            return new AlumnoDTO
+            {
+                Id = alumno.Id,
+                IdUsuario = alumno.IdUsuario,
+                Nombre = alumno.IdUsuarioNavigation.Nombre,
+                Apellido = alumno.IdUsuarioNavigation.Apellido,
+                Dni = alumno.IdUsuarioNavigation.Dni,
+                Email = alumno.IdUsuarioNavigation.Email,
+                Legajo = alumno.Legajo,
+                IdPlanActual = alumno.IdPlanActual ?? 0,
+                NombrePlan = alumno.IdPlanActualNavigation?.Nombre ?? "Sin Plan",
+                IdCarrera = alumno.IdPlanActualNavigation?.IdCarrera ?? 0,
+                NombreCarrera = alumno.IdPlanActualNavigation?.IdCarreraNavigation?.Nombre ?? "Sin Carrera",
+                IdSede = alumno.IdSede ?? 0,
+                NombreSede = alumno.IdSedeNavigation?.Nombre ?? "Sin Sede Asignada"
+            };
+        }
+
+        public async Task<Alumno> CrearAsync(Alumno alumno)
+        {
+            _context.Alumnos.Add(alumno);
+            await _context.SaveChangesAsync();
+            return alumno;
+        }
+
         // =========================================================
         // 6. VALIDACIONES
         // =========================================================
         public async Task<bool> ExisteLegajoAsync(string legajo)
         {
-            return await _context.Alumnos.AnyAsync(a => a.Legajo == legajo && a.Activo == true);
+            return await _context.Alumnos.AsNoTracking().AnyAsync(a => a.Legajo == legajo && a.Activo == true);
         }
-
     }
 }

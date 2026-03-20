@@ -9,129 +9,98 @@
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 
-@* --- 1. ESTILOS COPIADOS DEL LOGIN (PARA MANTENER DISEÑO Y ARREGLAR COLORES) --- *@
 <style>
-    /* RESET BÁSICO */
     body, html {
         margin: 0;
         padding: 0;
         height: 100%;
-        overflow: hidden;
-        background-color: white !important;
+        background-color: #f8fafc !important;
     }
 
     :root {
         --color-steel-blue: #456990;
-        --color-teal: #49BEAA;
-        --color-salmon: #EF767A;
-        --color-mint: #49DCB1;
         --color-mustard: #EEB868;
-        --color-text-dark: #1a202c;
+        --color-text-dark: #1e293b;
         --color-text-muted: #64748b;
-        --color-border: #cbd5e1;
     }
 
     .change-pass-wrapper {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
         height: 100vh;
         display: flex;
-        justify-content: center; /* Centrado horizontal */
-        align-items: center; /* Centrado vertical */
-        background: linear-gradient(135deg, #f5f7fa 0%, #e4e7eb 100%); /* Fondo suave */
+        justify-content: center;
+        align-items: center;
+        background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
     }
 
     .card-container {
         width: 100%;
-        max-width: 480px;
+        max-width: 450px;
         background: white;
-        padding: 3rem;
-        border-radius: 20px;
-        box-shadow: 0 10px 40px rgba(69, 105, 144, 0.15);
-        animation: slideUp 0.5s ease-out;
+        padding: 3rem 2.5rem;
+        border-radius: 24px;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    /* --- CORRECCIÓN DE INPUTS (IGUAL QUE EN LOGIN) --- */
+    /* --- INPUTS CORPORATIVOS --- */
     .custom-input {
-        margin-bottom: 1.5rem;
-        position: relative;
+        margin-bottom: 1.25rem;
     }
 
-        .custom-input input,
-        .custom-input .mud-input-slot,
-        .custom-input .mud-input-root input {
-            color: var(--color-text-dark) !important;
-            -webkit-text-fill-color: var(--color-text-dark) !important;
-            font-weight: 600 !important;
-            background-color: transparent !important;
-        }
+    .custom-input input {
+        color: var(--color-text-dark) !important;
+        font-weight: 600 !important;
+    }
 
-        .custom-input .mud-input-label {
-            color: var(--color-text-muted) !important;
-            background-color: white !important;
-            padding: 0 4px;
-        }
+    .custom-input .mud-input-label {
+        color: var(--color-text-muted) !important;
+        font-weight: 600;
+    }
 
-        .custom-input .mud-input-control.mud-input-focused .mud-input-label {
-            color: var(--color-steel-blue) !important;
-        }
+    .custom-input .mud-input-outlined-border {
+        border-color: #e2e8f0 !important;
+        transition: border-color 0.2s;
+    }
 
-        .custom-input .mud-input-outlined-border {
-            border-color: var(--color-border) !important;
-        }
+    .custom-input:hover .mud-input-outlined-border {
+        border-color: var(--color-steel-blue) !important;
+    }
 
-        .custom-input .mud-input-control.mud-input-focused .mud-input-outlined-border {
-            border-color: var(--color-steel-blue) !important;
-            border-width: 2px !important;
-        }
-
-        .custom-input .mud-input-adornment-icon,
-        .custom-input .mud-icon-root {
-            color: var(--color-text-muted) !important;
-        }
-
-    /* --- BOTONES --- */
-    .btn-primary-custom {
+    /* --- BOTÓN PREMIUM --- */
+    .btn-submit {
+        height: 52px;
         background-color: var(--color-steel-blue) !important;
         color: white !important;
-        font-weight: 700;
-        letter-spacing: 1px;
-        box-shadow: 0 4px 14px rgba(69, 105, 144, 0.3);
-        transition: transform 0.2s;
-        height: 50px;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px -1px rgba(69, 105, 144, 0.2);
+        transition: all 0.2s;
     }
 
-        .btn-primary-custom:hover {
-            background-color: #355270 !important;
-            transform: translateY(-2px);
-        }
+    .btn-submit:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(69, 105, 144, 0.3);
+        background-color: #355270 !important;
+    }
 
     @@keyframes slideUp {
-        from {
-            opacity: 0;
-            transform: translateY(20px);
-        }
-
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+        from { opacity: 0; transform: translateY(30px); }
+        to { opacity: 1; transform: translateY(0); }
     }
 </style>
 
-<div class="change-pass-wrapper">
+<div class="change-pass-wrapper pa-4">
     <div class="card-container">
 
         @* --- HEADER --- *@
         <div class="d-flex flex-column align-center mb-8">
-            <div style="background-color: rgba(238, 184, 104, 0.15); padding: 1.5rem; border-radius: 50%; margin-bottom: 1.5rem;">
-                <MudIcon Icon="@Icons.Material.Filled.LockReset" Style="color: var(--color-mustard); font-size: 3rem;" />
+            <div style="background-color: #fff7ed; padding: 1.25rem; border-radius: 20px; margin-bottom: 1.5rem;">
+                <MudIcon Icon="@Icons.Material.Filled.LockReset" Style="color: var(--color-mustard); font-size: 3.5rem;" />
             </div>
-            <MudText Typo="Typo.h5" Align="Align.Center" Style="font-weight: 800; color: var(--color-steel-blue);">Seguridad de la Cuenta</MudText>
-            <MudText Typo="Typo.body2" Align="Align.Center" Style="color: #64748b;" Class="mt-2 px-4">
-                Por tu seguridad, debes cambiar tu contraseña temporal (DNI) por una nueva.
+            <MudText Typo="Typo.h5" Align="Align.Center" Style="font-weight: 900; color: #1e3a58;">Seguridad Obligatoria</MudText>
+            <MudText Typo="Typo.body2" Align="Align.Center" Style="color: #64748b; line-height: 1.6;" Class="mt-2">
+                Detectamos que estás usando una clave temporal. <br /><b>Crea una nueva contraseña</b> para proteger tu legajo.
             </MudText>
         </div>
 
@@ -139,7 +108,7 @@
         <EditForm Model="@modelo" OnValidSubmit="ActualizarClave">
             <DataAnnotationsValidator />
 
-            @* 1. NUEVA CONTRASEÑA *@
+            @* NUEVA CLAVE *@
             <div class="custom-input">
                 <MudTextField @bind-Value="modelo.NuevaClave"
                               Label="Nueva Contraseña"
@@ -148,10 +117,12 @@
                               Adornment="Adornment.End"
                               AdornmentIcon="@PasswordInputIcon1"
                               OnAdornmentClick="TogglePasswordVisibility1"
+                              Disabled="procesando"
+                              Placeholder="Mínimo 6 caracteres"
                               Required="true" />
             </div>
 
-            @* 2. REPETIR CONTRASEÑA *@
+            @* CONFIRMACIÓN *@
             <div class="custom-input">
                 <MudTextField @bind-Value="confirmacion"
                               Label="Repetir Contraseña"
@@ -160,27 +131,30 @@
                               Adornment="Adornment.End"
                               AdornmentIcon="@PasswordInputIcon2"
                               OnAdornmentClick="TogglePasswordVisibility2"
+                              Disabled="procesando"
                               Required="true" />
             </div>
 
             <MudButton ButtonType="ButtonType.Submit"
                        Variant="Variant.Filled"
                        FullWidth="true"
-                       Class="btn-primary-custom rounded-lg mt-4"
+                       Class="btn-submit mt-4"
                        Disabled="procesando">
                 @if (procesando)
                 {
                     <MudProgressCircular Indeterminate="true" Size="Size.Small" Color="Color.Surface" />
+                    <span class="ml-2">GUARDANDO...</span>
                 }
                 else
                 {
-                    <MudText>ACTUALIZAR Y CONTINUAR</MudText>
+                    <span>ESTABLECER NUEVA CLAVE</span>
                 }
             </MudButton>
         </EditForm>
 
-        <div style="text-align: center; margin-top: 2rem;">
-            <MudText Typo="Typo.caption" Style="color: #94a3b8;">EduSys &bull; Portal Académico</MudText>
+        <div class="mt-8 d-flex justify-center align-center gap-2" style="opacity: 0.6;">
+            <MudIcon Icon="@Icons.Material.Filled.VerifiedUser" Size="Size.Small" />
+            <MudText Typo="Typo.caption" Style="font-weight: 700;">EduSys Secure Portal</MudText>
         </div>
 
     </div>
@@ -191,65 +165,44 @@
     private string confirmacion = "";
     private bool procesando = false;
 
-    // --- LÓGICA PARA VER CONTRASEÑA (CAMPO 1) ---
+    // Control visibilidad clave 1
     bool isShow1;
     InputType PasswordInput1 = InputType.Password;
     string PasswordInputIcon1 = Icons.Material.Filled.VisibilityOff;
 
     void TogglePasswordVisibility1()
     {
-        if (isShow1)
-        {
-            isShow1 = false;
-            PasswordInputIcon1 = Icons.Material.Filled.VisibilityOff;
-            PasswordInput1 = InputType.Password;
-        }
-        else
-        {
-            isShow1 = true;
-            PasswordInputIcon1 = Icons.Material.Filled.Visibility;
-            PasswordInput1 = InputType.Text;
-        }
+        isShow1 = !isShow1;
+        PasswordInput1 = isShow1 ? InputType.Text : InputType.Password;
+        PasswordInputIcon1 = isShow1 ? Icons.Material.Filled.Visibility : Icons.Material.Filled.VisibilityOff;
     }
 
-    // --- LÓGICA PARA VER CONTRASEÑA (CAMPO 2) ---
+    // Control visibilidad clave 2
     bool isShow2;
     InputType PasswordInput2 = InputType.Password;
     string PasswordInputIcon2 = Icons.Material.Filled.VisibilityOff;
 
     void TogglePasswordVisibility2()
     {
-        if (isShow2)
-        {
-            isShow2 = false;
-            PasswordInputIcon2 = Icons.Material.Filled.VisibilityOff;
-            PasswordInput2 = InputType.Password;
-        }
-        else
-        {
-            isShow2 = true;
-            PasswordInputIcon2 = Icons.Material.Filled.Visibility;
-            PasswordInput2 = InputType.Text;
-        }
+        isShow2 = !isShow2;
+        PasswordInput2 = isShow2 ? InputType.Text : InputType.Password;
+        PasswordInputIcon2 = isShow2 ? Icons.Material.Filled.Visibility : Icons.Material.Filled.VisibilityOff;
     }
 
     private async Task ActualizarClave()
     {
-        if (string.IsNullOrWhiteSpace(modelo.NuevaClave))
+        // Validaciones preventivas
+        if (string.IsNullOrWhiteSpace(modelo.NuevaClave)) return;
+
+        if (modelo.NuevaClave.Length < 6)
         {
-            Snackbar.Add("La contraseña no puede estar vacía", Severity.Warning);
+            Snackbar.Add("La contraseña es muy corta. Usa al menos 6 caracteres.", Severity.Warning);
             return;
         }
 
         if (modelo.NuevaClave != confirmacion)
         {
-            Snackbar.Add("Las contraseñas no coinciden", Severity.Error);
-            return;
-        }
-
-        if (modelo.NuevaClave.Length < 6)
-        {
-            Snackbar.Add("La contraseña debe tener al menos 6 caracteres", Severity.Warning);
+            Snackbar.Add("Las contraseñas ingresadas no coinciden.", Severity.Error);
             return;
         }
 
@@ -257,23 +210,28 @@
 
         try
         {
+            // Enviamos al servidor
             var exito = await AuthService.CambiarClaveAsync(modelo.NuevaClave);
 
             if (exito)
             {
-                Snackbar.Add("¡Contraseña actualizada correctamente!", Severity.Success);
-                await Task.Delay(1500);
+                Snackbar.Add("¡Excelente! Tu contraseña ha sido actualizada.", Severity.Success);
+                
+                // Pequeña pausa para que el usuario lea el mensaje de éxito
+                await Task.Delay(1200);
+                
+                // Navegamos al Dashboard y forzamos refresco para limpiar estados de 'debeCambiarClave'
                 Navigation.NavigateTo("/dashboard-alumno", true);
             }
             else
             {
-                Snackbar.Add("Ocurrió un error al actualizar la contraseña.", Severity.Error);
+                Snackbar.Add("El servidor no pudo procesar el cambio. Intenta más tarde.", Severity.Error);
                 procesando = false;
             }
         }
         catch (Exception)
         {
-            Snackbar.Add("Error de conexión con el servidor.", Severity.Error);
+            Snackbar.Add("Error de comunicación. Revisa tu conexión a internet.", Severity.Error);
             procesando = false;
         }
     }

@@ -1,12 +1,9 @@
 ﻿using EduSys.Api.Repositories.Interfaces;
-using EduSys.Api.Data;
+using EduSys.Api.Services.Interfaces;
 using EduSys.Shared.DTOs;
-using EduSys.Shared.Models;
-using EduSys.Api.Services; // ✅ Asegúrate de tener este using
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
-using EduSys.Api.Services.Interfaces;
 
 namespace EduSys.Api.Controllers
 {
@@ -15,74 +12,86 @@ namespace EduSys.Api.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IUsuarioRepository _usuarioRepository;
-        private readonly EduSysDbContext _context;
-        private readonly IEmailService _emailService; // ✅ 1. Declarar el campo
+        private readonly IEmailService _emailService;
 
-        // ✅ 2. Inyectar en el constructor
-        public AuthController(IUsuarioRepository usuarioRepository,
-                              EduSysDbContext context,
-                              IEmailService emailService)
+        // ✅ INYECCIÓN LIMPIA: Adiós DbContext
+        public AuthController(IUsuarioRepository usuarioRepository, IEmailService emailService)
         {
             _usuarioRepository = usuarioRepository;
-            _context = context;
-            _emailService = emailService; // ✅ 3. Asignar
+            _emailService = emailService;
         }
 
         // POST: api/auth/login
         [HttpPost("login")]
+        [AllowAnonymous]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(SesionDTO))]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> Login([FromBody] LoginDTO login)
         {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
             var sesion = await _usuarioRepository.LoginAsync(login);
-            if (sesion == null) return Unauthorized("Credenciales inválidas.");
+
+            if (sesion == null)
+                return Unauthorized(new { message = "Credenciales inválidas." });
+
             return Ok(sesion);
         }
 
         // POST: api/auth/cambiar-clave
         [HttpPost("cambiar-clave")]
         [Authorize]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> CambiarClave([FromBody] CambioClaveDTO dto)
         {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (!int.TryParse(userIdClaim, out int userId))
+                return Unauthorized(new { message = "Token inválido." });
+
             try
             {
-                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                if (string.IsNullOrEmpty(userIdClaim)) return Unauthorized();
-                int userId = int.Parse(userIdClaim);
+                // Encriptamos en el controller o service layer, no en la DB
+                string hash = BCrypt.Net.BCrypt.HashPassword(dto.NuevaClave);
 
-                var usuario = await _context.Usuarios.FindAsync(userId);
-                if (usuario == null) return NotFound();
+                bool exito = await _usuarioRepository.CambiarClaveDesdePerfilAsync(userId, hash);
 
-                usuario.ClaveHash = BCrypt.Net.BCrypt.HashPassword(dto.NuevaClave);
-                usuario.DebeCambiarPass = false;
+                if (!exito) return NotFound(new { message = "Usuario no encontrado." });
 
-                await _context.SaveChangesAsync();
                 return Ok(new { message = "Contraseña actualizada." });
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                // Loguear excepción internamente (ex)
+                return BadRequest(new { message = "Ocurrió un error al cambiar la contraseña." });
             }
         }
 
         // POST: api/auth/recuperar
         [HttpPost("recuperar")]
+        [AllowAnonymous]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> RecuperarClave([FromBody] RecuperarClaveRequestDTO dto)
         {
-            // 1. Verificar si el usuario existe
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
             bool existe = await _usuarioRepository.ExisteEmailAsync(dto.Email);
 
-            // Por seguridad, respondemos OK aunque no exista para no filtrar datos
-            if (!existe) return Ok(new { message = "Solicitud procesada." });
+            // Prevención de enumeración de usuarios (Seguridad OWASP)
+            if (!existe) return Ok(new { message = "Si el correo está registrado, recibirás instrucciones." });
 
             try
             {
-                // 2. Generar clave temporal
                 string claveTemporal = Path.GetRandomFileName().Replace(".", "").Substring(0, 8);
                 string hashTemporal = BCrypt.Net.BCrypt.HashPassword(claveTemporal);
 
-                // 3. Guardar en BD
                 await _usuarioRepository.RestablecerClaveAsync(dto.Email, hashTemporal);
 
-                // 4. Enviar Email
                 string cuerpo = $@"
                     <div style='font-family: Arial, sans-serif; color: #333;'>
                         <h2>Recuperación de Contraseña - EduSys</h2>
@@ -94,11 +103,12 @@ namespace EduSys.Api.Controllers
 
                 await _emailService.SendEmailAsync(dto.Email, "Recuperación de Acceso", cuerpo);
 
-                return Ok(new { message = "Correo enviado." });
+                return Ok(new { message = "Si el correo está registrado, recibirás instrucciones." });
             }
             catch (Exception)
             {
-                return BadRequest("No se pudo enviar el correo.");
+                // Evitamos dar detalles del servidor de correo al cliente
+                return BadRequest(new { message = "Ocurrió un problema procesando la solicitud. Intente más tarde." });
             }
         }
     }

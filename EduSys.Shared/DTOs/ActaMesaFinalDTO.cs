@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace EduSys.Shared.DTOs
+﻿namespace EduSys.Shared.DTOs
 {
     public class ActaMesaFinalDTO
     {
@@ -13,10 +7,9 @@ namespace EduSys.Shared.DTOs
         public string CarreraNombre { get; set; } = string.Empty;
         public DateTime FechaHora { get; set; }
         public string Tribunal { get; set; } = string.Empty;
-        public string EstadoMesa { get; set; } = string.Empty; // "Abierta", "Cerrada"
+        public string EstadoMesa { get; set; } = string.Empty; 
         public string Libro { get; set; } = string.Empty;
         public string Folio { get; set; } = string.Empty;
-
         public List<AlumnoActaFinalDTO> Alumnos { get; set; } = new();
     }
 }

@@ -18,15 +18,16 @@ namespace EduSys.Api.Repositories
         {
             var dto = new DashboardDTO();
 
-            // CORRECCIÓN: Ejecutamos las consultas paso a paso (await individual)
-            // para no bloquear el DbContext.
+            // Ejecutamos las consultas paso a paso para respetar la regla de 
+            // no-concurrencia del DbContext (Excelente decisión).
             dto.CantidadAlumnos = await _context.Alumnos.CountAsync(x => x.Activo == true);
             dto.CantidadDocentes = await _context.Docentes.CountAsync(x => x.Activo == true);
             dto.CantidadCarreras = await _context.Carreras.CountAsync(x => x.Activo == true);
             dto.CantidadSedes = await _context.Sedes.CountAsync(x => x.Activo == true);
 
             // Cargar últimos usuarios registrados (Simulando eventos recientes)
-            var ultimosUsuarios = await _context.Usuarios
+            dto.UltimosEventos = await _context.Usuarios
+                .AsNoTracking() // 🚀 OPTIMIZADO: Lectura rápida
                 .OrderByDescending(u => u.FechaRegistro)
                 .Take(4)
                 .Select(u => new EventoRecienteDTO
@@ -37,8 +38,6 @@ namespace EduSys.Api.Repositories
                     Tipo = "Success"
                 })
                 .ToListAsync();
-
-            dto.UltimosEventos = ultimosUsuarios;
 
             return dto;
         }

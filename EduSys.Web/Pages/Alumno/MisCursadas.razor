@@ -5,544 +5,205 @@
 @attribute [Authorize(Roles = "Alumno")]
 
 @inject IAlumnoPortalService AlumnoPortalService
+@inject ISnackbar Snackbar
 
 <style>
-    /* ============================================
-           SISTEMA DE DISEÑO EDUSYS - PALETA INSTITUCIONAL
-           ============================================ */
     :root {
         --edusys-primary: #1e3a58;
         --edusys-primary-light: #2c5282;
-        --edusys-primary-dark: #152a40;
         --edusys-accent: #0288d1;
         --edusys-success: #2e7d32;
         --edusys-warning: #f57c00;
-        --edusys-neutral: #546e7a;
-        --edusys-surface: #ffffff;
+        --edusys-danger: #d32f2f;
         --edusys-background: #f8fafc;
         --edusys-border: #e2e8f0;
-        --edusys-text-primary: #1a202c;
-        --edusys-text-secondary: #64748b;
-        --edusys-shadow-sm: 0 1px 3px rgba(30, 58, 88, 0.08);
-        --edusys-shadow-md: 0 4px 12px rgba(30, 58, 88, 0.12);
-        --edusys-shadow-lg: 0 8px 24px rgba(30, 58, 88, 0.16);
+        --edusys-shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        --edusys-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
     }
 
-    /* ============================================
-           COMPONENTES PRINCIPALES
-           ============================================ */
-
-    /* Header Section */
-    .page-header {
-        background: linear-gradient(135deg, var(--edusys-primary) 0%, var(--edusys-primary-light) 100%);
-        padding: 2.5rem 1.5rem;
-        border-radius: 12px;
-        margin-bottom: 2rem;
-        box-shadow: var(--edusys-shadow-md);
-        position: relative;
-        overflow: hidden;
+    /* ✅ SELECT: texto visible */
+    .custom-select-fix .mud-select-input,
+    .custom-select-fix input {
+        color: #1e293b !important;
+        font-weight: 700 !important;
+        -webkit-text-fill-color: #1e293b !important;
     }
 
-        .page-header::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            right: 0;
-            width: 300px;
-            height: 300px;
-            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-            border-radius: 50%;
-            transform: translate(30%, -30%);
-        }
-
-    .page-header-content {
-        position: relative;
-        z-index: 1;
+    .custom-select-fix .mud-input-adornment .mud-icon-root,
+    .custom-select-fix .mud-select-icon {
+        color: var(--edusys-primary) !important;
+        opacity: 1 !important;
     }
 
-    .page-title {
-        color: white;
-        font-weight: 800;
-        font-size: 2rem;
-        letter-spacing: -0.5px;
-        margin-bottom: 0.5rem;
+    /* ✅ SELECT: borde azul permanente */
+    .custom-select-fix .mud-input-outlined-border {
+        border-color: var(--edusys-primary) !important;
+        border-width: 2px !important;
+        border-radius: 10px !important;
     }
 
-    .page-subtitle {
-        color: rgba(255, 255, 255, 0.9);
-        font-size: 1rem;
-        font-weight: 400;
+    /* ✅ SELECT: hover con glow suave */
+    .custom-select-fix:hover .mud-input-outlined-border {
+        border-color: var(--edusys-accent) !important;
+        box-shadow: 0 0 0 3px rgba(2, 136, 209, 0.12) !important;
     }
 
-    /* Filtro de Ciclo Lectivo */
-    .filter-section {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 10px;
-        box-shadow: var(--edusys-shadow-sm);
-        margin-bottom: 2rem;
-        border: 1px solid var(--edusys-border);
+    /* ✅ SELECT: foco con halo */
+    .custom-select-fix.mud-input-focused .mud-input-outlined-border,
+    .custom-select-fix .mud-focused .mud-input-outlined-border {
+        border-color: var(--edusys-accent) !important;
+        box-shadow: 0 0 0 4px rgba(2, 136, 209, 0.2) !important;
     }
 
-    .institutional-select {
-        min-width: 280px;
+    /* ✅ SELECT: label azul siempre */
+    .custom-select-fix .mud-input-label,
+    .custom-select-fix .mud-input-label-inputcontrol {
+        color: var(--edusys-primary) !important;
+        font-weight: 700 !important;
     }
 
-        .institutional-select .mud-input-outlined-border {
-            border-color: var(--edusys-primary) !important;
-            border-width: 2px !important;
-            transition: all 0.3s ease;
-        }
+    /* Animación de entrada para las tarjetas */
+    .animate-card {
+        animation: slideUp 0.4s ease-out forwards;
+        opacity: 0;
+    }
 
-        .institutional-select:hover .mud-input-outlined-border {
-            border-color: var(--edusys-primary-light) !important;
-            box-shadow: 0 0 0 3px rgba(30, 58, 88, 0.1);
-        }
+    @@keyframes slideUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
 
-        .institutional-select .mud-input-label {
-            color: var(--edusys-primary) !important;
-            font-weight: 600;
-        }
+    /* Colores dinámicos para notas */
+    .nota-aprobada   { color: var(--edusys-success) !important; font-weight: 800; }
+    .nota-desaprobada{ color: var(--edusys-danger)  !important; font-weight: 800; }
+    .nota-promocion  { color: #00897b               !important; font-weight: 800; }
 
-        .institutional-select .mud-select-input {
-            color: var(--edusys-text-primary) !important;
-            font-weight: 600;
-        }
-
-        .institutional-select .mud-icon-root {
-            color: var(--edusys-primary) !important;
-        }
-
-    /* ============================================
-           TARJETAS DE CURSADA
-           ============================================ */
+    /* Tarjetas */
     .cursada-card {
         background: white;
         border-radius: 12px;
         border: 1px solid var(--edusys-border);
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: all 0.3s ease;
         height: 100%;
         display: flex;
         flex-direction: column;
         overflow: hidden;
         box-shadow: var(--edusys-shadow-sm);
     }
-
-        .cursada-card:hover {
-            border-color: var(--edusys-primary);
-            box-shadow: var(--edusys-shadow-lg);
-            transform: translateY(-4px);
-        }
-
-    /* Header de Tarjeta */
-    .card-header-modern {
-        background: linear-gradient(135deg, var(--edusys-background) 0%, white 100%);
-        padding: 1.5rem;
-        border-bottom: 2px solid var(--edusys-border);
-        position: relative;
+    .cursada-card:hover {
+        transform: translateY(-5px);
+        border-color: var(--edusys-primary);
+        box-shadow: var(--edusys-shadow-lg);
     }
 
+    .card-header-modern {
+        background: linear-gradient(135deg, #f8fafc 0%, white 100%);
+        padding: 1.5rem;
+        border-bottom: 2px solid #f1f5f9;
+    }
     .materia-nombre {
         color: var(--edusys-primary);
         font-weight: 800;
         font-size: 1.1rem;
-        line-height: 1.3;
-        margin-bottom: 0.75rem;
-        letter-spacing: -0.3px;
-    }
-
-    .comision-info {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        background: white;
-        padding: 0.4rem 0.75rem;
-        border-radius: 6px;
-        border: 1px solid var(--edusys-border);
-    }
-
-    .comision-text {
-        color: var(--edusys-neutral);
-        font-weight: 700;
-        font-size: 0.8rem;
-        letter-spacing: 0.3px;
-    }
-
-    /* Badge de Estado */
-    .estado-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.5rem 1rem;
-        border-radius: 20px;
-        font-weight: 700;
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        box-shadow: var(--edusys-shadow-sm);
-        transition: all 0.2s ease;
-    }
-
-        .estado-badge:hover {
-            transform: scale(1.05);
-        }
-
-    .badge-regular {
-        background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
-        color: var(--edusys-success);
-        border: 1px solid var(--edusys-success);
-    }
-
-    .badge-promocionado {
-        background: linear-gradient(135deg, #e0f2f1 0%, #b2dfdb 100%);
-        color: #00897b;
-        border: 1px solid #00897b;
-    }
-
-    .badge-libre {
-        background: linear-gradient(135deg, #eceff1 0%, #cfd8dc 100%);
-        color: #546e7a;
-        border: 1px solid #546e7a;
-    }
-
-    .badge-cursando {
-        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-        color: var(--edusys-accent);
-        border: 1px solid var(--edusys-accent);
-    }
-
-    .status-indicator {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        display: inline-block;
-    }
-
-    .indicator-success {
-        background: var(--edusys-success);
-    }
-
-    .indicator-info {
-        background: var(--edusys-accent);
-    }
-
-    .indicator-neutral {
-        background: var(--edusys-neutral);
-    }
-
-    /* ============================================
-           SECCIÓN DE EXÁMENES
-           ============================================ */
-    .examenes-container {
-        flex: 1;
-        padding: 0;
-        background: white;
-    }
-
-    .examen-item {
-        padding: 1.25rem 1.5rem;
-        border-bottom: 1px solid var(--edusys-border);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 1rem;
-        transition: background-color 0.2s ease;
-    }
-
-        .examen-item:hover {
-            background-color: var(--edusys-background);
-        }
-
-        .examen-item:last-child {
-            border-bottom: none;
-        }
-
-    .examen-info {
-        flex: 1;
-        min-width: 0;
-    }
-
-    .examen-nombre {
-        color: var(--edusys-text-primary);
-        font-weight: 700;
-        font-size: 0.95rem;
-        margin-bottom: 0.25rem;
-        line-height: 1.4;
-    }
-
-    .examen-fecha {
-        color: var(--edusys-text-secondary);
-        font-size: 0.85rem;
-        display: flex;
-        align-items: center;
-        gap: 0.4rem;
-    }
-
-    .examen-nota-container {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-    }
-
-    /* Nota Numérica */
-    .nota-valor {
-        font-family: 'Segoe UI', 'Inter', sans-serif;
-        font-weight: 900;
-        font-size: 1.5rem;
-        color: var(--edusys-text-primary);
-        min-width: 60px;
-        text-align: right;
-        letter-spacing: -0.5px;
-    }
-
-    .nota-pendiente {
-        color: var(--edusys-text-secondary);
-        font-weight: 500;
-        font-size: 1.2rem;
-    }
-
-    /* Icono de Estado de Nota */
-    .nota-status-icon {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.2s ease;
-    }
-
-    .icon-oficial {
-        background: linear-gradient(135deg, var(--edusys-primary) 0%, var(--edusys-primary-light) 100%);
-        color: white;
-        box-shadow: var(--edusys-shadow-sm);
-    }
-
-    .icon-provisoria {
-        background: var(--edusys-background);
-        color: var(--edusys-neutral);
-        border: 2px solid var(--edusys-border);
-    }
-
-    .nota-status-icon:hover {
-        transform: scale(1.1);
-    }
-
-    /* Estado Vacío */
-    .examenes-empty {
-        padding: 3rem 1.5rem;
-        text-align: center;
-        color: var(--edusys-text-secondary);
-    }
-
-    .empty-icon {
-        font-size: 3rem !important;
-        color: var(--edusys-border);
-        margin-bottom: 1rem;
-        opacity: 0.6;
-    }
-
-    /* ============================================
-           FOOTER DE PROMEDIO
-           ============================================ */
-    .card-footer-promedio {
-        background: linear-gradient(to right, var(--edusys-background), white);
-        border-top: 2px solid var(--edusys-border);
-        padding: 1.25rem 1.5rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .promedio-label {
-        color: var(--edusys-neutral);
-        font-weight: 800;
-        font-size: 0.8rem;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-    }
-
-    .promedio-valor {
-        font-family: 'Segoe UI', 'Inter', sans-serif;
-        font-weight: 900;
-        font-size: 1.8rem;
-        color: var(--edusys-primary);
-        letter-spacing: -1px;
-    }
-
-    .promedio-pendiente {
-        color: var(--edusys-text-secondary);
-        font-weight: 500;
-        font-size: 1.4rem;
-    }
-
-    /* ============================================
-           ESTADOS ESPECIALES
-           ============================================ */
-
-    /* Loading */
-    .loading-container {
-        min-height: 400px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 1.5rem;
-    }
-
-    .loading-text {
-        color: var(--edusys-text-secondary);
-        font-weight: 600;
-    }
-
-    /* Empty State */
-    .empty-state {
-        background: white;
-        border: 2px dashed var(--edusys-border);
-        border-radius: 12px;
-        padding: 4rem 2rem;
-        text-align: center;
-    }
-
-    .empty-state-icon {
-        font-size: 5rem !important;
-        color: var(--edusys-border);
-        margin-bottom: 1.5rem;
-        opacity: 0.5;
-    }
-
-    .empty-state-title {
-        color: var(--edusys-text-primary);
-        font-weight: 700;
-        font-size: 1.25rem;
         margin-bottom: 0.5rem;
     }
 
-    .empty-state-subtitle {
-        color: var(--edusys-text-secondary);
-        font-size: 1rem;
-    }
+    /* Badges de estado */
+    .estado-badge    { padding: 4px 12px; border-radius: 20px; font-weight: 700; font-size: 0.7rem; text-transform: uppercase; }
+    .badge-regular   { background: #e8f5e9; color: #2e7d32; }
+    .badge-promocion { background: #e0f2f1; color: #00695c; }
+    .badge-libre     { background: #ffebee; color: #c62828; }
+    .badge-cursando  { background: #e3f2fd; color: #1565c0; }
 
-    /* ============================================
-           RESPONSIVE
-           ============================================ */
-    @@media (max-width: 960px) {
-        .page-header {
-            padding: 2rem 1.25rem;
-        }
-
-        .page-title {
-            font-size: 1.5rem;
-        }
-
-        .institutional-select {
-            min-width: 100%;
-        }
-
-        .filter-section {
-            padding: 1rem;
-        }
-
-        .examen-item {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 0.75rem;
-        }
-
-        .examen-nota-container {
-            width: 100%;
-            justify-content: space-between;
-        }
-
-        .nota-valor {
-            font-size: 1.3rem;
-        }
-    }
-
-    @@media (max-width: 600px) {
-        .page-header {
-            padding: 1.5rem 1rem;
-        }
-
-        .card-header-modern {
-            padding: 1rem;
-        }
-
-        .examen-item {
-            padding: 1rem;
-        }
-
-        .card-footer-promedio {
-            padding: 1rem;
-        }
+    /* Nota */
+    .nota-valor {
+        font-size: 1.25rem;
+        font-weight: 900;
+        background: #f1f5f9;
+        padding: 2px 10px;
+        border-radius: 8px;
+        min-width: 45px;
+        text-align: center;
     }
 </style>
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-6 mb-12">
 
-    <!-- HEADER -->
-    <div class="page-header">
-        <div class="page-header-content">
-            <div class="d-flex align-center gap-3 mb-2">
-                <MudIcon Icon="@Icons.Material.Filled.School" Size="Size.Large" Style="color: white; font-size: 2.5rem;" />
-                <div>
-                    <MudText Class="page-title">
-                        Situación Académica
-                    </MudText>
-                    <MudText Class="page-subtitle">
-                        Seguimiento detallado de tu rendimiento y calificaciones
-                    </MudText>
-                </div>
+    @* --- HEADER --- *@
+    <div style="background: linear-gradient(135deg, var(--edusys-primary) 0%, var(--edusys-primary-light) 100%);
+                padding: 2.5rem; border-radius: 16px; color: white;
+                margin-bottom: 2rem; box-shadow: 0 10px 25px rgba(30,58,88,0.15);">
+        <div class="d-flex align-center gap-4">
+            <MudIcon Icon="@Icons.Material.Filled.AutoStories" Style="font-size: 3rem;" />
+            <div>
+                <MudText Typo="Typo.h3" Style="font-weight: 800; letter-spacing: -1px;">Mis Cursadas</MudText>
+                <MudText Style="opacity: 0.8; font-size: 1.1rem;">Seguimiento en tiempo real de tus notas y regularidad.</MudText>
             </div>
         </div>
     </div>
 
-    <!-- FILTRO DE CICLO LECTIVO -->
-    <div class="filter-section">
+    @* --- FILTROS --- *@
+    <MudPaper Elevation="0" Class="pa-4 mb-6 rounded-xl"
+              Style="border: 2px solid var(--edusys-border); background: white;">
         <div class="d-flex flex-wrap align-center justify-space-between gap-4">
-            <div>
-                <MudText Typo="Typo.subtitle1" Style="font-weight: 700; color: var(--edusys-text-primary); margin-bottom: 0.25rem;">
-                    Filtrar por Período
-                </MudText>
-                <MudText Typo="Typo.body2" Style="color: var(--edusys-text-secondary);">
-                    Selecciona el ciclo lectivo para visualizar
-                </MudText>
+
+            <div class="d-flex align-center gap-3">
+                <div style="background: #e0f2fe; padding: 10px; border-radius: 12px;">
+                    <MudIcon Icon="@Icons.Material.Filled.FilterList" Color="Color.Primary" />
+                </div>
+                <div>
+                    <MudText Typo="Typo.subtitle1" Style="font-weight: 700; color: #1e3a58;">Período Académico</MudText>
+                    <MudText Typo="Typo.caption"   Style="color: #64748b;">Mostrando resultados del ciclo seleccionado</MudText>
+                </div>
             </div>
 
             <MudSelect T="int"
+                       @bind-Value="cicloSeleccionado"
                        Label="Ciclo Lectivo"
                        Variant="Variant.Outlined"
                        Margin="Margin.Dense"
-                       AnchorOrigin="Origin.BottomCenter"
-                       TransformOrigin="Origin.TopCenter"
-                       @bind-Value="cicloSeleccionado"
+                       Class="custom-select-fix"
+                       Style="min-width: 220px;"
                        SelectedValuesChanged="FiltrarCursadas"
-                       Class="institutional-select"
-                       AdornmentIcon="@Icons.Material.Filled.CalendarMonth">
+                       AdornmentIcon="@Icons.Material.Filled.CalendarToday">
                 @foreach (var anio in ciclosDisponibles)
                 {
-                    <MudSelectItem Value="@anio">Ciclo Lectivo @anio</MudSelectItem>
+                    <MudSelectItem Value="@anio">Año Lectivo @anio</MudSelectItem>
                 }
             </MudSelect>
-        </div>
-    </div>
 
-    <!-- CONTENIDO -->
+        </div>
+    </MudPaper>
+
+    @* --- CONTENIDO --- *@
     @if (cargando)
     {
-        <div class="loading-container">
-            <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Large" Style="width: 80px; height: 80px;" />
-            <MudText Class="loading-text">Cargando información académica...</MudText>
-        </div>
+        <MudGrid>
+            @for (int i = 0; i < 3; i++)
+            {
+                <MudItem xs="12" md="4">
+                    <MudCard Elevation="0" Style="border: 1px solid #eee; border-radius: 12px;">
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <MudSkeleton Width="80%" Height="30px" />
+                                <MudSkeleton Width="40%" Height="20px" />
+                            </CardHeaderContent>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            <MudSkeleton Width="100%" Height="100px" />
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
     }
     else if (!cursadasFiltradas.Any())
     {
-        <div class="empty-state">
-            <MudIcon Icon="@Icons.Material.Outlined.FolderOpen" Class="empty-state-icon" />
-            <MudText Class="empty-state-title">No hay cursadas registradas</MudText>
-            <MudText Class="empty-state-subtitle">
-                No se encontraron cursadas activas para el ciclo lectivo @cicloSeleccionado
-            </MudText>
+        <div class="d-flex flex-column align-center justify-center pa-12 rounded-xl"
+             style="border: 2px dashed #cbd5e1; background: #f8fafc;">
+            <MudIcon Icon="@Icons.Material.Filled.FolderOff" Style="font-size: 5rem; color: #cbd5e1;" Class="mb-4" />
+            <MudText Typo="Typo.h5" Style="font-weight: 700; color: #475569;">No hay actividad este año</MudText>
+            <MudText Style="color: #94a3b8;">No se encontraron cursadas para el ciclo @cicloSeleccionado.</MudText>
         </div>
     }
     else
@@ -551,155 +212,120 @@
             @foreach (var cursada in cursadasFiltradas)
             {
                 <MudItem xs="12" md="6" lg="4">
-                    <MudCard Elevation="0" Class="cursada-card">
+                    <div class="cursada-card animate-card">
 
-                        <!-- HEADER -->
+                        @* CARD HEADER *@
                         <div class="card-header-modern">
-                            <div class="d-flex justify-space-between align-start mb-3">
-                                <div style="flex: 1; padding-right: 1rem;">
-                                    <MudText Class="materia-nombre">
-                                        @cursada.Materia.ToUpper()
-                                    </MudText>
-                                </div>
-
+                            <div class="d-flex justify-space-between align-start">
+                                <MudText Class="materia-nombre">@cursada.Materia.ToUpper()</MudText>
                                 <div class="@ObtenerClaseBadge(cursada.EstadoCursada)">
-                                    <span class="status-indicator @ObtenerClaseIndicador(cursada.EstadoCursada)"></span>
-                                    <span>@cursada.EstadoCursada</span>
+                                    @cursada.EstadoCursada
                                 </div>
                             </div>
-
-                            <div class="comision-info">
-                                <MudIcon Icon="@Icons.Material.Filled.Class" Size="Size.Small" Style="font-size: 1rem; color: var(--edusys-neutral);" />
-                                <span class="comision-text">COMISIÓN @cursada.Comision</span>
+                            <div class="d-flex align-center gap-2 mt-2">
+                                <MudIcon Icon="@Icons.Material.Filled.Groups" Size="Size.Small" Color="Color.Default" />
+                                <MudText Typo="Typo.caption" Style="font-weight: 700; color: #64748b;">
+                                    COMISIÓN @cursada.Comision
+                                </MudText>
                             </div>
                         </div>
 
-                        <!-- EXÁMENES -->
-                        <MudCardContent Class="pa-0 examenes-container">
-                            @if (cursada.Examenes.Any())
+                        @* EXÁMENES *@
+                        <div class="pa-0 flex-grow-1" style="background: white;">
+                            @if (cursada.Examenes != null && cursada.Examenes.Any())
                             {
                                 @foreach (var examen in cursada.Examenes)
                                 {
-                                    <div class="examen-item">
-                                        <div class="examen-info">
-                                            <div class="examen-nombre">
+                                    <div style="border-bottom: 1px solid #f1f5f9; padding: 1rem 1.5rem;
+                                                display: flex; justify-content: space-between; align-items: center;">
+                                        <div>
+                                            <MudText Typo="Typo.body2" Style="font-weight: 700; color: #334155;">
                                                 @examen.Nombre
-                                            </div>
-                                            <div class="examen-fecha">
-                                                <MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Small" Style="font-size: 0.9rem;" />
-                                                <span>@examen.Fecha.ToString("dd/MM/yyyy")</span>
-                                            </div>
+                                            </MudText>
+                                            <MudText Typo="Typo.caption" Style="color: #94a3b8;">
+                                                @examen.Fecha.ToString("dd MMM, yyyy")
+                                            </MudText>
                                         </div>
-
-                                        <div class="examen-nota-container">
-                                            @if (examen.Nota.HasValue)
-                                            {
-                                                <span class="nota-valor">
-                                                    @examen.Nota.Value.ToString("0.00")
-                                                </span>
-
-                                                @if (examen.EsOficial)
-                                                {
-                                                    <MudTooltip Text="Calificación Oficial - Acta Cerrada" Placement="Placement.Top">
-                                                        <div class="nota-status-icon icon-oficial">
-                                                            <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" Style="font-size: 1rem;" />
-                                                        </div>
-                                                    </MudTooltip>
-                                                }
-                                                else
-                                                {
-                                                    <MudTooltip Text="Calificación Provisoria" Placement="Placement.Top">
-                                                        <div class="nota-status-icon icon-provisoria">
-                                                            <MudIcon Icon="@Icons.Material.Outlined.Edit" Size="Size.Small" Style="font-size: 1rem;" />
-                                                        </div>
-                                                    </MudTooltip>
-                                                }
-                                            }
-                                            else
-                                            {
-                                                <span class="nota-valor nota-pendiente">--</span>
-                                                <div class="nota-status-icon icon-provisoria">
-                                                    <MudIcon Icon="@Icons.Material.Outlined.HourglassEmpty" Size="Size.Small" Style="font-size: 1rem;" />
-                                                </div>
-                                            }
+                                        <div class="d-flex align-center gap-3">
+                                            <span class="nota-valor @ObtenerColorNota(examen.Nota)">
+                                                @(examen.Nota.HasValue ? examen.Nota.Value.ToString("0.#") : "--")
+                                            </span>
+                                            <MudTooltip Text="@(examen.EsOficial ? "Nota en Acta" : "Nota Provisoria")">
+                                                <MudIcon Icon="@(examen.EsOficial ? Icons.Material.Filled.Verified : Icons.Material.Outlined.HistoryEdu)"
+                                                         Color="@(examen.EsOficial ? Color.Primary : Color.Default)"
+                                                         Size="Size.Small" />
+                                            </MudTooltip>
                                         </div>
                                     </div>
                                 }
                             }
                             else
                             {
-                                <div class="examenes-empty">
-                                    <MudIcon Icon="@Icons.Material.Outlined.Assignment" Class="empty-icon" />
-                                    <MudText Typo="Typo.body2" Style="color: var(--edusys-text-secondary);">
-                                        Sin evaluaciones registradas
-                                    </MudText>
+                                <div class="pa-8 text-center" style="opacity: 0.5;">
+                                    <MudIcon Icon="@Icons.Material.Filled.Assignment" Size="Size.Large" Class="mb-2" />
+                                    <MudText Typo="Typo.caption" Class="d-block">Sin calificaciones parciales</MudText>
                                 </div>
-                            }
-                        </MudCardContent>
-
-                        <!-- FOOTER PROMEDIO -->
-                        <div class="card-footer-promedio">
-                            <span class="promedio-label">Promedio</span>
-
-                            @if (cursada.Promedio.HasValue)
-                            {
-                                <span class="promedio-valor">
-                                    @cursada.Promedio.Value.ToString("0.00")
-                                </span>
-                            }
-                            else
-                            {
-                                <span class="promedio-valor promedio-pendiente">-</span>
                             }
                         </div>
 
-                    </MudCard>
+                        @* FOOTER PROMEDIO *@
+                        <div class="pa-4 d-flex justify-space-between align-center"
+                             style="background: #f8fafc; border-top: 2px solid #f1f5f9;">
+                            <MudText Typo="Typo.button" Style="font-weight: 800; color: #64748b; letter-spacing: 1px;">
+                                PROMEDIO
+                            </MudText>
+                            <MudText Typo="Typo.h5" Style="font-weight: 900; color: #1e3a58;">
+                                @(cursada.Promedio.HasValue ? cursada.Promedio.Value.ToString("0.00") : "-")
+                            </MudText>
+                        </div>
+
+                    </div>
                 </MudItem>
             }
         </MudGrid>
     }
+
 </MudContainer>
 
 @code {
-    private List<CursadaAlumnoDTO> todasLasCursadas = new();
+    private List<CursadaAlumnoDTO> todasLasCursadas  = new();
     private List<CursadaAlumnoDTO> cursadasFiltradas = new();
     private List<int> ciclosDisponibles = new();
-    private int cicloSeleccionado;
+    private int  cicloSeleccionado;
     private bool cargando = true;
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnInitializedAsync() => await CargarDatos();
+
+    private async Task CargarDatos()
     {
+        cargando = true;
         try
         {
-            todasLasCursadas = await AlumnoPortalService.GetMisCursadasAsync() ?? new List<CursadaAlumnoDTO>();
+            todasLasCursadas = await AlumnoPortalService.GetMisCursadasAsync() ?? new();
 
             if (todasLasCursadas.Any())
             {
                 ciclosDisponibles = todasLasCursadas
                     .SelectMany(c => c.Examenes)
                     .Select(e => e.Fecha.Year)
-                    .DefaultIfEmpty(DateTime.Now.Year)
+                    .Concat(new[] { DateTime.Now.Year })
                     .Distinct()
                     .OrderByDescending(x => x)
                     .ToList();
-
-                if (!ciclosDisponibles.Contains(DateTime.Now.Year))
-                {
-                    ciclosDisponibles.Insert(0, DateTime.Now.Year);
-                }
 
                 cicloSeleccionado = ciclosDisponibles.First();
                 FiltrarCursadas();
             }
             else
             {
-                ciclosDisponibles.Add(DateTime.Now.Year);
                 cicloSeleccionado = DateTime.Now.Year;
+                if (!ciclosDisponibles.Contains(cicloSeleccionado))
+                    ciclosDisponibles.Add(cicloSeleccionado);
             }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            Console.WriteLine($"Error: {ex.Message}");
+            Snackbar.Add("Error al sincronizar con el servidor académico.", Severity.Error);
         }
         finally
         {
@@ -709,26 +335,25 @@
 
     private void FiltrarCursadas()
     {
-        if (!todasLasCursadas.Any()) return;
-
         cursadasFiltradas = todasLasCursadas
-            .Where(c => c.Examenes.Any(e => e.Fecha.Year == cicloSeleccionado) || !c.Examenes.Any())
+            .Where(c => c.Examenes.Any(e => e.Fecha.Year == cicloSeleccionado) ||
+                       (cicloSeleccionado == DateTime.Now.Year && !c.Examenes.Any()))
             .ToList();
+    }
+
+    private string ObtenerColorNota(decimal? nota)
+    {
+        if (!nota.HasValue)      return "";
+        if (nota.Value >= 7)     return "nota-promocion";
+        if (nota.Value >= 4)     return "nota-aprobada";
+        return "nota-desaprobada";
     }
 
     private string ObtenerClaseBadge(string estado) => estado switch
     {
-        "Regular" => "estado-badge badge-regular",
-        "Promocionado" => "estado-badge badge-promocionado",
-        "Libre" => "estado-badge badge-libre",
-        _ => "estado-badge badge-cursando"
-    };
-
-    private string ObtenerClaseIndicador(string estado) => estado switch
-    {
-        "Regular" => "indicator-success",
-        "Promocionado" => "indicator-success",
-        "Libre" => "indicator-neutral",
-        _ => "indicator-info"
+        "Regular"       => "estado-badge badge-regular",
+        "Promocionado"  => "estado-badge badge-promocion",
+        "Libre"         => "estado-badge badge-libre",
+        _               => "estado-badge badge-cursando"
     };
 }

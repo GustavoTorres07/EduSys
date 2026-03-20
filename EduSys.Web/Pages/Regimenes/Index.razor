@@ -6,184 +6,328 @@
 @inject ISnackbar Snackbar
 
 <style>
-    /* 1. TEXTO NEGRO Y PAGINADOR */
-    .force-black-text,
-    .force-black-text input,
-    .force-black-text .mud-input-slot,
-    .force-black-text .mud-table-pagination-caption,
-    .force-black-text .mud-table-pagination-select .mud-input-slot,
-    .force-black-text .mud-select-input {
-        color: #1F2937 !important;
-        -webkit-text-fill-color: #1F2937 !important;
-        font-weight: 500;
+    /* --- ESTILOS ESTÁNDAR EDUSYS --- */
+    .table-header-custom .mud-table-head .mud-table-cell {
+        color: #456990 !important;
+        font-weight: 800 !important;
+        background-color: #f8fafc !important;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.5px;
     }
 
-        .force-black-text .mud-input-label {
-            color: #456990 !important; /* Azul Corporativo */
-            background-color: white !important;
-            padding: 0 4px;
-            z-index: 2;
-            font-weight: 600;
-        }
+    .row-hover-effect:hover {
+        background-color: #f1f5f9 !important;
+    }
 
-    /* 2. ESTILO DE MODALES UNIFICADO */
+    /* Buscador y Selects consistentes */
+    .custom-filter-input .mud-input-outlined-border {
+        border-color: #cbd5e1 !important;
+        transition: border-color 0.2s;
+    }
+    
+    .custom-filter-input:hover .mud-input-outlined-border {
+        border-color: #456990 !important;
+    }
+
+    .custom-filter-input.mud-input-control.mud-input-focused .mud-input-outlined-border {
+        border-color: #456990 !important;
+        border-width: 2px !important;
+    }
+
+    .custom-filter-input .mud-input-label {
+        color: #456990 !important;
+        background-color: white !important;
+        padding: 0 5px;
+        font-weight: 600;
+    }
+
+    /* ✅ FIX PRINCIPAL: texto visible en todos los tipos de input */
+    .custom-filter-input input,
+    .custom-filter-input textarea,
+    .custom-filter-input .mud-select-input,
+    .custom-filter-input .mud-input-slot,
+    .custom-filter-input .mud-input input,
+    .custom-filter-input .mud-input textarea,
+    .custom-filter-input .mud-input .mud-select-input {
+        color: #1e293b !important;
+        font-weight: 600 !important;
+        -webkit-text-fill-color: #1e293b !important;
+    }
+
+    /* ✅ FIX: Visibilidad de iconos en los inputs (Adornments y Selects) */
+    .custom-filter-input .mud-icon-root,
+    .custom-filter-input .mud-input-adornment .mud-icon-root,
+    .custom-filter-input .mud-select-icon {
+        color: #456990 !important;
+        opacity: 1 !important;
+    }
+
+    /* ✅ FIX: evita fondo oscuro por autofill del navegador */
+    .custom-filter-input input:-webkit-autofill,
+    .custom-filter-input input:-webkit-autofill:hover,
+    .custom-filter-input input:-webkit-autofill:focus {
+        -webkit-text-fill-color: #1e293b !important;
+        -webkit-box-shadow: 0 0 0px 1000px white inset !important;
+        transition: background-color 5000s ease-in-out 0s;
+    }
+
+    /* Botones de Filtro Tipo Segmented Control */
+    .filter-group {
+        display: flex;
+        background-color: #f1f5f9;
+        border-radius: 8px;
+        padding: 4px;
+        border: 1px solid #e2e8f0;
+    }
+
+    .filter-btn {
+        border-radius: 6px !important;
+        text-transform: none !important;
+        font-weight: 700 !important;
+        padding: 4px 16px !important;
+    }
+
+    /* --- MODALES --- */
     .unified-dialog-card {
         background-color: white !important;
-        border-radius: 12px !important;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.2) !important;
+        border-radius: 16px !important;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1) !important;
     }
 
-    .modal-title {
-        color: var(--mud-palette-primary);
+    .dialog-header-integrated {
+        background: #456990;
+        color: white;
+        padding: 16px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-shrink: 0;
+        border-radius: 16px 16px 0 0;
+    }
+
+    .modal-title-warning {
+        color: #d97706;
         font-weight: 800;
         font-size: 1.5rem;
-    }
-
-    /* --- ESTILO DE INPUTS (Borde Azul por defecto) --- */
-    .mud-dialog .mud-input-outlined-border {
-        border-color: #456990 !important;
-        border-width: 1px !important;
-    }
-
-    /* Si hay error, MudBlazor lo pone rojo automáticamente,
-           pero aseguramos que el fondo siga siendo sutil */
-    .mud-dialog .mud-input-control {
-        background-color: #FAFAFA;
-        border-radius: 4px;
-    }
-
-        .mud-dialog .mud-input-control input {
-            color: #0F172A !important;
-            font-weight: 500;
-        }
-
-    /* Iconos grises */
-    .mud-input-adornment-start .mud-icon-root,
-    .force-black-text .mud-icon-root {
-        color: #6B7280 !important;
+        letter-spacing: -0.5px;
     }
 </style>
 
-<MudText Typo="Typo.h5" Color="Color.Primary" Align="Align.Center" Class="mb-4"><b>Gestión de Regímenes</b></MudText>
+@* OVERLAY DE PROTECCIÓN DURANTE PROCESAMIENTO *@
+<MudOverlay Visible="_procesando" DarkBackground="true" Absolute="false" ZIndex="9999">
+    <MudStack AlignItems="AlignItems.Center">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+        <MudText Typo="Typo.h6" Style="color: white; font-weight: 600;">Procesando operación...</MudText>
+    </MudStack>
+</MudOverlay>
 
-<MudTable @ref="_table"
-          Items="@regimenes"
-          Hover="true"
-          Loading="@loading"
-          RowsPerPage="10"
-          Elevation="3"
-          Class="rounded-xl"
-          ReadOnly="false"
-          CanCancelEdit="true"
-          RowEditCommit="ItemHasBeenCommitted"
-          EditTrigger="TableEditTrigger.EditButton"
-          ApplyButtonPosition="TableApplyButtonPosition.End">
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-6 mb-10">
 
-    <ToolBarContent>
-        <MudText Typo="Typo.h6" Color="Color.Primary" Class="d-none d-md-flex font-weight-bold">Catálogo</MudText>
-        <MudSpacer />
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="AbrirModalCrear" Class="rounded-lg px-4">Nuevo</MudButton>
-    </ToolBarContent>
-
-    <EditButtonContent><span style="display:none;"></span></EditButtonContent>
-
-    <HeaderContent>
-        <MudTh Style="text-align: center;">Nombre</MudTh>
-        <MudTh Style="text-align: center;">Estado</MudTh>
-        <MudTh Style="width: 120px; text-align: center;">Acciones</MudTh>
-    </HeaderContent>
-
-    <RowTemplate>
-        <MudTd DataLabel="Nombre" Style="text-align: center;">
-            <MudText Typo="Typo.body2" Style="font-weight: 600;">@context.Nombre</MudText>
-        </MudTd>
-
-        <MudTd DataLabel="Estado" Style="text-align: center;">
-            <MudChip T="string" Color="@(context.Activo? Color.Success: Color.Default)" Size="Size.Small" Variant="Variant.Filled" Class="rounded">
-                @(context.Activo ? "Activo" : "Inactivo")
-            </MudChip>
-        </MudTd>
-
-        <MudTd DataLabel="Acciones" Style="text-align: center;">
-            <div class="d-flex justify-center">
-                <MudTooltip Text="Editar">
-                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                   Color="Color.Primary"
-                                   Size="Size.Small"
-                                   OnClick="@(() => EditarFila(context))" />
-                </MudTooltip>
-            </div>
-        </MudTd>
-    </RowTemplate>
-
-    <RowEditingTemplate>
-        <MudTd DataLabel="Nombre">
-            <MudTextField @bind-Value="@context.Nombre" Label="Nombre" Variant="Variant.Text" Class="force-black-text" />
-        </MudTd>
-        <MudTd DataLabel="Estado" Style="text-align: center;">
-            <MudSwitch @bind-Value="@context.Activo" Color="Color.Success" Label="@(context.Activo ? "Act" : "Inac")" />
-        </MudTd>
-    </RowEditingTemplate>
-
-    <PagerContent>
-        <MudTablePager RowsPerPageString="Filas:"
-                       PageSizeOptions="new int[] { 5, 10, 20 }"
-                       InfoFormat="{first_item}-{last_item} de {all_items}"
-                       Class="force-black-text" />
-    </PagerContent>
-</MudTable>
-
-@* --- MODAL CREAR --- *@
-<MudDialog @bind-Visible="mostrarDialogoCrear" Options="dialogOptions" Class="unified-dialog-card">
-    <TitleContent>
-        <div class="pa-6 pb-2 d-flex justify-space-between align-center">
-            <div>
-                <MudText Class="modal-title">Nuevo Régimen</MudText>
-                <MudText Typo="Typo.body2" Style="color: #6B7280;">Define una modalidad de cursada.</MudText>
-            </div>
-            <MudIconButton Icon="@Icons.Material.Filled.Close" OnClick="CerrarModal" Color="Color.Default" />
+    @* --- ENCABEZADO DE PÁGINA --- *@
+    <div class="d-flex align-center justify-space-between mb-6 flex-wrap gap-4">
+        <div>
+            <MudText Typo="Typo.h4" Style="font-weight: 800; color: #456990; letter-spacing: -0.5px;">Gestión de Regímenes</MudText>
+            <MudText Typo="Typo.subtitle1" Class="mud-text-secondary">Modalidades de temporalidad de cursada (Anual, Cuatrimestral, etc.).</MudText>
         </div>
-    </TitleContent>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   Size="Size.Large"
+                   Style="font-weight: 700; border-radius: 8px;"
+                   OnClick="AbrirModalCrear"
+                   Disabled="loading">
+            Nuevo Régimen
+        </MudButton>
+    </div>
+
+    @* --- TABLA PRINCIPAL --- *@
+    <MudTable @ref="_table"
+              Items="@regimenes"
+              Hover="true"
+              Loading="@loading"
+              RowsPerPage="15"
+              Filter="new Func<RegimenDTO, bool>(FilterFunc)"
+              Elevation="2"
+              Class="rounded-lg table-header-custom overflow-hidden"
+              RowClass="row-hover-effect">
+        
+        <ToolBarContent>
+            <div class="d-flex flex-wrap align-center gap-4 w-100 mb-2">
+                
+                @* 1. Filtro Estado (Segmented Control) *@
+                <div class="filter-group">
+                    <MudButton OnClick="@(() => CambiarFiltro("Todos"))" Variant="@(filtroEstado == "Todos" ? Variant.Filled : Variant.Text)" Color="@(filtroEstado == "Todos" ? Color.Primary : Color.Default)" Size="Size.Small" Class="filter-btn" DisableElevation="true">Todos</MudButton>
+                    <MudButton OnClick="@(() => CambiarFiltro("Activos"))" Variant="@(filtroEstado == "Activos" ? Variant.Filled : Variant.Text)" Color="@(filtroEstado == "Activos" ? Color.Success : Color.Default)" Size="Size.Small" Class="filter-btn" DisableElevation="true">Activos</MudButton>
+                    <MudButton OnClick="@(() => CambiarFiltro("Inactivos"))" Variant="@(filtroEstado == "Inactivos" ? Variant.Filled : Variant.Text)" Color="@(filtroEstado == "Inactivos" ? Color.Error : Color.Default)" Size="Size.Small" Class="filter-btn" DisableElevation="true">Inactivos</MudButton>
+                </div>
+
+                <MudSpacer />
+
+                @* 2. Buscador General *@
+                <MudTextField @bind-Value="searchString"
+                              Placeholder="Buscar régimen..."
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              AdornmentColor="Color.Primary"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Class="custom-filter-input mt-0"
+                              Style="min-width: 280px; background-color: white; border-radius: 8px;"
+                              Immediate="true"
+                              DebounceInterval="300"
+                              Clearable="true" />
+            </div>
+        </ToolBarContent>
+
+        <HeaderContent>
+            <MudTh><MudTableSortLabel SortBy="new Func<RegimenDTO, object>(x => x.Nombre)">Nombre del Régimen</MudTableSortLabel></MudTh>
+            <MudTh Style="text-align: center;">Estado</MudTh>
+            <MudTh Style="width: 120px; text-align: center;">Acciones</MudTh>
+        </HeaderContent>
+
+        <RowTemplate>
+            <MudTd DataLabel="Nombre">
+                <MudText Typo="Typo.body2" Style="font-weight: 700; color: #1e293b;">@context.Nombre</MudText>
+            </MudTd>
+
+            <MudTd DataLabel="Estado" Style="text-align: center;">
+                @if (context.Activo)
+                {
+                    <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Outlined" Style="font-weight: 700;">ACTIVO</MudChip>
+                }
+                else
+                {
+                    <MudChip T="string" Color="Color.Error" Size="Size.Small" Variant="Variant.Outlined" Style="font-weight: 700;">INACTIVO</MudChip>
+                }
+            </MudTd>
+
+            <MudTd DataLabel="Acciones" Style="text-align: center;">
+                <div class="d-flex justify-center gap-1">
+                    <MudTooltip Text="Editar">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" OnClick="@(() => AbrirModalEditar(context))" Disabled="_procesando" />
+                    </MudTooltip>
+                    @if (context.Activo)
+                    {
+                        <MudTooltip Text="Dar de Baja">
+                            <MudIconButton Icon="@Icons.Material.Filled.Block" Color="Color.Warning" Size="Size.Small" OnClick="@(() => AbrirModalBaja(context))" Disabled="_procesando" />
+                        </MudTooltip>
+                    }
+                    else
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.Circle" Size="Size.Small" Color="Color.Default" Disabled="true" Style="opacity: 0.3;" />
+                    }
+                </div>
+            </MudTd>
+        </RowTemplate>
+
+        <LoadingContent>
+            <MudText Typo="Typo.body1" Class="pa-4 text-center" Style="color: #64748b;">Cargando catálogo de regímenes...</MudText>
+        </LoadingContent>
+        <NoRecordsContent>
+            <div class="d-flex flex-column align-center justify-center pa-8">
+                <MudIcon Icon="@Icons.Material.Filled.Schedule" Style="font-size: 4rem; color: #cbd5e1;" Class="mb-3" />
+                <MudText Typo="Typo.h6" Style="font-weight: 700; color: #475569;">No se encontraron registros</MudText>
+                <MudText Typo="Typo.body2" Style="color: #64748b;">No hay regímenes que coincidan con los filtros actuales.</MudText>
+            </div>
+        </NoRecordsContent>
+        <PagerContent>
+            <MudTablePager RowsPerPageString="Filas por página:" InfoFormat="{first_item}-{last_item} de {all_items}" />
+        </PagerContent>
+    </MudTable>
+</MudContainer>
+
+@* --- MODAL 1: CREAR / EDITAR RÉGIMEN --- *@
+<MudDialog @bind-Visible="mostrarDialogoCrear" Options="optionsCrear" Class="unified-dialog-card pa-0">
     <DialogContent>
-        <div class="px-6 pb-4">
-            <EditForm Model="@regimenModel" OnValidSubmit="Guardar">
-                <DataAnnotationsValidator />
-                <MudGrid>
+        <div class="dialog-header-integrated">
+            <div class="d-flex align-center">
+                <MudIcon Icon="@(esEdicion? Icons.Material.Filled.Edit : Icons.Material.Filled.AddBox)" Class="mr-3" />
+                <div>
+                    <MudText Typo="Typo.h6" Style="font-weight: 700; letter-spacing: -0.5px;">@(esEdicion ? "Editar Régimen" : "Nuevo Régimen")</MudText>
+                </div>
+            </div>
+            <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" OnClick="CerrarModales" Size="Size.Small" Disabled="_procesando" />
+        </div>
+        <div class="pa-6">
+            <MudForm @ref="_form">
+                <MudGrid Spacing="2">
                     <MudItem xs="12">
-                        @* VALIDACIÓN EN ROJO ACTIVADA *@
-                        <MudTextField Label="Nombre"
-                                      @bind-Value="regimenModel.Nombre"
-                                      For="@(() => regimenModel.Nombre)"
-                                      Variant="Variant.Outlined"
-                                      Class="force-black-text"
-                                      Placeholder="Ej: Cuatrimestral"
-                                      Adornment="Adornment.Start"
-                                      AdornmentIcon="@Icons.Material.Filled.Label"
-                                      Error="@nombreError"
-                                      ErrorText="El nombre es obligatorio" />
+                        <MudTextField Label="Nombre del Régimen" @bind-Value="regimenModel.Nombre"
+                                      Variant="Variant.Outlined" Margin="Margin.Dense" Class="custom-filter-input bg-white"
+                                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Label"
+                                      Required="true" RequiredError="El nombre es obligatorio" Disabled="_procesando"
+                                      Placeholder="Ej: Cuatrimestral" />
                     </MudItem>
-                    <MudItem xs="12" Class="d-flex justify-end gap-2 mt-4 pt-4" style="border-top: 1px solid #E5E7EB;">
-                        <MudButton OnClick="CerrarModal" Variant="Variant.Text" Color="Color.Default">Cancelar</MudButton>
-                        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="rounded-lg px-6">Guardar</MudButton>
-                    </MudItem>
+
+                    @if (esEdicion)
+                    {
+                        <MudItem xs="12" Class="mt-2">
+                            <div class="pa-3 rounded-lg" style="background-color: #f8fafc; border: 1px solid #e2e8f0;">
+                                <MudSwitch @bind-Value="regimenModel.Activo" Color="Color.Success" Label="Régimen Activo en el Sistema" Style="font-weight: 600; color: #475569;" Disabled="_procesando" />
+                            </div>
+                        </MudItem>
+                    }
                 </MudGrid>
-            </EditForm>
+            </MudForm>
         </div>
     </DialogContent>
+    <DialogActions>
+        <div class="px-6 pb-6 d-flex justify-end gap-3 w-100">
+            <MudButton OnClick="CerrarModales" Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg font-weight-bold" Disabled="_procesando">Cancelar</MudButton>
+            <MudButton OnClick="GuardarCambios" Variant="Variant.Filled" Color="Color.Primary" Class="rounded-lg font-weight-bold px-6" Disabled="_procesando">
+                @(_procesando ? "Guardando..." : (esEdicion ? "Guardar Cambios" : "Crear Régimen"))
+            </MudButton>
+        </div>
+    </DialogActions>
+</MudDialog>
+
+@* --- MODAL 2: CONFIRMAR BAJA --- *@
+<MudDialog @bind-Visible="mostrarDialogoBaja" Options="optionsBaja" Class="unified-dialog-card pb-2">
+    <DialogContent>
+        <div class="pa-4 d-flex flex-column align-center text-center">
+            <div style="background-color: #fffbeb; padding: 16px; border-radius: 50%; margin-bottom: 16px;">
+                <MudIcon Icon="@Icons.Material.Filled.WarningAmber" Color="Color.Warning" Style="font-size: 3rem;" />
+            </div>
+            <MudText Class="modal-title-warning mb-2">Confirmar Baja</MudText>
+            <MudText Typo="Typo.body1" Style="color: #334155; font-weight: 600;" Class="mb-2">
+                El régimen <b>@regimenParaBaja?.Nombre</b> pasará a estado inactivo.
+            </MudText>
+            <MudText Typo="Typo.caption" Style="color: #64748b;">
+                Ya no podrá ser asignado a nuevas materias en los planes de estudio.
+            </MudText>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <div class="px-4 pb-4 d-flex justify-center gap-3 w-100">
+            <MudButton OnClick="CerrarModales" Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg font-weight-bold" Disabled="_procesando">Cancelar</MudButton>
+            <MudButton OnClick="ConfirmarBaja" Variant="Variant.Filled" Color="Color.Warning" Class="rounded-lg font-weight-bold px-6" Disabled="_procesando">
+                @(_procesando ? "Procesando..." : "Confirmar Baja")
+            </MudButton>
+        </div>
+    </DialogActions>
 </MudDialog>
 
 @code {
-    private MudTable<RegimenDTO> _table;
+    private MudTable<RegimenDTO> _table = null!;
+    private MudForm _form = null!;
+    private List<RegimenDTO> regimenes = new();
 
-    // Inicializamos la lista para evitar NullReferenceException al cargar
-    private List<RegimenDTO> regimenes = new List<RegimenDTO>();
-    private RegimenDTO regimenModel = new RegimenDTO();
+    private string searchString = "";
+    private string filtroEstado = "Activos";
 
     private bool loading = true;
-    private bool mostrarDialogoCrear = false;
-    private bool nombreError = false;
+    private bool _procesando = false;
 
-    private DialogOptions dialogOptions = new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true, CloseButton = false };
+    private RegimenDTO regimenModel = new();
+    private bool esEdicion = false;
+    private bool mostrarDialogoCrear = false;
+
+    private RegimenDTO? regimenParaBaja;
+    private bool mostrarDialogoBaja = false;
+
+    private DialogOptions optionsCrear = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, BackdropClick = false, CloseButton = false };
+    private DialogOptions optionsBaja = new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true, BackdropClick = false, CloseButton = false };
 
     protected override async Task OnInitializedAsync()
     {
@@ -193,71 +337,150 @@
     private async Task CargarDatos()
     {
         loading = true;
+        StateHasChanged();
+
         try
         {
-            // Usamos una variable temporal para asegurar que si falla, la lista no quede nula
             var lista = await RegimenService.GetAllAsync();
             regimenes = lista ?? new List<RegimenDTO>();
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            Snackbar.Add("Error cargando datos", Severity.Error);
-            regimenes = new List<RegimenDTO>(); // Fallback seguro
+            Snackbar.Add("Error al cargar el catálogo de regímenes.", Severity.Error);
         }
         finally
         {
             loading = false;
+            StateHasChanged();
         }
     }
 
+    private void CambiarFiltro(string nuevoEstado)
+    {
+        filtroEstado = nuevoEstado;
+        StateHasChanged();
+    }
+
+    private bool FilterFunc(RegimenDTO reg)
+    {
+        // 1. Filtro Estado
+        bool matchEstado = filtroEstado switch
+        {
+            "Activos" => reg.Activo,
+            "Inactivos" => !reg.Activo,
+            _ => true
+        };
+        if (!matchEstado) return false;
+
+        // 2. Buscador de Texto
+        if (!string.IsNullOrWhiteSpace(searchString))
+        {
+            var term = searchString.Trim().ToLower();
+            bool matchBusqueda = reg.Nombre?.ToLower().Contains(term) ?? false;
+            if (!matchBusqueda) return false;
+        }
+
+        return true;
+    }
+
+    // --- CRUD ---
     private void AbrirModalCrear()
     {
         regimenModel = new RegimenDTO { Activo = true };
-        nombreError = false;
+        esEdicion = false;
         mostrarDialogoCrear = true;
     }
 
-    // Método para activar la edición en línea
-    private void EditarFila(RegimenDTO item)
+    private void AbrirModalEditar(RegimenDTO item)
     {
-        _table.SetEditingItem(item);
+        regimenModel = new RegimenDTO
+        {
+            Id = item.Id,
+            Nombre = item.Nombre,
+            Activo = item.Activo
+        };
+        esEdicion = true;
+        mostrarDialogoCrear = true;
     }
 
-    private async Task Guardar()
+    private async Task GuardarCambios()
     {
-        // Validación manual que activa el rojo
-        if (string.IsNullOrWhiteSpace(regimenModel.Nombre))
-        {
-            nombreError = true;
-            return; // Detenemos el guardado
-        }
-        nombreError = false;
+        await _form.Validate();
+        if (!_form.IsValid) return;
 
-        if (await RegimenService.CreateAsync(regimenModel))
+        _procesando = true;
+        StateHasChanged();
+
+        try
         {
-            Snackbar.Add("Régimen creado", Severity.Success);
+            bool exito = esEdicion ? await RegimenService.UpdateAsync(regimenModel) : await RegimenService.CreateAsync(regimenModel);
+
+            if (exito)
+            {
+                Snackbar.Add(esEdicion ? "Régimen actualizado correctamente." : "Régimen registrado exitosamente.", Severity.Success);
+                mostrarDialogoCrear = false;
+                await CargarDatos();
+            }
+            else
+            {
+                Snackbar.Add("Hubo un error de validación. Es posible que el nombre ya esté registrado.", Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Ocurrió un error inesperado al conectar con el servidor.", Severity.Error);
+        }
+        finally
+        {
+            _procesando = false;
+            StateHasChanged();
+        }
+    }
+
+    private void AbrirModalBaja(RegimenDTO reg)
+    {
+        regimenParaBaja = reg;
+        mostrarDialogoBaja = true;
+    }
+
+    private async Task ConfirmarBaja()
+    {
+        if (regimenParaBaja == null) return;
+
+        _procesando = true;
+        StateHasChanged();
+
+        try
+        {
+            var exito = await RegimenService.DeleteAsync(regimenParaBaja.Id);
+            if (exito)
+            {
+                Snackbar.Add("El régimen ha sido dado de baja.", Severity.Warning);
+                await CargarDatos();
+            }
+            else
+            {
+                Snackbar.Add("No se pudo dar de baja. Verifique que no esté asignado a materias activas.", Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Ocurrió un error al intentar eliminar el registro.", Severity.Error);
+        }
+        finally
+        {
+            _procesando = false;
+            mostrarDialogoBaja = false;
+            StateHasChanged();
+        }
+    }
+
+    private void CerrarModales()
+    {
+        if (!_procesando)
+        {
             mostrarDialogoCrear = false;
-            await CargarDatos();
-        }
-        else
-        {
-            Snackbar.Add("Error al crear", Severity.Error);
+            mostrarDialogoBaja = false;
         }
     }
-
-    private async void ItemHasBeenCommitted(object element)
-    {
-        var item = (RegimenDTO)element;
-        if (await RegimenService.UpdateAsync(item))
-        {
-            Snackbar.Add("Actualizado correctamente", Severity.Success);
-        }
-        else
-        {
-            Snackbar.Add("Error al actualizar", Severity.Error);
-            await CargarDatos(); // Revertimos cambios
-        }
-    }
-
-    private void CerrarModal() => mostrarDialogoCrear = false;
 }

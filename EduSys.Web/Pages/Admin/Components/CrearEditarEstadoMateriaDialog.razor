@@ -1,13 +1,9 @@
 ﻿@using EduSys.Shared.DTOs
 
 <style>
-    /* Ocultar elementos por defecto de MudBlazor (Tu estándar) */
-    .mud-dialog-title {
-        display: none !important; /* Mata la cabecera nativa y su cruz gris */
-    }
-
-    .mud-dialog-close-button {
-        display: none !important; /* Mata el botón "X" nativo si está activado */
+    /* Ocultar elementos por defecto de MudBlazor */
+    .mud-dialog-close-icon {
+        display: none !important;
     }
 
     .mud-dialog-content {
@@ -18,16 +14,18 @@
         display: flex;
         flex-direction: column;
         background-color: white;
+        min-width: 400px;
     }
 
-    /* Cabecera Azul para ABM (Tu diseño) */
-    .dialog-header-primary {
-        background: #1e3a58; /* Azul principal EduSys */
+    /* Cabecera integrada consistente con Alumnos y Docentes */
+    .dialog-header-integrated {
+        background: #456990;
         color: white;
-        padding: 12px 20px;
+        padding: 16px 24px;
         display: flex;
         align-items: center;
         justify-content: space-between;
+        flex-shrink: 0;
     }
 
     .dialog-body {
@@ -37,45 +35,44 @@
     .actions-footer {
         padding: 16px 24px;
         border-top: 1px solid #e2e8f0;
+        background-color: #f8fafc;
         display: flex;
         justify-content: flex-end;
         gap: 12px;
-        background-color: white;
+        flex-shrink: 0;
     }
 
-    /* =========================================
-           ESTILOS DEL INPUT PERSONALIZADO
-           ========================================= */
-
-    /* Borde azul constante */
-    .input-azul .mud-input-outlined-border {
-        border-color: #1e3a58 !important;
-        border-width: 1px;
+    /* Estilos forzados de inputs (modo oscuro) estandarizados */
+    .force-black-text input,
+    .force-black-text .mud-input-slot {
+        color: #1e293b !important;
+        font-weight: 500;
+        -webkit-text-fill-color: #1e293b !important;
     }
 
-    /* Borde más grueso al hacer click */
-    .input-azul.mud-input-focused .mud-input-outlined-border {
+    .force-black-text .mud-input-label {
+        color: #456990 !important;
+        background-color: white !important;
+        padding: 0 5px;
+        font-weight: 600;
+    }
+
+    .force-black-text .mud-input-outlined-border {
+        border-color: #cbd5e1 !important;
+        transition: border-color 0.2s;
+    }
+
+    .force-black-text:hover .mud-input-outlined-border {
+        border-color: #456990 !important;
+    }
+
+    .force-black-text.mud-input-control.mud-input-focused .mud-input-outlined-border {
+        border-color: #456990 !important;
         border-width: 2px !important;
-        border-color: #1e3a58 !important;
     }
 
-    /* Hacer visible el placeholder */
-    .input-azul input::placeholder {
-        color: #94a3b8 !important; /* Gris intermedio visible */
-        opacity: 1 !important;
-    }
-
-    /* Color del texto escrito y del icono */
-    .input-azul .mud-input-slot,
-    .input-azul .mud-input-adornment-icon {
-        font-weight: 600;
-        color: #1e3a58 !important;
-    }
-
-    /* Color de la etiqueta flotante (Label) */
-    .input-azul .mud-input-label {
-        color: #1e3a58 !important;
-        font-weight: 600;
+    .force-black-text .mud-icon-root {
+        color: #456990 !important;
     }
 </style>
 
@@ -83,23 +80,28 @@
     <DialogContent>
         <div class="dialog-container">
 
-            @* CABECERA *@
-            <div class="dialog-header-primary">
+            @* --- CABECERA --- *@
+            <div class="dialog-header-integrated">
                 <div class="d-flex align-center">
                     <MudIcon Icon="@(Estado.Id == 0 ? Icons.Material.Filled.AddCircleOutline : Icons.Material.Filled.Edit)" Class="mr-3" />
-                    <MudText Typo="Typo.h6" Style="font-weight: 700; letter-spacing: 0.5px;">
+                    <MudText Typo="Typo.h6" Style="font-weight: 700; letter-spacing: -0.5px;">
                         @(Estado.Id == 0 ? "Nuevo Estado de Materia" : "Editar Estado de Materia")
                     </MudText>
                 </div>
-                <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" OnClick="Cancelar" Size="Size.Small" />
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" OnClick="Cancelar" Size="Size.Small" Disabled="_procesando" />
             </div>
 
-            @* CUERPO *@
+            @* --- CUERPO --- *@
             <div class="dialog-body">
-                <MudForm @ref="form" @bind-IsValid="@success">
+                <MudForm @ref="form">
+                    
+                    <MudText Typo="Typo.subtitle2" Style="color: #456990; font-weight: 800; text-transform: uppercase; margin-bottom: 12px; letter-spacing: 0.5px;">
+                        Datos Generales
+                    </MudText>
 
-                    @* Input Text con Clase Azul, Icono representativo y sin botón de limpiar cruz gris *@
+                    @* Input Text Estandarizado *@
                     <MudTextField @bind-Value="Estado.Nombre"
+                                  For="@(() => Estado.Nombre)"
                                   Label="Nombre del Estado"
                                   Placeholder="Ej. Promocionado, Regular, Libre..."
                                   Required="true"
@@ -109,32 +111,65 @@
                                   Adornment="Adornment.Start"
                                   AdornmentIcon="@Icons.Material.Filled.TextSnippet"
                                   Clearable="false"
-                                  Class="mb-4 input-azul" />
+                                  Class="mb-4 force-black-text"
+                                  Disabled="_procesando" />
 
                     @* CAJA DE REGLAS ACADÉMICAS *@
-                    <div class="d-flex flex-column gap-3 mt-4 pa-4 rounded" style="background-color: #F8FAFC; border: 1px solid #E2E8F0;">
-                        <MudText Typo="Typo.subtitle2" Style="font-weight: 700; color: #334155;" Class="mb-1">Configuración de Reglas</MudText>
+                    <MudText Typo="Typo.subtitle2" Style="color: #456990; font-weight: 800; text-transform: uppercase; margin-top: 20px; margin-bottom: 12px; letter-spacing: 0.5px;">
+                        Reglas de Negocio
+                    </MudText>
 
-                        <MudSwitch @bind-Value="Estado.EsAprobatoria" Color="Color.Success" Label="¿Es condición aprobatoria?"
-                                   HelperText="Ej: Promoción directa." />
+                    <div class="d-flex flex-column gap-3 pa-4 rounded-lg" style="background-color: #f8fafc; border: 1px solid #cbd5e1;">
+                        <MudSwitch @bind-Value="Estado.EsAprobatoria"
+                                   Color="Color.Success"
+                                   Label="¿Es condición aprobatoria?"
+                                   HelperText="Ej: Promoción directa."
+                                   Disabled="_procesando" />
 
-                        <MudSwitch @bind-Value="Estado.HabilitaFinal" Color="Color.Info" Label="¿Habilita a rendir examen final?"
-                                   HelperText="Ej: Condición de Regular." />
+                        <MudSwitch @bind-Value="Estado.HabilitaFinal"
+                                   Color="Color.Info"
+                                   Label="¿Habilita a rendir examen final?"
+                                   HelperText="Ej: Condición de Regular."
+                                   Disabled="_procesando" />
 
                         @if (Estado.Id != 0)
                         {
                             <MudDivider Class="my-2" />
-                            <MudSwitch @bind-Value="Estado.Activo" Color="Color.Primary" Label="Activo en el sistema" />
+                            <MudSwitch @bind-Value="Estado.Activo"
+                                       Color="Color.Primary"
+                                       Label="Activo en el sistema"
+                                       Disabled="_procesando" />
                         }
                     </div>
 
                 </MudForm>
             </div>
 
-            @* FOOTER *@
+            @* --- FOOTER --- *@
             <div class="actions-footer">
-                <MudButton OnClick="Cancelar" Variant="Variant.Outlined" Color="Color.Default">Cancelar</MudButton>
-                <MudButton OnClick="Guardar" Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!success)" StartIcon="@Icons.Material.Filled.Save">Guardar</MudButton>
+                <MudButton OnClick="Cancelar"
+                           Variant="Variant.Outlined"
+                           Color="Color.Default"
+                           Class="rounded-lg font-weight-bold"
+                           Disabled="_procesando">
+                    Cancelar
+                </MudButton>
+                <MudButton OnClick="Guardar"
+                           Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           Class="rounded-lg font-weight-bold"
+                           Disabled="_procesando">
+                    @if (_procesando)
+                    {
+                        <MudProgressCircular Class="ms-n1 mr-2" Size="Size.Small" Indeterminate="true" Color="Color.Surface" />
+                        <MudText>GUARDANDO...</MudText>
+                    }
+                    else
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.Save" Class="mr-2" />
+                        <MudText>GUARDAR</MudText>
+                    }
+                </MudButton>
             </div>
 
         </div>
@@ -143,11 +178,10 @@
 
 @code {
     [CascadingParameter] MudDialogInstance MudDialog { get; set; } = null!;
-
     [Parameter] public EstadoMateriaDTO Estado { get; set; } = new();
 
     private MudForm form = null!;
-    private bool success;
+    private bool _procesando = false;
 
     protected override void OnInitialized()
     {
@@ -162,8 +196,13 @@
     private async Task Guardar()
     {
         await form.Validate();
-        if (success)
+        
+        if (form.IsValid)
         {
+            _procesando = true;
+            StateHasChanged();
+            
+            // Enviamos la data al componente padre para que haga la petición HTTP
             MudDialog.Close(DialogResult.Ok(Estado));
         }
     }

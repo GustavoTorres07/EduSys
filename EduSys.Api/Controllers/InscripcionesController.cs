@@ -2,11 +2,6 @@
 using EduSys.Shared.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using EduSys.Shared.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace EduSys.Api.Controllers
 {
@@ -26,12 +21,15 @@ namespace EduSys.Api.Controllers
         // 1. INSCRIBIRSE (Acción principal)
         // =========================================================================
         [HttpPost("inscribir")]
-        public async Task<ActionResult<ResultadoInscripcionDTO>> Inscribir(InscripcionCursadaRequestDTO dto)
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ResultadoInscripcionDTO))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ResultadoInscripcionDTO))]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<ResultadoInscripcionDTO>> Inscribir([FromBody] InscripcionCursadaRequestDTO dto)
         {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
             try
             {
-                // ✅ CORRECCIÓN: Pasamos el objeto 'dto' completo.
-                // Asegúrate que tu interfaz IInscripcionRepository acepte (InscripcionCursadaRequestDTO dto)
                 var resultado = await _inscripcionRepository.InscribirAlumnoAsync(dto);
 
                 if (resultado.Exito)
@@ -53,6 +51,7 @@ namespace EduSys.Api.Controllers
         // 2. VER OFERTA (Para que el alumno elija)
         // =========================================================================
         [HttpGet("oferta/{idAlumno}")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<ComisionDTO>))]
         public async Task<ActionResult<List<ComisionDTO>>> GetOferta(int idAlumno, [FromQuery] int idPeriodo)
         {
             var oferta = await _inscripcionRepository.GetOfertaParaAlumnoAsync(idAlumno, idPeriodo);
@@ -63,6 +62,7 @@ namespace EduSys.Api.Controllers
         // 3. VER MIS INSCRIPCIONES (Para que el alumno vea qué cursa)
         // =========================================================================
         [HttpGet("alumno/{idAlumno}/periodo/{idPeriodo}")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<InscripcionCursadaListadoDTO>))]
         public async Task<ActionResult<List<InscripcionCursadaListadoDTO>>> GetPorAlumno(int idAlumno, int idPeriodo)
         {
             var lista = await _inscripcionRepository.GetInscripcionesPorAlumnoAsync(idAlumno, idPeriodo);
@@ -70,7 +70,6 @@ namespace EduSys.Api.Controllers
             var result = lista.Select(i => new InscripcionCursadaListadoDTO
             {
                 IdInscripcion = i.Id,
-                // Agregamos "?" para evitar crasheos si falta alguna relación
                 Materia = i.IdComisionNavigation?.IdPlanMateriaNavigation?.IdMateriaNavigation?.Nombre ?? "Materia sin nombre",
                 ComisionCodigo = i.IdComisionNavigation?.Codigo ?? "S/C",
                 Estado = i.Estado,
@@ -81,15 +80,46 @@ namespace EduSys.Api.Controllers
         }
 
         // =========================================================================
+        // 4. DARSE DE BAJA
+        // =========================================================================
+        [HttpDelete("{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult> Cancelar(int id)
+        {
+            // ⚠️ NOTA DE SEGURIDAD: A futuro, validar que el ID del token JWT coincida 
+            // con el dueño de esta inscripción, o que el usuario tenga rol de Admin.
+            try
+            {
+                var exito = await _inscripcionRepository.CancelarInscripcionAsync(id);
+
+                if (!exito)
+                    return NotFound(new { message = "Inscripción no encontrada o ya dada de baja." });
+
+                return Ok(new { message = "Inscripción cancelada correctamente." });
+            }
+            catch (Exception ex)
+            {
+                // Captura excepciones de negocio (ej: ventana de periodo cerrada)
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        // =========================================================================
         // 5. INSCRIBIR ADMIN (Con Overrides / Excepciones)
         // =========================================================================
         [HttpPost("admin/inscribir")]
-        [Authorize(Roles = "Administrador, Secretaria Academica")] // Protegido por rol
+        [Authorize(Roles = "Administrador, Secretaria Academica")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ResultadoInscripcionDTO))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ResultadoInscripcionDTO))]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<ResultadoInscripcionDTO>> InscribirManual([FromBody] InscripcionManualDTO dto)
         {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
             try
             {
-                // Llamamos al método especial que creamos en el repositorio
                 var resultado = await _inscripcionRepository.InscribirAdminAsync(dto);
 
                 if (resultado.Exito)
@@ -108,29 +138,11 @@ namespace EduSys.Api.Controllers
         }
 
         // =========================================================================
-        // 4. DARSE DE BAJA
+        // 6. VER INSCRIPCIONES (ADMIN)
         // =========================================================================
-        [HttpDelete("{id}")]
-        public async Task<ActionResult> Cancelar(int id)
-        {
-            try
-            {
-                var exito = await _inscripcionRepository.CancelarInscripcionAsync(id);
-
-                if (!exito)
-                    return NotFound("Inscripción no encontrada o ya dada de baja.");
-
-                return Ok(new { message = "Inscripción cancelada correctamente." });
-            }
-            catch (Exception ex)
-            {
-                // Captura excepciones de negocio (ej: periodo cerrado)
-                return BadRequest(ex.Message);
-            }
-        }
-
         [HttpGet("admin/alumno/{idAlumno}")]
         [Authorize(Roles = "Administrador, Secretaria Academica")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<InscripcionCursadaListadoDTO>))]
         public async Task<ActionResult<List<InscripcionCursadaListadoDTO>>> GetInscripcionesAlumno(int idAlumno)
         {
             var inscripciones = await _inscripcionRepository.GetInscripcionesByAlumnoAsync(idAlumno);

@@ -9,7 +9,6 @@
         public string Token { get; set; } = string.Empty;
         public bool DebeCambiarPass { get; set; }
         public string FotoPerfilUrl { get; set; } = string.Empty;
-        // Lista de códigos de permisos (Ej: "ACA_CARRERA_ABM", "SEG_USUARIOS_ABM")
         public List<string> Permisos { get; set; } = new List<string>();
     }
 }

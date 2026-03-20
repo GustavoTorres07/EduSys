@@ -6,8 +6,8 @@
 
 <style>
     /* ============================================
-                   SISTEMA DE DISEÑO - DIÁLOGO DE INSCRIPCIÓN
-                   ============================================ */
+       SISTEMA DE DISEÑO - DIÁLOGO DE INSCRIPCIÓN
+       ============================================ */
     :root {
         --edusys-primary: #1e3a58;
         --edusys-primary-light: #2c5282;
@@ -32,7 +32,8 @@
         background: white !important;
         padding: 1.5rem !important;
         overflow-y: auto;
-        max-height: 70vh;
+        max-height: 75vh;
+        position: relative; /* Necesario para MudOverlay */
     }
 
     .mud-dialog-title {
@@ -64,15 +65,15 @@
         overflow: hidden;
     }
 
-        .student-info-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 4px;
-            height: 100%;
-            background: linear-gradient(180deg, var(--edusys-accent), var(--edusys-primary));
-        }
+    .student-info-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: linear-gradient(180deg, var(--edusys-accent), var(--edusys-primary));
+    }
 
     .student-avatar {
         width: 56px;
@@ -149,15 +150,15 @@
         justify-content: space-between;
     }
 
-        .current-item:last-child {
-            border-bottom: none;
-        }
+    .current-item:last-child {
+        border-bottom: none;
+    }
 
     .materia-select-wrapper {
         margin-bottom: 1.5rem;
     }
 
-    /* ESTILOS PARA EL SELECT - Borde, Título (Label) y Texto seleccionado */
+    /* ESTILOS SELECT */
     .select-borde-azul .mud-input-outlined-border {
         border-color: var(--edusys-accent) !important;
         border-width: 2px !important;
@@ -170,6 +171,8 @@
     .select-borde-azul .mud-input-label {
         color: var(--edusys-primary) !important;
         font-weight: 800 !important;
+        background-color: white !important;
+        padding: 0 4px;
     }
 
     .select-borde-azul .mud-input-slot {
@@ -177,24 +180,23 @@
         font-weight: 600 !important;
     }
 
-    /* ESTILOS PARA EL DROPDOWN (Caja flotante) */
     .popover-materias {
         background-color: #ffffff !important;
         border: 2px solid var(--edusys-border) !important;
     }
 
-        .popover-materias .mud-typography,
-        .popover-materias .mud-list-item-text,
-        .popover-materias span {
-            color: #1a202c !important;
-        }
+    .popover-materias .mud-typography,
+    .popover-materias .mud-list-item-text,
+    .popover-materias span {
+        color: #1a202c !important;
+    }
 
     .exceptions-panel {
         background: white;
         border: 2px solid var(--edusys-border);
         border-radius: 12px;
         overflow: hidden;
-        margin-bottom: 1.5rem;
+        margin-bottom: 0.5rem;
         box-shadow: var(--edusys-shadow-sm);
     }
 
@@ -211,21 +213,21 @@
         position: relative;
     }
 
-        .exception-item:last-child {
-            border-bottom: none;
-        }
+    .exception-item:last-child {
+        border-bottom: none;
+    }
 
-        .exception-item:hover {
-            background-color: var(--edusys-background);
-        }
+    .exception-item:hover {
+        background-color: var(--edusys-background);
+    }
 
-        .exception-item.active {
-            background: linear-gradient(90deg, rgba(211, 47, 47, 0.05) 0%, transparent 100%);
-        }
+    .exception-item.active {
+        background: linear-gradient(90deg, rgba(211, 47, 47, 0.05) 0%, transparent 100%);
+    }
 
-        .exception-item.active-warning {
-            background: linear-gradient(90deg, rgba(245, 124, 0, 0.05) 0%, transparent 100%);
-        }
+    .exception-item.active-warning {
+        background: linear-gradient(90deg, rgba(245, 124, 0, 0.05) 0%, transparent 100%);
+    }
 
     .exception-content {
         display: flex;
@@ -244,22 +246,22 @@
         transition: all 0.3s ease;
     }
 
-        .exception-icon-wrapper.default {
-            background: var(--edusys-background);
-            color: var(--edusys-text-secondary);
-        }
+    .exception-icon-wrapper.default {
+        background: var(--edusys-background);
+        color: var(--edusys-text-secondary);
+    }
 
-        .exception-icon-wrapper.active-danger {
-            background: linear-gradient(135deg, var(--edusys-danger), #e57373);
-            color: white;
-            box-shadow: 0 4px 12px rgba(211, 47, 47, 0.3);
-        }
+    .exception-icon-wrapper.active-danger {
+        background: linear-gradient(135deg, var(--edusys-danger), #e57373);
+        color: white;
+        box-shadow: 0 4px 12px rgba(211, 47, 47, 0.3);
+    }
 
-        .exception-icon-wrapper.active-warning {
-            background: linear-gradient(135deg, var(--edusys-warning), #ffb74d);
-            color: white;
-            box-shadow: 0 4px 12px rgba(245, 124, 0, 0.3);
-        }
+    .exception-icon-wrapper.active-warning {
+        background: linear-gradient(135deg, var(--edusys-warning), #ffb74d);
+        color: white;
+        box-shadow: 0 4px 12px rgba(245, 124, 0, 0.3);
+    }
 
     .exception-text {
         flex: 1;
@@ -291,17 +293,17 @@
         margin-top: 0.5rem;
     }
 
-        .exception-badge.danger {
-            background: linear-gradient(135deg, #ffebee, #ffcdd2);
-            color: var(--edusys-danger);
-            border: 1px solid var(--edusys-danger);
-        }
+    .exception-badge.danger {
+        background: linear-gradient(135deg, #ffebee, #ffcdd2);
+        color: var(--edusys-danger);
+        border: 1px solid var(--edusys-danger);
+    }
 
-        .exception-badge.warning {
-            background: linear-gradient(135deg, #fff3e0, #ffe0b2);
-            color: var(--edusys-warning);
-            border: 1px solid var(--edusys-warning);
-        }
+    .exception-badge.warning {
+        background: linear-gradient(135deg, #fff3e0, #ffe0b2);
+        color: var(--edusys-warning);
+        border: 1px solid var(--edusys-warning);
+    }
 
     .warning-alert {
         background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
@@ -317,15 +319,8 @@
     }
 
     @@keyframes fadeInSlide {
-        from {
-            opacity: 0;
-            transform: translateY(-10px);
-        }
-
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
     }
 
     .warning-icon {
@@ -357,20 +352,6 @@
         color: #e65100;
         line-height: 1.4;
     }
-
-    .loading-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(255, 255, 255, 0.9);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 10;
-        border-radius: 12px;
-    }
 </style>
 
 <MudDialog Options="dialogOptions">
@@ -389,16 +370,24 @@
     </TitleContent>
 
     <DialogContent>
+        @* NATIVO DE MUD BLAZOR: OVERLAY SEGURO *@
+        <MudOverlay Visible="procesando" DarkBackground="true" Absolute="true" ZIndex="9999" Class="rounded-b-lg">
+            <MudStack AlignItems="AlignItems.Center">
+                <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Large" />
+                <MudText Typo="Typo.h6" Style="color: white; font-weight: 600;">Sincronizando datos...</MudText>
+            </MudStack>
+        </MudOverlay>
+
         <div class="student-info-card">
             <div style="display: flex; align-items: center;">
                 <div class="student-avatar">
-                    @NombreAlumno.Substring(0, 1).ToUpper()
+                    @(string.IsNullOrWhiteSpace(NombreAlumno) ? "?" : NombreAlumno.Trim().Substring(0, 1).ToUpper())
                 </div>
                 <div class="student-info">
                     <div class="student-name">@NombreAlumno</div>
                     <div class="student-subtitle">
                         <MudIcon Icon="@Icons.Material.Filled.LocationCity" Size="Size.Small" Style="font-size: 0.9rem; vertical-align: middle; margin-right: 0.25rem;" />
-                        Sede: @(string.IsNullOrEmpty(NombreSede) ? "Principal" : NombreSede)
+                        Sede: @(string.IsNullOrWhiteSpace(NombreSede) ? "Principal" : NombreSede)
                     </div>
                 </div>
             </div>
@@ -432,6 +421,7 @@
                         </div>
                         <MudButton Size="Size.Small" Color="Color.Error" Variant="Variant.Text"
                                    StartIcon="@Icons.Material.Filled.Delete"
+                                   Disabled="@procesando"
                                    OnClick="@(() => DarDeBaja(ins.IdInscripcion))">
                             Dar Baja
                         </MudButton>
@@ -450,7 +440,7 @@
                 </div>
 
                 <MudSelect T="int?"
-                           Label="Seleccione una materia"
+                           Label="Seleccione una materia a cursar"
                            Variant="Variant.Outlined"
                            AnchorOrigin="Origin.BottomCenter"
                            @bind-Value="idComisionSeleccionada"
@@ -458,9 +448,11 @@
                            AdornmentColor="Color.Primary"
                            Margin="Margin.Dense"
                            Clearable="true"
-                           Class="select-borde-azul"
+                           Class="select-borde-azul bg-white"
                            PopoverClass="popover-materias"
-                           Placeholder="Seleccione la comisión...">
+                           Placeholder="Despliegue para ver opciones..."
+                           Disabled="@procesando">
+                    
                     @if (comisionesDisponibles != null && comisionesDisponibles.Any())
                     {
                         @foreach (var c in comisionesDisponibles)
@@ -485,7 +477,7 @@
                     else
                     {
                         <MudSelectItem T="int?" Value="null" Disabled="true">
-                            <MudText Typo="Typo.caption">No hay más materias disponibles</MudText>
+                            <MudText Typo="Typo.caption">No hay comisiones disponibles en esta sede.</MudText>
                         </MudSelectItem>
                     }
                 </MudSelect>
@@ -503,7 +495,7 @@
                         </div>
                         <div class="warning-text">
                             Has activado @ContarExcepcionesActivas() excepcion@(ContarExcepcionesActivas() > 1 ? "es" : "").
-                            Esta acción omitirá validaciones del sistema y debe realizarse solo en casos excepcionales.
+                            Esta acción omitirá validaciones del sistema y debe realizarse bajo autorización administrativa.
                         </div>
                     </div>
                 </div>
@@ -515,7 +507,7 @@
                         <div class="section-title-icon" style="background: linear-gradient(135deg, var(--edusys-danger), #e57373);">
                             <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" Size="Size.Small" Style="font-size: 0.9rem;" />
                         </div>
-                        <span>Parámetros de Excepción</span>
+                        <span>Parámetros de Excepción Administrativa</span>
                     </div>
                 </div>
 
@@ -537,7 +529,7 @@
                                 </div>
                             }
                         </div>
-                        <MudSwitch @bind-Value="ignorarCorrelativas" Color="Color.Error" />
+                        <MudSwitch @bind-Value="ignorarCorrelativas" Color="Color.Error" Disabled="@procesando" />
                     </div>
                 </div>
 
@@ -549,7 +541,7 @@
                         <div class="exception-text">
                             <div class="exception-title">Forzar Sobrecupo</div>
                             <div class="exception-description">
-                                Inscribe al estudiante aunque la comisión haya alcanzado su capacidad máxima.
+                                Inscribe al estudiante aunque la comisión haya alcanzado su capacidad máxima de alumnos.
                             </div>
                             @if (ignorarCupo)
                             {
@@ -559,7 +551,7 @@
                                 </div>
                             }
                         </div>
-                        <MudSwitch @bind-Value="ignorarCupo" Color="Color.Error" />
+                        <MudSwitch @bind-Value="ignorarCupo" Color="Color.Error" Disabled="@procesando" />
                     </div>
                 </div>
 
@@ -581,23 +573,11 @@
                                 </div>
                             }
                         </div>
-                        <MudSwitch @bind-Value="ignorarVentana" Color="Color.Warning" />
+                        <MudSwitch @bind-Value="ignorarVentana" Color="Color.Warning" Disabled="@procesando" />
                     </div>
                 </div>
             </div>
         </MudForm>
-
-        @if (procesando)
-        {
-            <div class="loading-overlay">
-                <div style="text-align: center;">
-                    <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Large" />
-                    <MudText Typo="Typo.body2" Class="mt-3" Style="color: var(--edusys-text-secondary); font-weight: 600;">
-                        Procesando petición...
-                    </MudText>
-                </div>
-            </div>
-        }
     </DialogContent>
 
     <DialogActions>
@@ -614,7 +594,7 @@
                    Disabled="@(idComisionSeleccionada == null || procesando)"
                    StartIcon="@Icons.Material.Filled.CheckCircle"
                    Style="font-weight: 700;">
-            @(procesando ? "Procesando..." : "Confirmar Inscripción")
+            Confirmar Inscripción
         </MudButton>
     </DialogActions>
 </MudDialog>
@@ -623,28 +603,29 @@
     [CascadingParameter] MudDialogInstance MudDialog { get; set; }
 
     [Parameter] public int IdAlumno { get; set; }
-    [Parameter] public string NombreAlumno { get; set; }
+    [Parameter] public string NombreAlumno { get; set; } = "Alumno Desconocido";
     [Parameter] public int IdSede { get; set; }
-    [Parameter] public string NombreSede { get; set; }
+    [Parameter] public string NombreSede { get; set; } = "Sede Principal";
 
     private MudForm form;
     private int? idComisionSeleccionada;
     private List<ComisionDTO> comisionesDisponibles = new();
     private List<InscripcionCursadaListadoDTO> inscripcionesActuales = new();
+    
     private bool procesando = false;
 
     // Flags de Override
     private bool ignorarCorrelativas = false;
     private bool ignorarCupo = false;
-    private bool ignorarVentana = true; // Por defecto true para Admin
+    private bool ignorarVentana = true; // Por defecto true para Admin (asume que está operando fuera de fecha)
 
     private DialogOptions dialogOptions = new()
     {
         MaxWidth = MaxWidth.Medium,
         FullWidth = true,
-        CloseButton = true,
+        CloseButton = true, // Nota: En el Header ya tienes botón, MudBlazor ignorará esto si anulas el Header nativo.
         BackdropClick = false,
-        CloseOnEscapeKey = true
+        CloseOnEscapeKey = false // Mejor que sea false si es una operación delicada
     };
 
     protected override async Task OnInitializedAsync()
@@ -657,6 +638,7 @@
         try
         {
             procesando = true;
+            StateHasChanged(); // Forzar dibujo del overlay
 
             // 1. Cargamos inscripciones actuales del alumno
             inscripcionesActuales = await InscripcionService.GetInscripcionesByAlumnoAsync(IdAlumno);
@@ -677,24 +659,28 @@
         finally
         {
             procesando = false;
+            StateHasChanged();
         }
     }
 
     private async Task DarDeBaja(int idInscripcion)
     {
         procesando = true;
+        StateHasChanged(); // Forzar dibujo del overlay
+        
         var exito = await InscripcionService.CancelarInscripcionAsync(idInscripcion);
 
         if (exito)
         {
-            Snackbar.Add("✓ Inscripción anulada correctamente.", Severity.Success);
-            await CargarDatos(); // Refrescamos las listas
+            Snackbar.Add("Inscripción anulada correctamente.", Severity.Success);
+            await CargarDatos(); // Refrescamos las listas para que vuelva a aparecer en el Select
         }
         else
         {
-            Snackbar.Add("✗ Error al anular la inscripción.", Severity.Error);
+            Snackbar.Add("Error al intentar anular la inscripción.", Severity.Error);
+            procesando = false; // Solo si falla lo bajamos acá, si exito, CargarDatos() lo baja.
+            StateHasChanged();
         }
-        procesando = false;
     }
 
     private async Task Confirmar()
@@ -707,7 +693,7 @@
         var dto = new InscripcionManualDTO
         {
             IdAlumno = IdAlumno,
-            IdComision = idComisionSeleccionada.Value, // Como es int? usamos .Value
+            IdComision = idComisionSeleccionada.Value,
             IgnorarCorrelativas = ignorarCorrelativas,
             IgnorarCupo = ignorarCupo,
             IgnorarVentana = ignorarVentana
@@ -719,18 +705,18 @@
 
             if (resultado.Exito)
             {
-                Snackbar.Add("✓ Inscripción forzada exitosamente", Severity.Success);
+                Snackbar.Add("Inscripción forzada exitosamente", Severity.Success);
                 idComisionSeleccionada = null; // Limpiar combobox
                 await CargarDatos(); // Recargar listas
             }
             else
             {
-                Snackbar.Add($"✗ Error: {resultado.Mensaje}", Severity.Error);
+                Snackbar.Add($"Error de Negocio: {resultado.Mensaje}", Severity.Warning);
             }
         }
         catch (Exception)
         {
-            Snackbar.Add("✗ Ocurrió un error inesperado al enviar los datos.", Severity.Error);
+            Snackbar.Add("Ocurrió un error inesperado al procesar la inscripción.", Severity.Error);
         }
         finally
         {
@@ -739,7 +725,7 @@
         }
     }
 
-    void Cancel() => MudDialog.Cancel();
+    private void Cancel() => MudDialog.Cancel();
 
     private bool TieneExcepcionesActivas() => ignorarCorrelativas || ignorarCupo || ignorarVentana;
 

@@ -2,6 +2,7 @@
 @inject ISnackbar Snackbar
 
 <style>
+    /* --- ESTILOS UNIFICADOS DE MODAL --- */
     .mud-dialog-close-icon {
         display: none !important;
     }
@@ -18,6 +19,7 @@
         min-width: 600px;
     }
 
+    /* HEADER AZUL CORPORATIVO */
     .dialog-header-integrated {
         background: #456990;
         color: white;
@@ -37,17 +39,20 @@
     .actions-footer {
         padding: 16px 24px;
         border-top: 1px solid #e2e8f0;
+        background-color: #f8fafc;
         display: flex;
         justify-content: flex-end;
         gap: 12px;
-        background-color: white;
         flex-shrink: 0;
     }
 
-    .force-black-text input, .force-black-text .mud-input-slot, .force-black-text .mud-select-input {
-        color: #1F2937 !important;
-        font-weight: 500;
-        -webkit-text-fill-color: #1F2937 !important;
+    /* --- INPUTS FORZADOS --- */
+    .force-black-text input,
+    .force-black-text .mud-input-slot,
+    .force-black-text .mud-select-input {
+        color: #1e293b !important;
+        font-weight: 600 !important;
+        -webkit-text-fill-color: #1e293b !important;
     }
 
     .force-black-text .mud-input-label {
@@ -57,43 +62,58 @@
         font-weight: 600;
     }
 
-    .custom-input-borde .mud-input-outlined-border {
+    .force-black-text .mud-input-outlined-border {
+        border-color: #cbd5e1 !important;
+        transition: border-color 0.2s;
+    }
+
+    .force-black-text:hover .mud-input-outlined-border {
         border-color: #456990 !important;
     }
 
-    /* ✅ ESTILO MEJORADO PARA RECUPERATORIOS (AZUL Y GRUESO) */
-    .recuperatorio-select .mud-input-outlined-border {
-        border-color: #0288D1 !important;
+    .force-black-text.mud-input-control.mud-input-focused .mud-input-outlined-border {
+        border-color: #456990 !important;
         border-width: 2px !important;
     }
 
-    .recuperatorio-select .mud-input-label {
-        color: #0288D1 !important;
-        font-weight: 800;
-        font-size: 0.9rem;
+    /* ESTILO ESPECÍFICO PARA RECUPERATORIOS */
+    .recuperatorio-select .mud-input-outlined-border {
+        border-color: #0284c7 !important;
+        border-width: 2px !important;
+    }
+    
+    .recuperatorio-select.mud-input-control.mud-input-focused .mud-input-outlined-border {
+        border-color: #0369a1 !important;
     }
 
+    .recuperatorio-select .mud-input-label {
+        color: #0284c7 !important;
+        font-weight: 800;
+    }
+
+    /* TÍTULOS Y CONTENEDORES */
     .section-title {
         color: #456990;
-        font-weight: 700;
+        font-weight: 800;
         font-size: 0.85rem;
         text-transform: uppercase;
         border-bottom: 2px solid #e2e8f0;
-        padding-bottom: 4px;
+        padding-bottom: 6px;
         margin-bottom: 12px;
         margin-top: 8px;
+        letter-spacing: 0.5px;
     }
 
     .assignment-paper {
-        background-color: #F8FAFC;
+        background-color: #f8fafc;
         border: 1px solid #e2e8f0;
         border-radius: 8px;
         padding: 16px;
     }
 
     .recuperatorio-box {
-        background-color: #F0F9FF;
-        border: 1px solid #BAE6FD;
+        background-color: #f0f9ff;
+        border: 1px solid #bae6fd;
         border-radius: 8px;
         padding: 16px;
         margin-top: 8px;
@@ -103,106 +123,136 @@
 <MudDialog DisableSidePadding="true" Class="rounded-lg overflow-hidden">
     <DialogContent>
         <div class="dialog-container">
+            
+            @* --- CABECERA DINÁMICA --- *@
             <div class="dialog-header-integrated">
                 <div class="d-flex align-center">
-                    <MudIcon Icon="@Icons.Material.Filled.Assignment" Class="mr-3" />
-                    <MudText Typo="Typo.h6" Style="font-weight: 700;">
-                        @(model.IdEvaluacion == 0 ? "Configurar Nueva Evaluación" : "Editar Evaluación")
-                    </MudText>
+                    <MudIcon Icon="@(model.IdEvaluacion == 0 ? Icons.Material.Filled.AddBox : Icons.Material.Filled.Edit)" Class="mr-3" />
+                    <div>
+                        <MudText Typo="Typo.h6" Style="font-weight: 700; line-height: 1.2; letter-spacing: -0.5px;">
+                            @(model.IdEvaluacion == 0 ? "Nueva Instancia de Evaluación" : "Editar Evaluación")
+                        </MudText>
+                        <MudText Typo="Typo.caption" Style="opacity: 0.9;">
+                            Configuración de parámetros y alcance
+                        </MudText>
+                    </div>
                 </div>
                 <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" OnClick="Cancel" Size="Size.Small" />
             </div>
 
+            @* --- CUERPO DEL FORMULARIO --- *@
             <div class="dialog-body">
                 <MudForm @ref="form" @bind-IsValid="@success" Model="@model">
                     <MudGrid Spacing="2">
 
+                        @* 1. TIPO DE EXAMEN (SWITCHES) *@
                         <MudItem xs="12">
-                            <div class="d-flex gap-4 mb-3 p-2" style="background-color: #F8FAFC; border-radius: 8px; border: 1px dashed #CBD5E1;">
-                                <MudSwitch @bind-Value="EsRecuperatorioLocal" Color="Color.Info" Label="Es un Recuperatorio" Class="font-weight-bold" Disabled="@model.EsIntegrador" />
-                                <MudSwitch @bind-Value="EsIntegradorLocal" Color="Color.Secondary" Label="Es Examen Integrador" Class="font-weight-bold" Disabled="@model.EsRecuperatorio" />
+                            <div class="d-flex flex-wrap gap-4 mb-3 pa-3 rounded-lg" style="background-color: #f8fafc; border: 1px dashed #cbd5e1;">
+                                <MudSwitch @bind-Value="EsRecuperatorioLocal" Color="Color.Warning" Label="Es Recuperatorio" Class="font-weight-bold" Disabled="@model.EsIntegrador" />
+                                <MudSwitch @bind-Value="EsIntegradorLocal" Color="Color.Secondary" Label="Es Integrador (Global)" Class="font-weight-bold" Disabled="@model.EsRecuperatorio" />
                             </div>
                         </MudItem>
 
+                        @* 2. DATOS BÁSICOS *@
                         <MudItem xs="12" md="8">
                             <MudTextField Label="Nombre de la Evaluación"
                                           @bind-Value="model.Nombre"
                                           Required="true"
+                                          RequiredError="Requerido"
                                           Variant="Variant.Outlined"
+                                          Margin="Margin.Dense"
                                           Placeholder="Ej: Primer Parcial"
                                           Adornment="Adornment.Start"
                                           AdornmentIcon="@Icons.Material.Filled.EditNote"
-                                          Class="force-black-text custom-input-borde" />
+                                          Class="force-black-text" />
                         </MudItem>
 
                         <MudItem xs="12" md="4">
                             <MudDatePicker Label="Fecha del Examen"
                                            @bind-Date="fechaDateTime"
                                            Required="true"
+                                           RequiredError="Requerido"
                                            Variant="Variant.Outlined"
+                                           Margin="Margin.Dense"
                                            DateFormat="dd/MM/yyyy"
-                                           Class="force-black-text custom-input-borde" />
+                                           Class="force-black-text" />
                         </MudItem>
 
+                        @* 3. LÓGICA DE RECUPERATORIO *@
                         @if (model.EsRecuperatorio)
                         {
                             <MudItem xs="12">
-                                <div class="recuperatorio-box">
+                                <div class="recuperatorio-box animate__animated animate__fadeIn">
                                     <MudSelect T="int?" Label="EXAMEN ORIGINAL A RECUPERAR"
                                                Value="model.IdEvaluacionPadre"
                                                ValueChanged="OnExamenOriginalSeleccionado"
                                                Variant="Variant.Outlined"
                                                Margin="Margin.Dense"
                                                Class="force-black-text bg-white recuperatorio-select"
-                                               Required="true" RequiredError="Seleccione el examen a recuperar">
+                                               Required="true" RequiredError="Debe vincularlo a un examen previo.">
+                                        <MudSelectItem T="int?" Value="null" Disabled="true">Seleccione examen original...</MudSelectItem>
                                         @if (EvaluacionesAnteriores != null)
                                         {
                                             @foreach (var eval in EvaluacionesAnteriores.Where(e => !e.EsRecuperatorio && !e.EsIntegrador))
                                             {
-                                                <MudSelectItem T="int?" Value="@eval.IdEvaluacion">@eval.Nombre</MudSelectItem>
+                                                <MudSelectItem T="int?" Value="@eval.IdEvaluacion">@eval.Nombre (@eval.Fecha.ToString("dd/MM/yyyy"))</MudSelectItem>
                                             }
                                         }
                                     </MudSelect>
-                                    <MudText Typo="Typo.caption" Style="color: #0284C7; display: block; margin-top: 8px;">
-                                        <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="mr-1" Style="vertical-align: middle;" />
-                                        La nota final del alumno se calculará según las reglas de la materia (quedarse con la más alta o pisar la anterior).
-                                    </MudText>
+                                    
+                                    <div class="d-flex align-start gap-2 mt-2">
+                                        <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Style="color: #0284c7; margin-top: 2px;" />
+                                        <MudText Typo="Typo.caption" Style="color: #0369a1; line-height: 1.4; font-weight: 600;">
+                                            La nota de este recuperatorio afectará el promedio final según el reglamento (la nota más alta o la más reciente).
+                                        </MudText>
+                                    </div>
                                 </div>
                             </MudItem>
                         }
 
+                        @* 4. LÓGICA DE INTEGRADOR *@
                         @if (model.EsIntegrador)
                         {
                             <MudItem xs="12">
-                                <MudAlert Severity="Severity.Normal" Variant="Variant.Filled" Style="background-color: #9C27B0; color: white;" Dense="true">
-                                    El examen integrador se utilizará para definir la regularidad de los alumnos que reprobaron la cursada pero cumplen los requisitos de acceso.
-                                </MudAlert>
+                                <div class="pa-3 rounded-lg animate__animated animate__fadeIn" style="background-color: #fdf4ff; border: 1px solid #f5d0fe;">
+                                    <div class="d-flex align-start gap-2">
+                                        <MudIcon Icon="@Icons.Material.Filled.Stars" Size="Size.Small" Style="color: #9c27b0; margin-top: 2px;" />
+                                        <MudText Typo="Typo.caption" Style="color: #7e22ce; font-weight: 600; line-height: 1.4;">
+                                            El examen integrador define la aprobación directa o regularidad para alumnos que no promocionaron mediante parciales.
+                                        </MudText>
+                                    </div>
+                                </div>
                             </MudItem>
                         }
 
+                        @* 5. ALCANCE DE LA EVALUACIÓN (SOLO EN CREACIÓN) *@
                         @if (model.IdEvaluacion == 0)
                         {
                             <MudItem xs="12" Class="mt-2">
                                 <MudPaper Elevation="0" Class="assignment-paper">
-                                    <div class="d-flex align-center justify-space-between mb-3">
+                                    <div class="d-flex align-center justify-space-between mb-3 flex-wrap gap-2">
                                         <div class="d-flex align-center gap-2">
                                             <MudIcon Icon="@Icons.Material.Filled.GroupAdd" Size="Size.Small" Color="Color.Primary" />
-                                            <MudText Typo="Typo.subtitle2" Style="font-weight: 700; color: #456990;">Alcance de la Evaluación</MudText>
+                                            <MudText Typo="Typo.subtitle2" Style="font-weight: 800; color: #1e3a58;">Alcance de la Evaluación</MudText>
                                         </div>
-                                        <MudSwitch @bind-Value="model.AsignarATodos" Color="Color.Primary" Label="@(model.AsignarATodos ? "Toda la comisión" : "Selección Manual")" Style="font-weight: 600;" />
+                                        <MudSwitch @bind-Value="model.AsignarATodos" Color="Color.Primary" Label="@(model.AsignarATodos ? "Evaluar a toda la comisión" : "Seleccionar alumnos manualmente")" Style="font-weight: 700; color: #475569;" />
                                     </div>
+                                    
                                     @if (!model.AsignarATodos)
                                     {
-                                        <div class="alumno-selector-container">
-                                            <MudPaper Outlined="true" Class="pa-2 rounded-lg" Style="max-height: 200px; overflow-y: auto; background: white;">
-                                                <MudList T="int" Clickable="true" Dense="true">
-                                                    @foreach (var alumno in ListaAlumnos)
+                                        <div class="animate__animated animate__fadeIn">
+                                            <MudText Typo="Typo.caption" Style="color: #64748b; font-weight: 600; display: block;" Class="mb-2">
+                                                Selecciona los estudiantes que rendirán esta instancia:
+                                            </MudText>
+                                            <MudPaper Outlined="true" Class="rounded-lg" Style="max-height: 220px; overflow-y: auto; background: white; border-color: #cbd5e1;">
+                                                <MudList T="int" Clickable="true" Dense="true" Class="pa-0">
+                                                    @foreach (var alumno in ListaAlumnos.OrderBy(a => a.AlumnoNombre))
                                                     {
-                                                        <MudListItem OnClick="@(() => ToggleAlumnoManual(alumno.IdInscripcion))" Class="px-2">
+                                                        <MudListItem OnClick="@(() => ToggleAlumnoManual(alumno.IdInscripcion))" Class="px-4 py-2 border-b" Style="border-bottom-color: #f1f5f9;">
                                                             <div class="d-flex align-center gap-3">
                                                                 <MudCheckBox T="bool" Value="@(model.IdsInscripcionesSeleccionadas.Contains(alumno.IdInscripcion))" Color="Color.Primary" Dense="true" />
                                                                 <div>
-                                                                    <MudText Typo="Typo.body2" Style="font-weight: 600; color: #1e293b;">@alumno.AlumnoNombre</MudText>
+                                                                    <MudText Typo="Typo.body2" Style="font-weight: 700; color: #1e293b;">@alumno.AlumnoNombre</MudText>
                                                                     <MudText Typo="Typo.caption" Style="color: #64748b;">Legajo: @alumno.Legajo</MudText>
                                                                 </div>
                                                             </div>
@@ -219,9 +269,12 @@
                 </MudForm>
             </div>
 
+            @* --- FOOTER --- *@
             <div class="actions-footer">
-                <MudButton OnClick="Cancel" Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg">Cancelar</MudButton>
-                <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" Disabled="@(!success)" Class="rounded-lg">
+                <MudButton OnClick="Cancel" Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg font-weight-bold">
+                    Cancelar
+                </MudButton>
+                <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" Disabled="@(!success)" Class="rounded-lg px-6 font-weight-bold" StartIcon="@(model.IdEvaluacion == 0 ? Icons.Material.Filled.Add : Icons.Material.Filled.Save)">
                     @(model.IdEvaluacion == 0 ? "Crear Evaluación" : "Guardar Cambios")
                 </MudButton>
             </div>
@@ -231,14 +284,17 @@
 
 @code {
     [CascadingParameter] MudDialogInstance MudDialog { get; set; } = null!;
+    
     [Parameter] public List<NotaAlumnoDTO> ListaAlumnos { get; set; } = new();
     [Parameter] public List<EvaluacionDTO> EvaluacionesAnteriores { get; set; } = new();
+    
+    // Si no se pasa un modelo (Nueva Evaluación), iniciamos uno con fecha de hoy y asignado a todos.
     [Parameter] public EvaluacionDTO model { get; set; } = new() { Fecha = DateTime.Today, AsignarATodos = true };
 
     private MudForm form = null!;
     private bool success;
 
-    // Propiedades locales para manejar los switches y el autonombramiento de forma reactiva
+    // Propiedades reactivas para los switches
     private bool EsRecuperatorioLocal
     {
         get => model.EsRecuperatorio;
@@ -247,12 +303,14 @@
             model.EsRecuperatorio = value;
             if (value)
             {
-                model.EsIntegrador = false; // Desactiva integrador si se marca recuperatorio
+                model.EsIntegrador = false;
                 model.Nombre = "Recuperatorio de: ";
             }
             else
             {
                 model.IdEvaluacionPadre = null;
+                // Limpiamos el texto si era el texto por defecto
+                if (model.Nombre == "Recuperatorio de: ") model.Nombre = "";
             }
         }
     }
@@ -265,9 +323,14 @@
             model.EsIntegrador = value;
             if (value)
             {
-                model.EsRecuperatorio = false; // Desactiva recuperatorio si se marca integrador
+                model.EsRecuperatorio = false;
                 model.IdEvaluacionPadre = null;
                 model.Nombre = "Examen Integrador";
+            }
+            else
+            {
+                // Limpiamos el texto si era el texto por defecto
+                if (model.Nombre == "Examen Integrador") model.Nombre = "";
             }
         }
     }
@@ -278,11 +341,13 @@
         set => model.Fecha = value ?? DateTime.Today;
     }
 
-    // ✅ AUTO-NOMBRE DEL RECUPERATORIO
+    // Al seleccionar el examen original, autocompleta el nombre
     private void OnExamenOriginalSeleccionado(int? idPadre)
     {
         model.IdEvaluacionPadre = idPadre;
-        if (idPadre.HasValue && model.IdEvaluacion == 0) // Solo autocompleta nombre si es nuevo
+        
+        // Solo autocompletamos el nombre si estamos creando (Id==0) o si no ha escrito nada
+        if (idPadre.HasValue && (model.IdEvaluacion == 0 || model.Nombre == "Recuperatorio de: "))
         {
             var examenOriginal = EvaluacionesAnteriores.FirstOrDefault(e => e.IdEvaluacion == idPadre.Value);
             if (examenOriginal != null)
@@ -294,10 +359,30 @@
 
     private void ToggleAlumnoManual(int id)
     {
-        if (model.IdsInscripcionesSeleccionadas.Contains(id)) model.IdsInscripcionesSeleccionadas.Remove(id);
-        else model.IdsInscripcionesSeleccionadas.Add(id);
+        if (model.IdsInscripcionesSeleccionadas.Contains(id))
+        {
+            model.IdsInscripcionesSeleccionadas.Remove(id);
+        }
+        else
+        {
+            model.IdsInscripcionesSeleccionadas.Add(id);
+        }
     }
 
     private void Cancel() => MudDialog.Cancel();
-    private void Submit() => MudDialog.Close(DialogResult.Ok(model));
+    
+    private void Submit()
+    {
+        if (success)
+        {
+            // Validación manual rápida para el selector de alumnos
+            if (!model.AsignarATodos && !model.IdsInscripcionesSeleccionadas.Any())
+            {
+                Snackbar.Add("Debes seleccionar al menos un alumno para esta evaluación.", Severity.Warning);
+                return;
+            }
+            
+            MudDialog.Close(DialogResult.Ok(model));
+        }
+    }
 }

@@ -1,629 +1,835 @@
 ﻿@page "/horarios"
+@page "/horarios-alumno"
+
 @using EduSys.Shared.DTOs
 @using EduSys.Web.Services.Interfaces
 @using EduSys.Web.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
 @using System.IO
 
-@* --- INYECCIONES DE SERVICIOS --- *@
 @inject HorarioPdfService PdfService
 @inject ICarreraService CarreraService
 @inject IHorarioService HorarioService
 @inject IPeriodoService PeriodoService
 @inject ISedeService SedeService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IAlumnoService AlumnoService 
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 @inject HttpClient Http
 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
 <style>
-    /* ================================================================= */
-
-    /* ESTILOS DE PANTALLA (NO AFECTAN AL PDF)                           */
-
-    /* ================================================================= */
-
-
-
-    /* --- TARJETAS DE CARRERA --- */
-
-    .carrera-card {
-        transition: transform 0.2s, box-shadow 0.2s;
-        cursor: pointer;
-        border: 1px solid #E2E8F0;
-        height: 100%;
-    }
-
-
-
-        .carrera-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-            border-color: #456990;
-            background-color: #F8FAFC;
-        }
-
-
-
-    /* --- BUSCADOR MODERNO --- */
-
-    .search-modern {
-        background-color: white !important;
-        border-radius: 8px !important;
-    }
-
-
-
-    /* CORRECCIÓN DE VISIBILIDAD: Forzamos color negro en inputs */
-
-    .force-black-text,
-    .force-black-text .mud-input-slot,
-    .force-black-text .mud-input-label,
-    .force-black-text .mud-icon-root {
-        color: #1F2937 !important;
-        font-weight: 500;
-    }
-
-
-
-        /* COLOR DEL BORDE DEL FILTRO Y BUSCADOR */
-
-        .force-black-text .mud-input-outlined-border,
-        .search-modern .mud-input-outlined-border {
-            border-color: #456990 !important;
-            border-width: 1px !important;
-        }
-
-
-
-    /* --- CONTENEDOR DE LA GRILLA DE HORARIOS --- */
-
-    .schedule-container {
-        border: 2px solid #456990;
-        border-radius: 6px;
-        overflow: hidden;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        background-color: white;
-    }
-
-
-
-    /* HEADERS */
-
-    .career-header {
-        background-color: white;
-        color: #456990;
-        padding: 10px;
-        border-bottom: 2px solid #456990;
-        display: block;
-        text-align: center;
-        width: 100%;
-        font-weight: 900;
-        font-size: 1.2rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-
-
-
-    .schedule-header {
-        background-color: #456990;
-        color: white;
-        padding: 10px;
-        border-bottom: 2px solid white;
-        display: block;
-        text-align: center;
-        width: 100%;
-        font-weight: 700;
-        font-size: 1rem;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-    }
-
-
-
-    /* ENCABEZADOS DE COLUMNA */
-
-    .columns-header {
-        display: flex;
-        background-color: #456990;
-        color: white;
-        font-weight: 700;
-        font-size: 0.85rem;
-        border-bottom: 2px solid white;
-    }
-
-
-
-    .header-cell {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        padding: 6px 4px;
-        border-right: 1px solid white;
-    }
-
-
-
-        .header-cell:last-child {
-            border-right: none;
-        }
-
-
-
-    /* ANCHOS DE COLUMNA */
-
-    .col-width-day {
-        width: 50px;
-        min-width: 50px;
-    }
-
-
-
-    .col-width-course {
-        width: 100px;
-        min-width: 100px;
-    }
-
-
-
-    .col-width-subjects {
-        flex-grow: 1;
-    }
-
-
-
-    /* FILAS Y CELDAS */
-
-    .day-row {
-        display: flex;
-        border-bottom: 2px solid #456990;
-    }
-
-
-
-        .day-row:last-child {
-            border-bottom: none;
-        }
-
-
-
-    .day-column {
-        background-color: #456990;
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 900;
-        font-size: 1rem;
-        writing-mode: vertical-rl;
-        text-orientation: upright;
-        border-right: 1px solid #456990;
-        padding: 2px;
-    }
-
-
-
-    .courses-column {
-        flex-grow: 1;
-        display: flex;
-        flex-direction: column;
-    }
-
-
-
-    .course-row {
-        display: flex;
-        border-bottom: 1px solid #456990;
-        min-height: 65px;
-    }
-
-
-
-        .course-row:last-child {
-            border-bottom: none;
-        }
-
-
-
-    .course-label {
-        background-color: #F1F5F9;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 800;
-        color: #456990;
-        font-size: 0.9rem;
-        padding: 4px;
-        text-align: center;
-        border-right: 1px solid #456990;
-    }
-
-
-
-    /* MATERIAS (Vista Web Compacta) */
-
-    .subjects-area {
-        flex-grow: 1;
-        display: flex;
-        flex-wrap: nowrap;
-        overflow-x: auto;
-        padding: 0;
-        background-color: white;
-    }
-
-
-
-    .subject-block {
-        flex: 1;
-        padding: 4px 6px;
-        font-size: 0.8rem;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        text-align: center;
-        min-width: 140px;
-        border-right: 1px solid #456990;
-        transition: background-color 0.2s;
-    }
-
-
-
-        .subject-block:hover {
-            background-color: #F8FAFC;
-        }
-
-
-
-        .subject-block:last-child {
-            border-right: none;
-        }
-
-
-
-    .subject-time {
-        font-weight: 700;
-        color: #456990;
-        background-color: #E0F2F1;
-        border: 1px solid #49BEAA;
-        border-radius: 4px;
-        padding: 1px 6px;
-        margin-bottom: 4px;
-        font-size: 0.7rem;
-        display: inline-block;
-        align-self: center;
-    }
-
-
-
-    .subject-name {
-        font-weight: 700;
-        color: #1F2937;
-        line-height: 1.1;
-        font-size: 0.8rem;
-        text-transform: uppercase;
-    }
-
-
-
-    .subject-classroom {
-        color: #6c757d;
-        font-weight: 700;
-        font-size: 0.7rem;
-        margin-top: 3px;
-    }
+:root {
+    --blue:       #456990;
+    --blue-dark:  #344f6e;
+    --blue-pale:  #edf2f7;
+    --teal:       #49BEAA;
+    --bg:         #f7f9fc;
+    --surface:    #ffffff;
+    --border:     #dde3ea;
+    --text:       #1a2733;
+    --text-mid:   #4a5568;
+    --text-soft:  #8a9ab0;
+    --font-serif: 'Source Serif 4', Georgia, serif;
+    --font-ui:    'Inter', system-ui, sans-serif;
+    --radius:     6px;
+    --shadow:     0 1px 4px rgba(69,105,144,0.10);
+    --shadow-md:  0 4px 16px rgba(69,105,144,0.13);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+.app { font-family: var(--font-ui); background: var(--bg); color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased; }
+.topbar { background: var(--blue); height: 3px; }
+.header { background: var(--surface); border-bottom: 1px solid var(--border); }
+.header-inner { max-width: 1280px; margin: 0 auto; padding: 0 28px; height: 60px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.header-brand { display: flex; align-items: center; gap: 10px; }
+.brand-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--blue); flex-shrink: 0; }
+.brand-name { font-family: var(--font-serif); font-size: 1rem; font-weight: 600; color: var(--blue); letter-spacing: 0.2px; }
+.brand-sep { width: 1px; height: 16px; background: var(--border); }
+.brand-module { font-size: 0.8rem; font-weight: 500; color: var(--text-soft); }
+.header-search { display: flex; align-items: center; gap: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 0 12px; height: 36px; transition: border-color 0.15s; }
+.header-search:focus-within { border-color: var(--blue); }
+.header-search input { border: none; outline: none; background: transparent; font-family: var(--font-ui); font-size: 0.83rem; color: var(--text); width: 220px; }
+.header-search input::placeholder { color: var(--text-soft); }
+.search-ico { color: var(--text-soft); font-size: 16px; }
+
+.breadcrumb { max-width: 1280px; margin: 0 auto; padding: 10px 28px; display: flex; align-items: center; gap: 6px; }
+.bc { font-size: 0.75rem; font-weight: 500; color: var(--text-soft); cursor: pointer; transition: color 0.15s; }
+.bc:hover { color: var(--blue); }
+.bc.cur { color: var(--text-mid); cursor: default; font-weight: 600; }
+.bc-div { color: var(--border); font-size: 0.65rem; }
+
+.page-inner { max-width: 1280px; margin: 0 auto; padding: 0 28px 60px; }
+
+.section-head { padding: 20px 0 24px; display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; border-bottom: 1px solid var(--border); margin-bottom: 24px; }
+.section-label { font-size: 0.68rem; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--blue); margin-bottom: 5px; }
+.section-title { font-family: var(--font-serif); font-size: 1.55rem; font-weight: 600; color: var(--text); letter-spacing: -0.3px; line-height: 1.2; }
+.section-sub { font-size: 0.83rem; color: var(--text-soft); margin-top: 4px; line-height: 1.5; }
+
+.btn-back { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-ui); font-size: 0.78rem; font-weight: 600; color: var(--blue); background: transparent; border: 1px solid var(--blue); border-radius: var(--radius); padding: 7px 14px; cursor: pointer; transition: background 0.15s, color 0.15s; white-space: nowrap; }
+.btn-back:hover { background: var(--blue); color: white; }
+
+.career-table { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
+.ct-head { display: grid; grid-template-columns: 52px 1fr 1.6fr 110px; background: var(--blue); border-bottom: 2px solid var(--blue-dark); }
+.ct-th { padding: 10px 16px; font-size: 0.65rem; font-weight: 600; letter-spacing: 1.8px; text-transform: uppercase; color: rgba(255,255,255,0.65); border-right: 1px solid rgba(255,255,255,0.08); }
+.ct-row { display: grid; grid-template-columns: 52px 1fr 1.6fr 110px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.12s; align-items: center; }
+.ct-row:last-child { border-bottom: none; }
+.ct-row:hover { background: var(--blue-pale); }
+.ct-row:hover .ct-action { color: var(--blue); opacity: 1; }
+.ct-row:hover .ct-initial { background: var(--blue); color: white; border-color: var(--blue); }
+.ct-num { padding: 14px 16px; font-size: 0.72rem; font-weight: 500; color: var(--text-soft); font-variant-numeric: tabular-nums; border-right: 1px solid var(--border); text-align: center; }
+.ct-name-cell { padding: 12px 16px; display: flex; align-items: center; gap: 12px; border-right: 1px solid var(--border); }
+.ct-initial { width: 32px; height: 32px; border: 1px solid var(--border); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-family: var(--font-serif); font-size: 0.95rem; font-weight: 600; color: var(--blue); flex-shrink: 0; transition: background 0.12s, color 0.12s, border-color 0.12s; }
+.ct-name { font-size: 0.875rem; font-weight: 600; color: var(--text); line-height: 1.3; }
+.ct-titulo-cell { padding: 12px 16px; border-right: 1px solid var(--border); }
+.ct-titulo { font-size: 0.8rem; color: var(--text-soft); font-style: italic; }
+.ct-action { padding: 12px 16px; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; color: var(--text-soft); opacity: 0.5; display: flex; align-items: center; gap: 4px; transition: color 0.12s, opacity 0.12s; }
+
+.filter-bar { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; box-shadow: var(--shadow); }
+.fg { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 180px; }
+.fg-label { font-size: 0.65rem; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-soft); }
+.fg-sel-wrap { position: relative; }
+.fg-sel { width: 100%; appearance: none; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 30px 8px 10px; font-family: var(--font-ui); font-size: 0.85rem; font-weight: 500; color: var(--text); cursor: pointer; outline: none; transition: border-color 0.15s; }
+.fg-sel:focus { border-color: var(--blue); }
+.fg-chev { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); color: var(--text-soft); pointer-events: none; font-size: 16px; }
+.filter-actions { display: flex; gap: 8px; align-items: center; margin-left: auto; flex-shrink: 0; }
+
+.btn { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-ui); font-size: 0.78rem; font-weight: 600; padding: 8px 16px; border-radius: var(--radius); cursor: pointer; border: none; transition: background 0.15s, color 0.15s, opacity 0.15s; white-space: nowrap; letter-spacing: 0.2px; }
+.btn:disabled { opacity: 0.38; pointer-events: none; }
+.btn-outline { background: transparent; border: 1px solid var(--blue); color: var(--blue); }
+.btn-outline:hover { background: var(--blue); color: white; }
+.btn-solid { background: var(--blue); border: 1px solid var(--blue); color: white; }
+.btn-solid:hover { background: var(--blue-dark); }
+
+.empty { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 56px 24px; text-align: center; box-shadow: var(--shadow); }
+.empty-ico { color: var(--border); margin-bottom: 12px; }
+.empty-title { font-family: var(--font-serif); font-size: 1.1rem; font-weight: 600; color: var(--text-mid); margin-bottom: 6px; }
+.empty-body { font-size: 0.82rem; color: var(--text-soft); line-height: 1.6; max-width: 360px; margin: 0 auto; }
+
+/* ================================================================
+   TABLA DE HORARIOS — SIN SCROLL HORIZONTAL
+   ================================================================ */
+
+.sched-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;           /* sin scroll */
+    box-shadow: var(--shadow-md);
+    margin-bottom: 48px;
+}
+.sched-caption {
+    background: var(--blue);
+    padding: 11px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+.sched-caption-title { font-family: var(--font-serif); font-size: 0.9rem; font-weight: 600; color: white; }
+.sched-caption-meta  { font-size: 0.7rem; font-weight: 500; color: rgba(255,255,255,0.6); letter-spacing: 0.5px; }
+
+/* ── TABLA ──────────────────────────────────────────────────────
+   • width: 100%        → ocupa exactamente el contenedor, nunca más
+   • table-layout: fixed → distribuye columnas en partes iguales
+   • sin min-width       → nunca desborda ni genera scroll
+   ─────────────────────────────────────────────────────────────── */
+.sched-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;        /* ← distribuye el espacio disponible */
+}
+
+.sched-table thead th {
+    background: var(--blue-pale);
+    color: var(--blue);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    padding: 10px 6px;
+    text-align: center;
+    border-right: 1px solid var(--border);
+    border-bottom: 2px solid var(--blue);
+    /* Sin width fijo → table-layout:fixed lo reparte equitativamente */
+}
+.sched-table thead th.th-corner {
+    background: var(--bg);
+    border-bottom-color: var(--blue);
+    width: 110px;               /* año + comisión: ancho fijo pequeño */
+}
+
+/* ── COLUMNA AÑO ──────────────────────────────────────────────── */
+.td-year {
+    width: 36px;
+    background: var(--blue-pale) !important;
+    vertical-align: middle !important;
+    text-align: center;
+    padding: 0;
+    border-right: 2px solid var(--blue) !important;
+}
+.year-rot {
+    writing-mode: vertical-lr;
+    transform: rotate(180deg);
+    display: inline-block;
+    font-family: var(--font-serif);
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--blue);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 10px 0;
+    white-space: nowrap;
+}
+
+/* ── COLUMNA COMISIÓN ─────────────────────────────────────────── */
+.td-com {
+    width: 74px;
+    background: var(--bg) !important;
+    text-align: center;
+    vertical-align: middle !important;
+    border-right: 1px solid var(--border) !important;
+}
+.com-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--blue);
+    color: white;
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 4px 7px;
+    border-radius: 4px;
+}
+
+/* ── CELDA DE DÍA ─────────────────────────────────────────────── */
+.td-day {
+    padding: 6px;
+    vertical-align: top;
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    background-color: var(--surface);
+    /* overflow oculto para que nada desborde la celda */
+    overflow: hidden;
+}
+
+/* ── SEPARADORES ──────────────────────────────────────────────── */
+.tr-sep td { background: var(--blue); height: 2px; padding: 0; border: none; }
+.tr-com-sep .td-com,
+.tr-com-sep .td-day { border-top: 2px dashed var(--border) !important; }
+
+/* Fondo alternado por comisión */
+.tr-com-even .td-day { background-color: #f4f7fb !important; }
+.tr-com-even .td-com { background-color: #edf2f7 !important; }
+
+/* ================================================================
+   BLOQUES DE CLASE
+   ================================================================ */
+
+.class-stack { display: flex; flex-direction: column; gap: 5px; }
+
+.class-block {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    background: white;
+    /* width:100% implícito porque es bloque dentro de td */
+    transition: border-color 0.12s, box-shadow 0.12s;
+}
+.class-block:hover {
+    border-color: var(--teal);
+    box-shadow: 0 2px 6px rgba(73,190,170,0.15);
+}
+
+/* ── Columna hora ──────────────────────────────────────────────
+   Ancho fijo pequeño; nunca crece ni encoge
+   ─────────────────────────────────────────────────────────────── */
+.cb-time {
+    background: var(--blue);
+    color: rgba(255,255,255,0.9);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 5px 4px;
+    width: 52px;
+    flex-shrink: 0;
+    gap: 1px;
+}
+.cb-t    { font-size: 0.7rem; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1; white-space: nowrap; }
+.cb-line { width: 8px; height: 1px; background: rgba(255,255,255,0.3); margin: 2px 0; }
+
+/* ── Columna info ──────────────────────────────────────────────
+   min-width:0  →  permite que flex comprima hasta 0 antes de desbordarse
+   overflow:hidden →  lo que no entre, no se ve (no genera scroll)
+   ─────────────────────────────────────────────────────────────── */
+.cb-body {
+    padding: 4px 7px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    flex: 1;
+    min-width: 0;           /* ← CLAVE para que flex no desborde */
+    overflow: hidden;
+    border-left: 2px solid var(--teal);
+    gap: 2px;
+}
+
+.cb-code {
+    font-size: 0.6rem;
+    font-weight: 700;
+    color: var(--blue);
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    opacity: 0.75;
+    line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── Nombre materia: SIEMPRE COMPLETO, con salto de línea ──────
+   No truncamos con ellipsis: dejamos que baje de línea.
+   word-break: break-word  →  parte la palabra solo si no hay
+   ningún espacio donde cortar.
+   ─────────────────────────────────────────────────────────────── */
+.cb-subject {
+    font-size: 0.68rem;          /* ← reducido para que palabras largas entren sin cortar */
+    font-weight: 700;
+    color: var(--text);
+    text-transform: uppercase;
+    letter-spacing: 0px;
+    line-height: 1.25;
+    white-space: normal;         /* permite salto de línea entre palabras */
+    word-break: normal;          /* NUNCA corta dentro de una palabra */
+    overflow-wrap: normal;       /* ídem */
+}
+
+.cb-meta { display: flex; flex-direction: column; gap: 1px; margin-top: 2px; }
+
+.cb-aula,
+.cb-teacher {
+    font-size: 0.63rem;
+    font-weight: 500;
+    color: var(--text-soft);
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.cb-aula    { font-weight: 600; text-transform: uppercase; letter-spacing: 0.2px; }
+.cb-teacher { font-style: italic; }
+
+/* ── SKELETON ─────────────────────────────────────────────────── */
+@@keyframes sk { 0% { background-position: -600px 0; } 100% { background-position: 600px 0; } }
+.sk { background: linear-gradient(90deg, #eaedf1 25%, #f4f6f9 50%, #eaedf1 75%); background-size: 1200px 100%; animation: sk 1.4s infinite linear; border-radius: var(--radius); }
+
+/* ── OVERLAY PDF ──────────────────────────────────────────────── */
+.pdf-overlay { position: fixed; inset: 0; background: rgba(26,39,51,0.7); z-index: 9999; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
+.pdf-card { background: var(--surface); border-top: 3px solid var(--blue); border-radius: var(--radius); padding: 32px 44px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px; min-width: 280px; box-shadow: var(--shadow-md); }
+.pdf-spin { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--blue); border-radius: 50%; animation: spin .7s linear infinite; }
+@@keyframes spin { to { transform: rotate(360deg); } }
+.pdf-label { font-family: var(--font-serif); font-size: 0.95rem; font-weight: 600; color: var(--text); }
+.pdf-sub   { font-size: 0.77rem; color: var(--text-soft); }
+
+@@media (max-width: 640px) {
+    .header-inner, .breadcrumb, .page-inner { padding-left: 14px; padding-right: 14px; }
+    .header-search { display: none; }
+    .section-head { flex-direction: column; align-items: flex-start; }
+    .ct-head, .ct-row { grid-template-columns: 40px 1fr; }
+    .ct-th:nth-child(n+3), .ct-row > *:nth-child(n+3) { display: none; }
+    .filter-actions { width: 100%; }
+    .btn { flex: 1; justify-content: center; }
+}
 </style>
 
-<MudText Typo="Typo.h5" Color="Color.Primary" Align="Align.Center" Class="mb-6"><b>Consulta de Horarios</b></MudText>
-
-@if (carreraSeleccionada == null)
+@if (_procesandoPdf)
 {
-    // ============================================================
-    // ESTADO 1: SELECCIÓN DE CARRERA (BUSCADOR + TARJETAS)
-    // ============================================================
-    <MudContainer MaxWidth="MaxWidth.Large">
-        @if (loadingCarreras)
-        {
-            <div class="d-flex justify-center my-4"><MudProgressCircular Color="Color.Primary" Indeterminate="true" /></div>
-        }
-        else
-        {
-            <MudGrid Justify="Justify.Center" Class="mb-8">
-                <MudItem xs="12" sm="10" md="8" lg="6">
-                    <MudTextField @bind-Value="searchCarrera"
-                                  Placeholder="Buscar Carrera..."
-                                  Adornment="Adornment.Start"
-                                  AdornmentIcon="@Icons.Material.Filled.Search"
-                                  Variant="Variant.Outlined"
-                                  Class="search-modern force-black-text"
-                                  FullWidth="true"
-                                  Immediate="true" />
-                </MudItem>
-            </MudGrid>
-
-            <MudGrid Justify="Justify.Center">
-                @foreach (var carrera in CarrerasFiltradas)
-                {
-                    <MudItem xs="12" sm="6" md="4">
-                        <MudCard Class="carrera-card rounded-lg pa-4" @onclick="@(() => SeleccionarCarrera(carrera))" Elevation="0">
-                            <MudCardContent Class="d-flex flex-column align-center">
-                                <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Class="mb-3" Size="Size.Large">
-                                    <b>@carrera.Nombre.Substring(0, 1)</b>
-                                </MudAvatar>
-                                <MudText Typo="Typo.h6" Align="Align.Center"><b>@carrera.Nombre</b></MudText>
-                                <MudText Typo="Typo.caption" Color="Color.Default" Align="Align.Center">@carrera.Titulo</MudText>
-                            </MudCardContent>
-                        </MudCard>
-                    </MudItem>
-                }
-            </MudGrid>
-        }
-    </MudContainer>
+    <div class="pdf-overlay">
+        <div class="pdf-card">
+            <div class="pdf-spin"></div>
+            <div class="pdf-label">Generando documento</div>
+            <div class="pdf-sub">Por favor aguarde…</div>
+        </div>
+    </div>
 }
-else
-{
-    // ============================================================
-    // ESTADO 2: VISTA DE HORARIOS (CON FILTRO DE SEDE)
-    // ============================================================
-    <div class="d-flex align-center gap-4 mb-4">
-        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Color="Color.Default" OnClick="VolverACarreras" Variant="Variant.Outlined" Class="rounded-circle" />
-        <div>
-            <MudText Typo="Typo.h5" Color="Color.Primary"><b>Vista General</b></MudText>
-            <MudText Typo="Typo.body2" Color="Color.Secondary">@carreraSeleccionada.Nombre</MudText>
+
+<div class="app">
+    <div class="topbar"></div>
+
+    <div class="header">
+        <div class="header-inner">
+            <div class="header-brand">
+                <div class="brand-dot"></div>
+                <span class="brand-name">EduSys</span>
+                <div class="brand-sep"></div>
+                <span class="brand-module">Gestión Académica</span>
+            </div>
+            @if (!isAlumno && carreraSeleccionada == null)
+            {
+                <div class="header-search">
+                    <MudIcon Icon="@Icons.Material.Filled.Search" Class="search-ico" />
+                    <input type="text" placeholder="Buscar carrera…" @bind="searchCarrera" @bind:event="oninput" />
+                </div>
+            }
         </div>
     </div>
 
-    @* --- BARRA DE FILTROS --- *@
-    <MudGrid Class="mb-4 align-center">
+    <div class="breadcrumb">
+        <span class="bc">Inicio</span>
+        <span class="bc-div">›</span>
+        <span class="bc">Académico</span>
+        <span class="bc-div">›</span>
+        @if (isAlumno)
+        {
+            <span class="bc cur">Mis Horarios</span>
+        }
+        else if (carreraSeleccionada == null)
+        {
+            <span class="bc cur">Cronograma de Horarios</span>
+        }
+        else
+        {
+            <span class="bc" @onclick="VolverACarreras">Cronograma de Horarios</span>
+            <span class="bc-div">›</span>
+            <span class="bc cur">@carreraSeleccionada.Nombre</span>
+        }
+    </div>
 
-        @* 1. Selector de Período *@
-        <MudItem xs="12" sm="4">
-            <MudSelect T="int" Label="Período Académico" Value="filtroPeriodoId" ValueChanged="OnPeriodoChanged"
-                       Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter" Class="force-black-text">
-                @foreach (var p in listaPeriodos)
+    <div class="page-inner">
+
+        <div class="section-head">
+            <div>
+                <div class="section-label">Cronograma de Horarios</div>
+                @if (isAlumno)
                 {
-                    <MudSelectItem Value="@p.Id">@p.Nombre</MudSelectItem>
+                    <h1 class="section-title">Horarios de la Carrera</h1>
+                    <p class="section-sub">Grilla horaria de tu carrera asignada.</p>
                 }
-            </MudSelect>
-        </MudItem>
-
-        @* 2. ✅ NUEVO: Selector de Sede *@
-        <MudItem xs="12" sm="4">
-            <MudSelect T="int" Label="Sede" Value="filtroSedeId" ValueChanged="OnSedeChanged"
-                       Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter" Class="force-black-text">
-                <MudSelectItem Value="0">Seleccione Sede</MudSelectItem>
-                @foreach (var s in listaSedes)
+                else if (carreraSeleccionada == null)
                 {
-                    <MudSelectItem Value="@s.Id">@s.Nombre</MudSelectItem>
+                    <h1 class="section-title">Carreras Disponibles</h1>
+                    <p class="section-sub">Seleccione una carrera para consultar la grilla horaria.</p>
                 }
-            </MudSelect>
-        </MudItem>
-
-        @* 3. Botones de PDF *@
-        <MudItem xs="12" md="4" Class="d-flex justify-end gap-2">
-            <MudButton StartIcon="@Icons.Material.Filled.Visibility"
-                       OnClick="@(() => DescargarOVisualizarPdf(false))"
-                       Disabled="@(filtroSedeId == 0 || !horarios.Any())">
-                Ver Online
-            </MudButton>
-
-            <MudButton StartIcon="@Icons.Material.Filled.Download"
-                       OnClick="@(() => DescargarOVisualizarPdf(true))"
-                       Disabled="@(filtroSedeId == 0 || !horarios.Any())">
-                Descargar
-            </MudButton>
-        </MudItem>
-    </MudGrid>
-
-    @if (loadingHorarios)
-    {
-        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
-    }
-    else if (filtroSedeId == 0)
-    {
-        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mt-4">Por favor, seleccione una Sede para ver los horarios.</MudAlert>
-    }
-    else if (!horarios.Any())
-    {
-        <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">No hay horarios cargados para esta Sede y Período.</MudAlert>
-    }
-    else
-    {
-        // --- GRILLA DE HORARIOS (SOLO APARECE SI HAY SEDE Y DATOS) ---
-        <div class="schedule-container">
-            <div class="career-header">
-                CARRERA: @carreraSeleccionada.Nombre
+                else
+                {
+                    <h1 class="section-title">@carreraSeleccionada.Nombre</h1>
+                    <p class="section-sub">@carreraSeleccionada.Titulo</p>
+                }
             </div>
-
-            <div class="schedule-header">
-                HORARIO DE CLASES - @ObtenerNombrePeriodo(filtroPeriodoId).ToUpper() - @ObtenerNombreSede(filtroSedeId).ToUpper()
-            </div>
-
-            <div class="columns-header">
-                <div class="header-cell col-width-day">DÍA</div>
-                <div class="header-cell col-width-course">CURSO</div>
-                <div class="header-cell col-width-subjects">ASIGNATURAS Y HORARIOS</div>
-            </div>
-
-            @foreach (var dia in diasOrdenados)
+            @if (!isAlumno && carreraSeleccionada != null)
             {
-                var clasesDelDia = horarios.Where(h => h.Dia.Equals(dia, StringComparison.OrdinalIgnoreCase)).ToList();
-                if (clasesDelDia.Any())
+                <button class="btn-back" @onclick="VolverACarreras">
+                    <MudIcon Icon="@Icons.Material.Filled.ArrowBack" Style="font-size:14px;" />
+                    Volver
+                </button>
+            }
+        </div>
+
+        @if (isAlumno)
+        {
+            @if (carreraSeleccionada != null && horarios.Any() && !loadingHorarios)
+            {
+                <div style="display:flex; gap:8px; justify-content:flex-end; margin-bottom:20px;">
+                    <button class="btn btn-outline" disabled="@_procesandoPdf" @onclick="@(() => DescargarOVisualizarPdf(false))">
+                        <MudIcon Icon="@Icons.Material.Filled.Visibility" Style="font-size:14px;" /> Ver online
+                    </button>
+                    <button class="btn btn-solid" disabled="@_procesandoPdf" @onclick="@(() => DescargarOVisualizarPdf(true))">
+                        <MudIcon Icon="@Icons.Material.Filled.PictureAsPdf" Style="font-size:14px;" /> Descargar PDF
+                    </button>
+                </div>
+            }
+            else if (!loadingCarreras && carreraSeleccionada == null)
+            {
+                <div class="empty">
+                    <div class="empty-ico"><MudIcon Icon="@Icons.Material.Filled.Warning" Style="font-size:2.2rem;" /></div>
+                    <div class="empty-title">Perfil Incompleto</div>
+                    <p class="empty-body">No pudimos encontrar una carrera asignada a tu perfil.</p>
+                </div>
+            }
+            @if (carreraSeleccionada != null) { @RenderGridHorarios }
+        }
+        else
+        {
+            @if (carreraSeleccionada == null)
+            {
+                @if (loadingCarreras)
                 {
-                    <div class="day-row">
-                        <div class="day-column col-width-day">
-                            @dia.Substring(0, 3).ToUpper()
+                    <div style="display:flex;flex-direction:column;gap:1px;border-radius:6px;overflow:hidden;">
+                        <div class="sk" style="height:42px;border-radius:0;"></div>
+                        @for (int i = 0; i < 7; i++) { <div class="sk" style="height:56px;border-radius:0;"></div> }
+                    </div>
+                }
+                else
+                {
+                    <div class="career-table">
+                        <div class="ct-head">
+                            <div class="ct-th" style="text-align:center;">#</div>
+                            <div class="ct-th">Carrera</div>
+                            <div class="ct-th">Título</div>
+                            <div class="ct-th"></div>
                         </div>
-
-                        <div class="courses-column" style="flex-grow:1;">
-                            @* Agrupamos por Año y luego por Código de Comisión *@
-                            @foreach (var grupo in clasesDelDia
-                                    .GroupBy(c => new { Anio = c.AnioCursada, Codigo = c.ComisionCodigo.Trim().ToUpper() })
-                                    .OrderBy(g => g.Key.Anio)
-                                    .ThenBy(g => g.Key.Codigo))
-                            {
-                                <div class="course-row">
-                                    <div class="course-label col-width-course">
-                                        @* Mostramos el código de comisión limpio (Ej: 1º A) *@
-                                        <span>@grupo.First().ComisionCodigo</span>
-                                    </div>
-
-                                    <div class="subjects-area">
-                                        @foreach (var clase in grupo.OrderBy(c => c.HoraInicio))
-                                        {
-                                            <div class="subject-block">
-                                                <span class="subject-time">@clase.HoraInicio.ToString(@"hh\:mm") - @clase.HoraFin.ToString(@"hh\:mm")</span>
-                                                <span class="subject-name">@clase.Materia</span>
-                                                <span class="subject-classroom">@clase.Aula</span>
-                                            </div>
-                                        }
-                                    </div>
+                        @{ int idx = 0; }
+                        @foreach (var carrera in CarrerasFiltradas)
+                        {
+                            idx++;
+                            var c = carrera;
+                            <div class="ct-row" @onclick="@(() => SeleccionarCarrera(c))">
+                                <div class="ct-num">@idx.ToString("D3")</div>
+                                <div class="ct-name-cell">
+                                    <div class="ct-initial">@c.Nombre.Substring(0,1)</div>
+                                    <span class="ct-name">@c.Nombre</span>
                                 </div>
-                            }
-                        </div>
+                                <div class="ct-titulo-cell"><span class="ct-titulo">@c.Titulo</span></div>
+                                <div class="ct-action">
+                                    Consultar
+                                    <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Style="font-size:13px;" />
+                                </div>
+                            </div>
+                        }
                     </div>
                 }
             }
-        </div>
-    }
-}
+            else
+            {
+                <div class="filter-bar">
+                    <div class="fg">
+                        <label class="fg-label">Período Académico</label>
+                        <div class="fg-sel-wrap">
+                            <select class="fg-sel" value="@filtroPeriodoId"
+                                    @onchange="@(async e => await OnPeriodoChanged(int.Parse(e.Value!.ToString()!)))">
+                                @foreach (var p in listaPeriodos)
+                                {
+                                    <option value="@p.Id">@p.Nombre</option>
+                                }
+                            </select>
+                            <MudIcon Icon="@Icons.Material.Filled.UnfoldMore" Class="fg-chev" />
+                        </div>
+                    </div>
+                    <div class="fg">
+                        <label class="fg-label">Sede</label>
+                        <div class="fg-sel-wrap">
+                            <select class="fg-sel" value="@filtroSedeId"
+                                    @onchange="@(async e => await OnSedeChanged(int.Parse(e.Value!.ToString()!)))">
+                                <option value="0" disabled>Seleccione una sede…</option>
+                                @foreach (var s in listaSedes)
+                                {
+                                    <option value="@s.Id">@s.Nombre</option>
+                                }
+                            </select>
+                            <MudIcon Icon="@Icons.Material.Filled.UnfoldMore" Class="fg-chev" />
+                        </div>
+                    </div>
+                    <div class="filter-actions">
+                        <button class="btn btn-outline"
+                                disabled="@(filtroSedeId == 0 || !horarios.Any() || _procesandoPdf)"
+                                @onclick="@(() => DescargarOVisualizarPdf(false))">
+                            <MudIcon Icon="@Icons.Material.Filled.Visibility" Style="font-size:14px;" /> Ver online
+                        </button>
+                        <button class="btn btn-solid"
+                                disabled="@(filtroSedeId == 0 || !horarios.Any() || _procesandoPdf)"
+                                @onclick="@(() => DescargarOVisualizarPdf(true))">
+                            <MudIcon Icon="@Icons.Material.Filled.PictureAsPdf" Style="font-size:14px;" /> Descargar PDF
+                        </button>
+                    </div>
+                </div>
+
+                @RenderGridHorarios
+            }
+        }
+    </div>
+</div>
 
 @code {
     private bool loadingCarreras = true;
     private bool loadingHorarios = false;
+    private bool _procesandoPdf  = false;
 
-    private List<CarreraDTO> listaCarreras = new();
-    private CarreraDTO? carreraSeleccionada;
-    private List<HorarioVisualizacionDTO> horarios = new();
+    private bool isAlumno       = false;
+    private int? alumnoIdActual = null;
 
-    private List<PeriodoAcademicoDTO> listaPeriodos = new();
-    private List<SedeDTO> listaSedes = new(); // ✅ Lista de sedes
-
-    private int filtroPeriodoId = 0;
-    private int filtroSedeId = 0; // ✅ Variable para el filtro
-
-    private string searchCarrera = "";
+    private List<CarreraDTO>              listaCarreras = new();
+    private CarreraDTO?                   carreraSeleccionada;
+    private List<HorarioVisualizacionDTO> horarios      = new();
+    private List<PeriodoAcademicoDTO>     listaPeriodos = new();
+    private List<SedeDTO>                 listaSedes    = new();
+    private int    filtroPeriodoId = 0;
+    private int    filtroSedeId    = 0;
+    private string searchCarrera   = "";
 
     private IEnumerable<CarreraDTO> CarrerasFiltradas =>
-        string.IsNullOrWhiteSpace(searchCarrera) ? listaCarreras : listaCarreras.Where(c => c.Nombre.Contains(searchCarrera, StringComparison.OrdinalIgnoreCase));
+        string.IsNullOrWhiteSpace(searchCarrera)
+            ? listaCarreras
+            : listaCarreras.Where(c =>
+                c.Nombre.Contains(searchCarrera, StringComparison.OrdinalIgnoreCase));
 
-    private List<string> diasOrdenados = new() { "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado" };
+    private List<string> diasOrdenados = new()
+        { "Lunes", "Martes", "Miércoles", "Jueves", "Viernes" };
 
-    protected override async Task OnInitializedAsync()
-    {
-        await CargarDatosIniciales();
-    }
+    protected override async Task OnInitializedAsync() => await CargarDatosIniciales();
 
     private async Task CargarDatosIniciales()
     {
         loadingCarreras = true;
         try
         {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user      = authState.User;
+            isAlumno      = user.IsInRole("Alumno");
+
             var t1 = PeriodoService.GetAllAsync();
             var t2 = CarreraService.GetAllAsync();
-            var t3 = SedeService.GetAllAsync(); // Cargar sedes
-
+            var t3 = SedeService.GetAllAsync();
             await Task.WhenAll(t1, t2, t3);
 
             listaPeriodos = await t1;
-            var todasLasCarreras = await t2;
-            listaCarreras = todasLasCarreras.Where(c => c.Activo).ToList();
-            listaSedes = await t3; // Asignar sedes
+            var todas = await t2;
+            listaCarreras = todas.Where(c => c.Activo).ToList();
+            listaSedes    = await t3;
 
-            if (listaPeriodos.Any(p => p.Activo)) filtroPeriodoId = listaPeriodos.First(p => p.Activo).Id;
-            else if (listaPeriodos.Any()) filtroPeriodoId = listaPeriodos.First().Id;
+            if      (listaPeriodos.Any(p => p.Activo)) filtroPeriodoId = listaPeriodos.First(p => p.Activo).Id;
+            else if (listaPeriodos.Any())               filtroPeriodoId = listaPeriodos.First().Id;
+
+            if (isAlumno)
+            {
+                var userIdStr = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (int.TryParse(userIdStr, out int userId))
+                {
+                    var perfil = await AlumnoService.GetByUsuarioIdAsync(userId);
+                    if (perfil != null)
+                    {
+                        alumnoIdActual      = perfil.Id;
+                        carreraSeleccionada = listaCarreras.FirstOrDefault(c => c.Id == perfil.IdCarrera);
+                        filtroSedeId        = perfil.IdSede;
+                        if (carreraSeleccionada != null && filtroSedeId > 0 && filtroPeriodoId > 0)
+                            await CargarHorarios();
+                    }
+                }
+            }
         }
+        catch { Snackbar.Add("Error al cargar los catálogos del sistema.", Severity.Error); }
         finally { loadingCarreras = false; }
     }
 
     private void SeleccionarCarrera(CarreraDTO carrera)
-    {
-        carreraSeleccionada = carrera;
-        horarios.Clear();
-        filtroSedeId = 0; // Resetear sede al entrar
-    }
+        { carreraSeleccionada = carrera; horarios.Clear(); filtroSedeId = 0; }
 
     private void VolverACarreras()
-    {
-        carreraSeleccionada = null;
-        horarios.Clear();
-        filtroSedeId = 0;
-    }
+        { carreraSeleccionada = null; horarios.Clear(); filtroSedeId = 0; }
 
     private async Task OnPeriodoChanged(int id)
     {
         filtroPeriodoId = id;
-        if (carreraSeleccionada != null && filtroSedeId > 0) await CargarHorarios();
+        if (!isAlumno && carreraSeleccionada != null && filtroSedeId > 0)
+            await CargarHorarios();
     }
 
-    // ✅ NUEVO: Al cambiar sede, cargamos los horarios específicos
     private async Task OnSedeChanged(int id)
     {
         filtroSedeId = id;
-        if (carreraSeleccionada != null && filtroSedeId > 0)
-        {
+        if (!isAlumno && carreraSeleccionada != null && filtroSedeId > 0)
             await CargarHorarios();
-        }
-        else
-        {
-            horarios.Clear();
-        }
+        else horarios.Clear();
     }
 
     private async Task CargarHorarios()
     {
         loadingHorarios = true;
+        StateHasChanged();
         try
         {
-            // ✅ Llamada con los 3 parámetros: Periodo, Carrera, SEDE
-            horarios = await HorarioService.GetVisualizacionAsync(filtroPeriodoId, carreraSeleccionada!.Id, filtroSedeId);
-        }
-        finally { loadingHorarios = false; }
-    }
+            horarios = await HorarioService.GetVisualizacionAsync(
+                filtroPeriodoId, carreraSeleccionada!.Id, filtroSedeId);
 
+            if (horarios != null &&
+                horarios.Any(h => h.Dia.Equals("Sábado", StringComparison.OrdinalIgnoreCase)) &&
+                !diasOrdenados.Contains("Sábado"))
+                diasOrdenados.Add("Sábado");
+        }
+        catch { Snackbar.Add("Error al cargar la grilla de horarios.", Severity.Error); }
+        finally { loadingHorarios = false; StateHasChanged(); }
+    }
 
     private async Task DescargarOVisualizarPdf(bool forzarDescarga)
     {
         if (carreraSeleccionada == null || filtroSedeId == 0 || filtroPeriodoId == 0)
         {
-            Snackbar.Add("Faltan filtros para generar el PDF", Severity.Warning);
+            Snackbar.Add("Seleccione una sede para generar el documento.", Severity.Warning);
             return;
         }
-
+        _procesandoPdf = true;
+        StateHasChanged();
         try
         {
             var pdfBytes = await HorarioService.DescargarPdfAsync(
-                filtroPeriodoId,
-                carreraSeleccionada.Id,
-                filtroSedeId
-            );
-
-            using var stream = new MemoryStream(pdfBytes);
+                filtroPeriodoId, carreraSeleccionada.Id, filtroSedeId);
+            if (pdfBytes == null || pdfBytes.Length == 0)
+            {
+                Snackbar.Add("Documento no disponible.", Severity.Error);
+                return;
+            }
+            using var stream    = new MemoryStream(pdfBytes);
             using var streamRef = new DotNetStreamReference(stream);
-
-            var nombreArchivo =
-                $"Horario_{carreraSeleccionada.Nombre}_{ObtenerNombreSede(filtroSedeId)}_{ObtenerNombrePeriodo(filtroPeriodoId)}.pdf"
-                .Replace(" ", "_");
-
+            var nombre = $"Horario_{carreraSeleccionada.Nombre}_{ObtenerNombreSede(filtroSedeId)}_{ObtenerNombrePeriodo(filtroPeriodoId)}.pdf"
+                         .Replace(" ", "_");
             if (forzarDescarga)
             {
-                await JS.InvokeVoidAsync("downloadFileFromStream", nombreArchivo, streamRef);
-                Snackbar.Add("PDF descargado correctamente", Severity.Success);
+                await JS.InvokeVoidAsync("downloadFileFromStream", nombre, streamRef);
+                Snackbar.Add("Descarga iniciada.", Severity.Success);
             }
             else
             {
-                await JS.InvokeVoidAsync("openFileInNewTab", nombreArchivo, streamRef);
-                Snackbar.Add("PDF abierto en una nueva pestaña", Severity.Success);
+                await JS.InvokeVoidAsync("openFileInNewTab", nombre, streamRef);
             }
         }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Error al generar el PDF: {ex.Message}", Severity.Error);
-        }
+        catch { Snackbar.Add("Error al generar el PDF.", Severity.Error); }
+        finally { _procesandoPdf = false; StateHasChanged(); }
     }
 
+    private string ObtenerNombrePeriodo(int id) =>
+        listaPeriodos.FirstOrDefault(p => p.Id == id)?.Nombre ?? "—";
+    private string ObtenerNombreSede(int id) =>
+        listaSedes.FirstOrDefault(s => s.Id == id)?.Nombre ?? "—";
 
-    private string ObtenerNombrePeriodo(int id) => listaPeriodos.FirstOrDefault(p => p.Id == id)?.Nombre ?? "Todos";
-    
-    // ✅ Helper para mostrar nombre de sede en el título
-    private string ObtenerNombreSede(int id) => listaSedes.FirstOrDefault(s => s.Id == id)?.Nombre ?? "";
+    // ── RENDER FRAGMENT ───────────────────────────────────────────
+    private RenderFragment RenderGridHorarios => __builder =>
+    {
+        @if (loadingHorarios)
+        {
+            <div style="display:flex;flex-direction:column;gap:2px;border-radius:6px;overflow:hidden;">
+                <div class="sk" style="height:42px;border-radius:0;"></div>
+                @for (int j = 0; j < 6; j++) { <div class="sk" style="height:68px;border-radius:0;"></div> }
+            </div>
+        }
+        else if (filtroSedeId == 0)
+        {
+            <div class="empty">
+                <div class="empty-ico"><MudIcon Icon="@Icons.Material.Filled.LocationCity" Style="font-size:2.2rem;" /></div>
+                <div class="empty-title">Seleccione una sede</div>
+                <p class="empty-body">Elija la sede de dictado para visualizar la grilla horaria.</p>
+            </div>
+        }
+        else if (!horarios.Any())
+        {
+            <div class="empty">
+                <div class="empty-ico"><MudIcon Icon="@Icons.Material.Filled.EventBusy" Style="font-size:2.2rem;" /></div>
+                <div class="empty-title">Sin horarios asignados</div>
+                <p class="empty-body">No hay clases registradas para este período.</p>
+            </div>
+        }
+        else
+        {
+            <div class="sched-wrap">
+                <div class="sched-caption">
+                    <span class="sched-caption-title">@carreraSeleccionada!.Nombre</span>
+                    <span class="sched-caption-meta">
+                        @ObtenerNombrePeriodo(filtroPeriodoId) — @ObtenerNombreSede(filtroSedeId)
+                    </span>
+                </div>
 
+                <!-- Sin .sched-scroll: la tabla va directo en el wrapper -->
+                <table class="sched-table">
+                    <thead>
+                        <tr>
+                            <th colspan="2" class="th-corner"></th>
+                            @foreach (var dia in diasOrdenados) { <th>@dia</th> }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{
+                            var grupos  = horarios.GroupBy(h => h.AnioCursada).OrderBy(g => g.Key).ToList();
+                            bool first  = true;
+                        }
+                        @foreach (var gAnio in grupos)
+                        {
+                            @if (!first)
+                            {
+                                <tr class="tr-sep">
+                                    <td colspan="@(2 + diasOrdenados.Count)"></td>
+                                </tr>
+                            }
+                            first = false;
+
+                            var  coms     = gAnio.GroupBy(h => h.ComisionCodigo).OrderBy(g => g.Key).ToList();
+                            int  rs       = coms.Count;
+                            bool firstCom = true;
+                            int  comIdx   = 0;
+
+                            @foreach (var gCom in coms)
+                            {
+                                string trClass = (!firstCom ? "tr-com-sep " : "")
+                                               + (comIdx % 2 != 0 ? "tr-com-even" : "");
+                                comIdx++;
+
+                                <tr class="@trClass">
+                                    @if (firstCom)
+                                    {
+                                        <td rowspan="@rs" class="td-year">
+                                            <span class="year-rot">@(gAnio.Key)° Año</span>
+                                        </td>
+                                        firstCom = false;
+                                    }
+
+                                    <td class="td-com">
+                                        <div class="com-badge">@gCom.Key</div>
+                                    </td>
+
+                                    @foreach (var dia in diasOrdenados)
+                                    {
+                                        var clases = gCom
+                                            .Where(h => h.Dia.Equals(dia, StringComparison.OrdinalIgnoreCase))
+                                            .OrderBy(h => h.HoraInicio)
+                                            .ToList();
+
+                                        <td class="td-day">
+                                            @if (clases.Any())
+                                            {
+                                                <div class="class-stack">
+                                                    @foreach (var cl in clases)
+                                                    {
+                                                        <div class="class-block">
+                                                            <div class="cb-time">
+                                                                <span class="cb-t">@cl.HoraInicio.ToString(@"hh\:mm")</span>
+                                                                <div class="cb-line"></div>
+                                                                <span class="cb-t">@cl.HoraFin.ToString(@"hh\:mm")</span>
+                                                            </div>
+                                                            <div class="cb-body">
+                                                                @if (!string.IsNullOrWhiteSpace(cl.Codigo))
+                                                                {
+                                                                    <div class="cb-code">@cl.Codigo</div>
+                                                                }
+                                                                <div class="cb-subject">@cl.Materia</div>
+                                                                <div class="cb-meta">
+                                                                    <div class="cb-aula">
+                                                                        <MudIcon Icon="@Icons.Material.Outlined.MeetingRoom" Style="font-size:10px;" />
+                                                                        Aula: @(string.IsNullOrWhiteSpace(cl.Aula) ? "A confirmar" : cl.Aula)
+                                                                    </div>
+                                                                    <div class="cb-teacher">
+                                                                        <MudIcon Icon="@Icons.Material.Outlined.Person" Style="font-size:10px;" />
+                                                                        @(string.IsNullOrWhiteSpace(cl.Profesor) ? "Profesor sin asignar" : cl.Profesor)
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            }
+                                        </td>
+                                    }
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    };
 }

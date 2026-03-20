@@ -10,12 +10,13 @@ namespace EduSys.Web.Services.Interfaces
         // 2. Obtener lista de pendientes (Admin)
         Task<List<SolicitudIngresoDTO>> GetPendientesAsync();
 
-        // 3. Obtener una solicitud por ID (Admin - Detalle) - ESTE FALTABA
-        Task<SolicitudIngresoDTO> GetSolicitudByIdAsync(int id);
+        // 3. Obtener una solicitud por ID (Admin - Detalle)
+        Task<SolicitudIngresoDTO?> GetSolicitudByIdAsync(int id); // ✅ Nulable para mayor seguridad
 
-        // 4. Procesar Aprobación/Rechazo (Admin) - ESTE FALTABA
+        // 4. Procesar Aprobación/Rechazo (Admin)
         Task ProcesarSolicitudAsync(ProcesarSolicitudDTO decision);
 
-        Task<List<SolicitudIngresoDTO>> GetHistorialSolicitudes();
+        // 5. Historial
+        Task<List<SolicitudIngresoDTO>> GetHistorialSolicitudesAsync(); // ✅ Agregado el sufijo Async
     }
 }

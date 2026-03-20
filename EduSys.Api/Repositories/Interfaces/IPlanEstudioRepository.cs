@@ -19,5 +19,9 @@ namespace EduSys.Api.Repositories.Interfaces
         Task<bool> ModificarMateriaDelPlanAsync(PlanMateria pm);
         Task<bool> ActualizarCorrelativasAsync(int idPlanMateria, List<CorrelativaItemDTO> correlativas);
         Task<List<PlanMateria>> GetAllMateriasGlobalAsync();
+        Task<List<PlanMateriaDTO>> GetMateriasPorSedeAsync(int idCarrera, int idSede);
+
+        Task<List<PlanSedeDTO>> GetSedesByPlanAsync(int idPlan);
+        Task<bool> ActualizarSedesAsync(int idPlan, List<int> idsSedes);
     }
 }

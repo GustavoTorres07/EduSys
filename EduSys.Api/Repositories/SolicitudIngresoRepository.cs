@@ -17,15 +17,17 @@ namespace EduSys.Api.Repositories
         // 1. Listar Pendientes (Con Sede incluida)
         public async Task<List<SolicitudIngreso>> GetPendientesAsync()
         {
+            // 🚀 OPTIMIZADO: AsNoTracking para consultas de gestión
             return await _context.SolicitudIngresos
-                .Include(s => s.IdCarreraInteresNavigation) // Nombre Carrera
-                .Include(s => s.IdSedeNavigation)           // ✅ NUEVO: Trae el nombre de la Sede
+                .AsNoTracking()
+                .Include(s => s.IdCarreraInteresNavigation)
+                .Include(s => s.IdSedeNavigation)
                 .Where(s => s.Estado == "Pendiente")
                 .OrderByDescending(s => s.FechaSolicitud)
                 .ToListAsync();
         }
 
-        // 2. Crear Solicitud (Guarda IdSede automáticamente si viene en el objeto)
+        // 2. Crear Solicitud
         public async Task<SolicitudIngreso> CrearAsync(SolicitudIngreso solicitud)
         {
             _context.SolicitudIngresos.Add(solicitud);
@@ -34,11 +36,11 @@ namespace EduSys.Api.Repositories
         }
 
         // 3. Validar Duplicados
-        // Nota: Validamos por DNI y Carrera. Si intenta misma carrera en otra sede,
-        // usualmente también se bloquea hasta resolver la anterior, pero podrías agregar && s.IdSede == idSede si quisieras permitirlo.
         public async Task<bool> ExistePendienteAsync(string dni, int idCarrera)
         {
+            // 🚀 OPTIMIZADO: Consulta rápida sin tracking
             return await _context.SolicitudIngresos
+                .AsNoTracking()
                 .AnyAsync(s => s.Dni == dni
                             && s.IdCarreraInteres == idCarrera
                             && s.Estado == "Pendiente");
@@ -48,24 +50,30 @@ namespace EduSys.Api.Repositories
         public async Task<List<SolicitudIngreso>> GetAllAsync()
         {
             return await _context.SolicitudIngresos
+                .AsNoTracking()
                 .Include(s => s.IdCarreraInteresNavigation)
-                .Include(s => s.IdSedeNavigation) // ✅ NUEVO
+                .Include(s => s.IdSedeNavigation)
                 .OrderByDescending(s => s.FechaSolicitud)
                 .ToListAsync();
         }
 
         public async Task UpdateAsync(SolicitudIngreso solicitud)
         {
-            _context.SolicitudIngresos.Update(solicitud);
-            await _context.SaveChangesAsync();
+            var existing = await _context.SolicitudIngresos.FirstOrDefaultAsync(s => s.Id == solicitud.Id);
+            if (existing != null)
+            {
+                _context.Entry(existing).CurrentValues.SetValues(solicitud);
+                await _context.SaveChangesAsync();
+            }
         }
 
         // 5. Obtener por ID (Detalle completo)
         public async Task<SolicitudIngreso?> GetByIdAsync(int id)
         {
             return await _context.SolicitudIngresos
+                .AsNoTracking()
                 .Include(s => s.IdCarreraInteresNavigation)
-                .Include(s => s.IdSedeNavigation) // ✅ NUEVO: Para ver la sede en el detalle
+                .Include(s => s.IdSedeNavigation)
                 .FirstOrDefaultAsync(s => s.Id == id);
         }
 
@@ -83,16 +91,16 @@ namespace EduSys.Api.Repositories
                 solicitud.ObservacionAdmin = observacion;
             }
 
-            await _context.SaveChangesAsync();
-            return true;
+            return await _context.SaveChangesAsync() > 0;
         }
 
         // 7. Historial
         public async Task<List<SolicitudIngreso>> GetHistorialAsync()
         {
             return await _context.SolicitudIngresos
+                .AsNoTracking()
                 .Include(x => x.IdCarreraInteresNavigation)
-                .Include(x => x.IdSedeNavigation) // ✅ NUEVO
+                .Include(x => x.IdSedeNavigation)
                 .Where(x => x.Estado != "Pendiente")
                 .OrderByDescending(x => x.FechaProcesado)
                 .ToListAsync();

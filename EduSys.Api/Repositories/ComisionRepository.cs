@@ -28,6 +28,7 @@ namespace EduSys.Api.Repositories
                 .Include(c => c.DocenteComisions)
                     .ThenInclude(dc => dc.IdDocenteNavigation)
                         .ThenInclude(d => d.IdUsuarioNavigation)
+                .AsSplitQuery()
                 .AsNoTracking()
                 .ToListAsync();
         }
@@ -55,6 +56,7 @@ namespace EduSys.Api.Repositories
                 .Include(c => c.DocenteComisions)
                     .ThenInclude(dc => dc.IdDocenteNavigation)
                         .ThenInclude(d => d.IdUsuarioNavigation)
+                .AsSplitQuery()
                 .FirstOrDefaultAsync(c => c.Id == id);
         }
 
@@ -66,7 +68,7 @@ namespace EduSys.Api.Repositories
 
         public async Task<bool> UpdateAsync(Comision comision)
         {
-            var existing = await _context.Comisions.FindAsync(comision.Id);
+            var existing = await _context.Comisions.FirstOrDefaultAsync(c => c.Id == comision.Id);
             if (existing == null) return false;
 
             existing.Codigo = comision.Codigo;
@@ -82,11 +84,33 @@ namespace EduSys.Api.Repositories
 
         public async Task<bool> DeleteAsync(int id)
         {
-            var existing = await _context.Comisions.FindAsync(id);
+            // ✅ AHORA ES UNA ELIMINACIÓN FÍSICA
+            var existing = await _context.Comisions
+                .Include(c => c.HorarioComisions)
+                .Include(c => c.DocenteComisions)
+                .FirstOrDefaultAsync(c => c.Id == id);
+
             if (existing == null) return false;
 
-            existing.Estado = "Cancelada";
-            return await _context.SaveChangesAsync() > 0;
+            // Borramos primero los horarios y asignaciones docentes para que SQL no tire error de Foreign Key
+            if (existing.HorarioComisions != null)
+                _context.HorarioComisions.RemoveRange(existing.HorarioComisions);
+
+            if (existing.DocenteComisions != null)
+                _context.DocenteComisions.RemoveRange(existing.DocenteComisions);
+
+            // Borramos la comisión
+            _context.Comisions.Remove(existing);
+
+            try
+            {
+                return await _context.SaveChangesAsync() > 0;
+            }
+            catch (Exception)
+            {
+                // Si entra aquí, es porque tiene Alumnos inscriptos o Notas. El sistema la protege.
+                return false;
+            }
         }
 
         // ------------------ CONSULTA BASE (para Controller) ------------------
@@ -105,8 +129,7 @@ namespace EduSys.Api.Repositories
                         .ThenInclude(d => d.IdUsuarioNavigation)
                 .Where(c =>
                     c.IdPeriodo == idPeriodo &&
-                    c.IdPlanMateriaNavigation.IdPlanNavigation.IdCarrera == idCarrera &&
-                    c.Estado == "Abierta")
+                    c.IdPlanMateriaNavigation.IdPlanNavigation.IdCarrera == idCarrera) // ✅ Se quitó c.Estado == "Abierta"
                 .AsSplitQuery()
                 .AsNoTracking()
                 .ToListAsync();
@@ -116,25 +139,24 @@ namespace EduSys.Api.Repositories
 
         public async Task<List<DocenteComisionListadoDTO>> GetDocentesPorComisionAsync(int idComision)
         {
-            var lista = await _context.DocenteComisions
-                .Include(dc => dc.IdDocenteNavigation)
-                    .ThenInclude(d => d.IdUsuarioNavigation)
+            return await _context.DocenteComisions
+                .AsNoTracking()
                 .Where(dc => dc.IdComision == idComision && dc.Activo == true)
+                .Select(dc => new DocenteComisionListadoDTO
+                {
+                    Id = dc.Id,
+                    IdDocente = dc.IdDocente,
+                    Legajo = dc.IdDocenteNavigation.Legajo,
+                    NombreDocente = $"{dc.IdDocenteNavigation.IdUsuarioNavigation.Apellido}, {dc.IdDocenteNavigation.IdUsuarioNavigation.Nombre}",
+                    Rol = dc.RolDocente
+                })
                 .ToListAsync();
-
-            return lista.Select(dc => new DocenteComisionListadoDTO
-            {
-                Id = dc.Id,
-                IdDocente = dc.IdDocente,
-                Legajo = dc.IdDocenteNavigation.Legajo,
-                NombreDocente = $"{dc.IdDocenteNavigation.IdUsuarioNavigation.Apellido}, {dc.IdDocenteNavigation.IdUsuarioNavigation.Nombre}",
-                Rol = dc.RolDocente
-            }).ToList();
         }
 
         public async Task<bool> AsignarDocenteAsync(DocenteComisionRequestDTO dto)
         {
             var existe = await _context.DocenteComisions
+                .AsNoTracking()
                 .AnyAsync(dc =>
                     dc.IdComision == dto.IdComision &&
                     dc.IdDocente == dto.IdDocente &&
@@ -143,9 +165,7 @@ namespace EduSys.Api.Repositories
             if (existe)
                 throw new Exception("El docente ya está asignado a esta comisión.");
 
-            var mensajeConflicto = await ObtenerConflictoHorarioDocenteAsync(
-                dto.IdDocente,
-                dto.IdComision);
+            var mensajeConflicto = await ObtenerConflictoHorarioDocenteAsync(dto.IdDocente, dto.IdComision);
 
             if (mensajeConflicto != null)
                 throw new Exception(mensajeConflicto);
@@ -162,8 +182,6 @@ namespace EduSys.Api.Repositories
             return await _context.SaveChangesAsync() > 0;
         }
 
-
-
         public async Task<bool> DesasignarDocenteAsync(int idDocenteComision)
         {
             var relacion = await _context.DocenteComisions.FindAsync(idDocenteComision);
@@ -173,15 +191,13 @@ namespace EduSys.Api.Repositories
             return await _context.SaveChangesAsync() > 0;
         }
 
-        public async Task<List<ComisionDTO>> GetDTOByPeriodoAndCarreraAsync(
-    int idPeriodo,
-    int idCarrera)
+        public async Task<List<ComisionDTO>> GetDTOByPeriodoAndCarreraAsync(int idPeriodo, int idCarrera)
         {
             return await _context.Comisions
+                .AsNoTracking()
                 .Where(c =>
                     c.IdPeriodo == idPeriodo &&
-                    c.IdPlanMateriaNavigation.IdPlanNavigation.IdCarrera == idCarrera &&
-                    c.Estado == "Abierta")
+                    c.IdPlanMateriaNavigation.IdPlanNavigation.IdCarrera == idCarrera) // ✅ Se quitó c.Estado == "Abierta"
                 .Select(c => new ComisionDTO
                 {
                     Id = c.Id,
@@ -205,103 +221,58 @@ namespace EduSys.Api.Repositories
                 })
                 .OrderBy(c => c.AnioCursada)
                 .ThenBy(c => c.MateriaNombre)
-                .AsNoTracking()
                 .ToListAsync();
         }
-
-        private async Task<bool> DocenteTieneSolapamientoAsync(
-    int idDocente,
-    int idComisionNueva)
-        {
-            // Horarios de la comisión a asignar
-            var horariosNuevaComision = await _context.HorarioComisions
-                .Where(h => h.IdComision == idComisionNueva)
-                .ToListAsync();
-
-            if (!horariosNuevaComision.Any())
-                return false; // sin horarios → no hay conflicto
-
-            // Todas las asignaciones activas del docente
-            return await _context.DocenteComisions
-                .Where(dc =>
-                    dc.IdDocente == idDocente &&
-                    dc.Activo &&
-                    dc.IdComision != idComisionNueva)
-                .AnyAsync(dc =>
-                    dc.IdComisionNavigation.HorarioComisions.Any(hExistente =>
-                        horariosNuevaComision.Any(hNueva =>
-                            hExistente.DiaSemana == hNueva.DiaSemana &&
-                            hNueva.HoraInicio < hExistente.HoraFin &&
-                            hExistente.HoraInicio < hNueva.HoraFin
-                        )
-                    )
-                );
-        }
-
 
         public async Task<List<ComisionDTO>> GetPorSedeAsync(int idSede)
         {
-            // 1. Iniciamos la consulta para buscar comisiones ABIERTAS
-            // ⚠️ ATENCIÓN: Eliminamos el filtro de "Periodo Abierto" para que el 
-            // Administrador pueda inscribir alumnos fuera de término.
-            var query = _context.Comisions
-                .Include(c => c.IdPlanMateriaNavigation)
-                    .ThenInclude(pm => pm.IdMateriaNavigation)
-                .Include(c => c.HorarioComisions)
-                .Where(c => c.Estado == "Abierta");
+            // ✅ Se quitó el Where estricto de Abierta, para que la UI decida qué mostrar.
+            var query = _context.Comisions.AsNoTracking();
 
-            // 2. Salvavidas: Si el alumno no tiene sede (IdSede == 0), le mostramos TODAS 
-            // las materias de todas las sedes para que el administrador no se quede atascado.
             if (idSede > 0)
             {
                 query = query.Where(c => c.IdSede == idSede);
             }
 
-            var comisiones = await query.ToListAsync();
-            var resultado = new List<ComisionDTO>();
-
-            // 3. Mapeo seguro protegiendo contra valores nulos en la base de datos
-            foreach (var c in comisiones)
+            var resultado = await query.Select(c => new ComisionDTO
             {
-                int inscriptos = await _context.InscripcionCursada
-                    .CountAsync(i => i.IdComision == c.Id && i.Estado != "Baja");
+                Id = c.Id,
+                Codigo = c.Codigo ?? "S/C",
+                IdPlanMateria = c.IdPlanMateria,
+                IdSede = c.IdSede,
+                CupoMaximo = c.CupoMaximo,
+                Turno = c.Turno ?? "N/A",
+                Estado = c.Estado,
 
-                var horariosStr = c.HorarioComisions != null && c.HorarioComisions.Any()
-                    ? string.Join(", ", c.HorarioComisions.Select(h => $"{h.DiaSemana} {h.HoraInicio:hh\\:mm}-{h.HoraFin:hh\\:mm}"))
-                    : "Sin horario asignado";
+                Materia = c.IdPlanMateriaNavigation.IdMateriaNavigation.Nombre ?? "Materia Desconocida",
 
-                resultado.Add(new ComisionDTO
-                {
-                    Id = c.Id,
-                    Codigo = c.Codigo ?? "S/C",
-                    IdPlanMateria = c.IdPlanMateria,
-                    IdSede = c.IdSede,
-                    CupoMaximo = c.CupoMaximo,
-                    Turno = c.Turno ?? "N/A",
-                    Estado = c.Estado,
+                Horario = string.Join(", ", c.HorarioComisions
+                    .Select(h => h.DiaSemana + " " + h.HoraInicio.ToString(@"hh\:mm") + "-" + h.HoraFin.ToString(@"hh\:mm"))),
 
-                    // Datos vitales para que el Modal del Frontend funcione:
-                    Materia = c.IdPlanMateriaNavigation?.IdMateriaNavigation?.Nombre ?? "Materia Desconocida",
-                    Horario = horariosStr,
-                    CupoActual = inscriptos
-                });
+                CupoActual = c.InscripcionCursada.Count(i => i.Estado != "Baja")
+            })
+            .OrderBy(r => r.Materia)
+            .ToListAsync();
+
+            foreach (var item in resultado)
+            {
+                if (string.IsNullOrEmpty(item.Horario)) item.Horario = "Sin horario asignado";
             }
 
-            // Ordenamos alfabéticamente para que sea más fácil buscar
-            return resultado.OrderBy(r => r.Materia).ToList();
+            return resultado;
         }
+
         private async Task<string?> ObtenerConflictoHorarioDocenteAsync(int idDocente, int idComisionNueva)
         {
-            // A. Obtenemos los horarios de la NUEVA comisión (Ya lo tienes en memoria o lo traemos)
             var horariosNuevaComision = await _context.HorarioComisions
+                .AsNoTracking()
                 .Where(h => h.IdComision == idComisionNueva)
                 .ToListAsync();
 
             if (!horariosNuevaComision.Any()) return null;
 
-            // B. TRAEMOS TODOS LOS HORARIOS DEL DOCENTE A MEMORIA (Aquí evitamos el error de traducción LINQ)
-            // Seleccionamos solo los datos necesarios para comparar y mostrar el mensaje.
             var agendaDocente = await _context.DocenteComisions
+                .AsNoTracking()
                 .Where(dc => dc.IdDocente == idDocente && dc.Activo && dc.IdComision != idComisionNueva)
                 .SelectMany(dc => dc.IdComisionNavigation.HorarioComisions.Select(h => new
                 {
@@ -311,17 +282,14 @@ namespace EduSys.Api.Repositories
                     Inicio = h.HoraInicio,
                     Fin = h.HoraFin
                 }))
-                .ToListAsync(); // <--- ¡ESTO ES LO IMPORTANTE! Ejecuta la query aquí.
+                .ToListAsync();
 
-            // C. COMPARACIÓN EN MEMORIA (C# puro)
             foreach (var ocupado in agendaDocente)
             {
                 foreach (var nuevo in horariosNuevaComision)
                 {
-                    // 1. Mismo día
                     if (ocupado.Dia == nuevo.DiaSemana)
                     {
-                        // 2. Superposición de horas: (InicioA < FinB) Y (InicioB < FinA)
                         if (nuevo.HoraInicio < ocupado.Fin && ocupado.Inicio < nuevo.HoraFin)
                         {
                             return $"Conflicto horario: el docente ya dicta {ocupado.Materia} ({ocupado.Comision}) los {ocupado.Dia} de {ocupado.Inicio:hh\\:mm} a {ocupado.Fin:hh\\:mm}.";
@@ -332,7 +300,6 @@ namespace EduSys.Api.Repositories
 
             return null;
         }
-
 
         private string ObtenerNombreRol(int idRol)
         {
@@ -345,6 +312,5 @@ namespace EduSys.Api.Repositories
                 _ => "Docente"
             };
         }
-
     }
 }

@@ -8,7 +8,7 @@ namespace EduSys.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+    [Authorize] // Lectura permitida para cualquier usuario autenticado
     public class ModalidadesController : ControllerBase
     {
         private readonly IModalidadRepository _repo;
@@ -19,7 +19,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> Get()
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<ModalidadDTO>))]
+        public async Task<ActionResult<List<ModalidadDTO>>> Get()
         {
             var lista = await _repo.GetAllAsync();
             var dtos = lista.Select(m => new ModalidadDTO
@@ -34,10 +35,13 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpGet("{id}")]
-        public async Task<IActionResult> Get(int id)
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ModalidadDTO))]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<ModalidadDTO>> Get(int id)
         {
             var item = await _repo.GetByIdAsync(id);
-            if (item == null) return NotFound();
+            if (item == null)
+                return NotFound(new { message = "Modalidad no encontrada." });
 
             var dto = new ModalidadDTO
             {
@@ -50,11 +54,16 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Administrador, Secretaria Academica")] // 🔒 Restringido a Gestión
+        [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(ModalidadDTO))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Post([FromBody] ModalidadDTO dto)
         {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
             if (await _repo.ExisteNombreAsync(dto.Nombre))
             {
-                return BadRequest($"Ya existe la modalidad '{dto.Nombre}'.");
+                return BadRequest(new { message = $"Ya existe la modalidad '{dto.Nombre}'." });
             }
 
             var nueva = new Modalidad
@@ -72,11 +81,17 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpPut]
+        [Authorize(Roles = "Administrador, Secretaria Academica")] // 🔒 Restringido a Gestión
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ModalidadDTO))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Put([FromBody] ModalidadDTO dto)
         {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
             if (await _repo.ExisteNombreAsync(dto.Nombre, dto.Id))
             {
-                return BadRequest($"Ya existe la modalidad '{dto.Nombre}'.");
+                return BadRequest(new { message = $"Ya existe la modalidad '{dto.Nombre}'." });
             }
 
             var modalidad = new Modalidad
@@ -88,16 +103,22 @@ namespace EduSys.Api.Controllers
             };
 
             var resultado = await _repo.UpdateAsync(modalidad);
-            if (!resultado) return NotFound();
+            if (!resultado)
+                return NotFound(new { message = "No se encontró la modalidad para actualizar." });
 
             return Ok(dto);
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Administrador, Secretaria Academica")] // 🔒 Restringido a Gestión
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Delete(int id)
         {
             var resultado = await _repo.DeleteAsync(id);
-            if (!resultado) return NotFound();
+            if (!resultado)
+                return NotFound(new { message = "Modalidad no encontrada." });
+
             return NoContent();
         }
     }

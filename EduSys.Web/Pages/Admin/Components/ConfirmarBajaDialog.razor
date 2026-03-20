@@ -1,7 +1,7 @@
 ﻿@inject ISnackbar Snackbar
 
 <style>
-    /* Ocultar elementos por defecto */
+    /* Ocultar elementos por defecto de MudBlazor para tomar control total */
     .mud-dialog-close-icon {
         display: none !important;
     }
@@ -16,11 +16,11 @@
         background-color: white;
     }
 
-    /* Cabecera Roja para indicar Alerta/Baja */
+    /* Cabecera Roja Moderna (Consistente con Tailwind/SaaS) */
     .dialog-header-danger {
-        background: #D32F2F; /* Rojo Material Design */
+        background: #ef4444; /* Rojo moderno para alertas críticas */
         color: white;
-        padding: 12px 20px;
+        padding: 16px 24px;
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -33,10 +33,10 @@
     .actions-footer {
         padding: 16px 24px;
         border-top: 1px solid #e2e8f0;
+        background-color: #f8fafc; /* Fondo gris muy sutil para el footer */
         display: flex;
         justify-content: flex-end;
         gap: 12px;
-        background-color: white;
     }
 </style>
 
@@ -44,34 +44,53 @@
     <DialogContent>
         <div class="dialog-container">
 
-            @* CABECERA DE ALERTA *@
+            @* --- CABECERA DE ALERTA --- *@
             <div class="dialog-header-danger">
                 <div class="d-flex align-center">
                     <MudIcon Icon="@Icons.Material.Filled.Warning" Class="mr-3" />
-                    <MudText Typo="Typo.h6" Style="font-weight: 700; letter-spacing: 0.5px;">Confirmar Baja</MudText>
+                    <MudText Typo="Typo.h6" Style="font-weight: 800; letter-spacing: -0.5px;">@Titulo</MudText>
                 </div>
                 <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" OnClick="Cancel" Size="Size.Small" />
             </div>
 
-            @* CUERPO DEL MENSAJE *@
+            @* --- CUERPO DEL MENSAJE --- *@
             <div class="dialog-body">
-                <MudText Typo="Typo.body1" Class="mb-2">@MensajePrincipal</MudText>
+                <MudText Typo="Typo.body1" Style="color: #334155; font-weight: 500;" Class="mb-2">
+                    @MensajePrincipal
+                </MudText>
 
-                <div class="d-flex align-center mt-4 pa-3 rounded" style="background-color: #FEF2F2; border: 1px solid #FECACA;">
-                    <MudAvatar Color="Color.Error" Size="Size.Medium" Variant="Variant.Outlined" Class="mr-3">
-                        @(string.IsNullOrEmpty(NombreEntidad) ? "?" : NombreEntidad.Substring(0, 1).ToUpper())
+                <div class="d-flex align-center mt-5 pa-4 rounded-lg" style="background-color: #fef2f2; border: 1px solid #fecaca;">
+                    <MudAvatar Color="Color.Error" Size="Size.Medium" Variant="Variant.Outlined" Class="mr-4" Style="font-weight: 700; background-color: white;">
+                        @(string.IsNullOrWhiteSpace(NombreEntidad) ? "?" : NombreEntidad.Trim().Substring(0, 1).ToUpper())
                     </MudAvatar>
-                    <div>
-                        <MudText Typo="Typo.subtitle2" Color="Color.Error" Style="font-weight: 700;">@NombreEntidad</MudText>
-                        <MudText Typo="Typo.caption" Color="Color.Default">@MensajeSecundario</MudText>
+                    <div class="d-flex flex-column">
+                        <MudText Typo="Typo.subtitle2" Color="Color.Error" Style="font-weight: 800; line-height: 1.2;">
+                            @NombreEntidad
+                        </MudText>
+                        <MudText Typo="Typo.caption" Style="color: #ef4444; font-weight: 500;">
+                            @MensajeSecundario
+                        </MudText>
                     </div>
                 </div>
             </div>
 
-            @* FOOTER *@
+            @* --- FOOTER / ACCIONES --- *@
             <div class="actions-footer">
-                <MudButton OnClick="Cancel" Variant="Variant.Outlined" Color="Color.Default">Cancelar</MudButton>
-                <MudButton OnClick="Submit" Variant="Variant.Filled" Color="Color.Error" StartIcon="@Icons.Material.Filled.DeleteForever">Confirmar Baja</MudButton>
+                <MudButton OnClick="Cancel"
+                           Variant="Variant.Outlined"
+                           Color="Color.Default"
+                           Class="rounded-lg"
+                           Style="font-weight: 600;">
+                    Cancelar
+                </MudButton>
+                <MudButton OnClick="Submit"
+                           Variant="Variant.Filled"
+                           Color="Color.Error"
+                           StartIcon="@Icons.Material.Filled.DeleteForever"
+                           Class="rounded-lg"
+                           Style="font-weight: 700; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);">
+                    @TextoBotonConfirmar
+                </MudButton>
             </div>
 
         </div>
@@ -81,11 +100,12 @@
 @code {
     [CascadingParameter] MudDialogInstance MudDialog { get; set; } = null!;
 
-    [Parameter] public string NombreEntidad { get; set; } = "";
-
-    // Parámetros dinámicos con valores por defecto genéricos
+    // --- PARÁMETROS DINÁMICOS ---
+    [Parameter] public string Titulo { get; set; } = "Confirmar Baja";
+    [Parameter] public string NombreEntidad { get; set; } = "Registro Desconocido";
     [Parameter] public string MensajePrincipal { get; set; } = "¿Está seguro que desea dar de baja este registro?";
     [Parameter] public string MensajeSecundario { get; set; } = "El registro quedará inactivo en el sistema.";
+    [Parameter] public string TextoBotonConfirmar { get; set; } = "Confirmar Baja";
 
     private void Submit() => MudDialog.Close(DialogResult.Ok(true));
     private void Cancel() => MudDialog.Cancel();

@@ -1,7 +1,7 @@
 ﻿@using EduSys.Shared.DTOs
 
 <style>
-    /* --- ESTILOS CORPORATIVOS --- */
+    /* --- ESTILOS UNIFICADOS DE MODAL --- */
     .mud-dialog-close-icon {
         display: none !important;
     }
@@ -14,11 +14,10 @@
         display: flex;
         flex-direction: column;
         background-color: white;
-        max-height: 85vh;
         min-width: 500px;
     }
 
-    /* HEADER AZUL */
+    /* HEADER AZUL CORPORATIVO */
     .dialog-header-integrated {
         background: #456990;
         color: white;
@@ -38,20 +37,19 @@
     .actions-footer {
         padding: 16px 24px;
         border-top: 1px solid #e2e8f0;
+        background-color: #f8fafc;
         display: flex;
         justify-content: flex-end;
         gap: 12px;
-        background-color: white;
         flex-shrink: 0;
     }
 
-    /* Inputs y Labels - Fix Visibilidad */
+    /* --- INPUTS FORZADOS --- */
     .force-black-text input,
-    .force-black-text .mud-input-slot,
-    .force-black-text .mud-select-input {
-        color: #1F2937 !important;
-        font-weight: 500;
-        -webkit-text-fill-color: #1F2937 !important;
+    .force-black-text .mud-input-slot {
+        color: #1e293b !important;
+        font-weight: 600 !important;
+        -webkit-text-fill-color: #1e293b !important;
     }
 
     .force-black-text .mud-input-label {
@@ -61,32 +59,30 @@
         font-weight: 600;
     }
 
-    .custom-input-borde .mud-input-outlined-border {
+    .force-black-text .mud-input-outlined-border {
+        border-color: #cbd5e1 !important;
+        transition: border-color 0.2s;
+    }
+
+    .force-black-text:hover .mud-input-outlined-border {
         border-color: #456990 !important;
     }
 
-    .custom-input-borde .mud-icon-root {
-        color: #456990 !important;
-    }
-
-    /* Alerta de advertencia personalizada */
-    .warning-alert {
-        background-color: #FEF3C7;
-        border-left: 4px solid #F59E0B;
-        padding: 12px;
-        border-radius: 6px;
-        margin-bottom: 20px;
+    .force-black-text.mud-input-control.mud-input-focused .mud-input-outlined-border {
+        border-color: #456990 !important;
+        border-width: 2px !important;
     }
 
     .section-title {
         color: #456990;
-        font-weight: 700;
+        font-weight: 800;
         font-size: 0.85rem;
         text-transform: uppercase;
         border-bottom: 2px solid #e2e8f0;
-        padding-bottom: 4px;
+        padding-bottom: 6px;
         margin-bottom: 12px;
         margin-top: 8px;
+        letter-spacing: 0.5px;
     }
 </style>
 
@@ -94,89 +90,81 @@
     <DialogContent>
         <div class="dialog-container">
 
-            @* --- CABECERA INTEGRADA --- *@
+            @* --- CABECERA DINÁMICA --- *@
             <div class="dialog-header-integrated">
                 <div class="d-flex align-center">
-                    <MudIcon Icon="@Icons.Material.Filled.Lock" Class="mr-3" />
+                    <MudIcon Icon="@(IdEvaluacion == 0 ? Icons.Material.Filled.LibraryBooks : Icons.Material.Filled.Lock)" Class="mr-3" />
                     <div>
-                        <MudText Typo="Typo.h6" Style="font-weight: 700; line-height: 1.2;">
-                            Cerrar Acta de Examen
+                        <MudText Typo="Typo.h6" Style="font-weight: 700; line-height: 1.2; letter-spacing: -0.5px;">
+                            @(IdEvaluacion == 0 ? "Cerrar Cursada Definitiva" : "Cerrar Acta de Examen")
                         </MudText>
                         <MudText Typo="Typo.caption" Style="opacity: 0.9;">
-                            Formalización y archivo
+                            Formalización y archivo documental
                         </MudText>
                     </div>
                 </div>
-                <MudIconButton Icon="@Icons.Material.Filled.Close"
-                               Color="Color.Inherit"
-                               OnClick="Cancel"
-                               Size="Size.Small" />
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" OnClick="Cancel" Size="Size.Small" />
             </div>
 
             @* --- CUERPO --- *@
             <div class="dialog-body">
                 @* Alerta de Advertencia *@
-                <MudAlert Severity="Severity.Warning"
-                          Variant="Variant.Filled"
-                          Icon="@Icons.Material.Filled.Warning"
-                          Class="mb-4">
-                    <MudText Typo="Typo.body2" Style="font-weight: 600;">
-                        <b>Atención:</b> Al cerrar el acta, las notas se volverán de <b>solo lectura</b>
-                        y se notificará a los alumnos. Esta acción es formal e irreversible.
-                    </MudText>
-                </MudAlert>
+                <div class="pa-4 mb-4 rounded-lg" style="background-color: #fffbeb; border-left: 4px solid #f59e0b;">
+                    <div class="d-flex align-start gap-3">
+                        <MudIcon Icon="@Icons.Material.Filled.WarningAmber" Style="color: #d97706; margin-top: 2px;" />
+                        <MudText Typo="Typo.body2" Style="color: #92400e; font-weight: 500; line-height: 1.4;">
+                            <b>ATENCIÓN:</b> Al confirmar este cierre, las calificaciones quedarán en estado de <b>solo lectura</b>.
+                            Esta acción es formal, irreversible por el docente y se notificará en los legajos.
+                        </MudText>
+                    </div>
+                </div>
 
                 @* Formulario *@
                 <MudForm @bind-IsValid="@success" Model="@model">
                     <MudGrid Spacing="2">
                         <MudItem xs="12">
-                            <div class="section-title">Datos del Registro</div>
+                            <div class="section-title">Datos del Registro Físico</div>
                         </MudItem>
 
                         <MudItem xs="12" sm="6">
                             <MudTextField @bind-Value="model.Libro"
-                                          Label="Libro"
+                                          Label="Número de Libro"
                                           Required="true"
-                                          RequiredError="El libro es obligatorio"
+                                          RequiredError="Requerido"
                                           Variant="Variant.Outlined"
-                                          Placeholder="Ej: 2024-A"
+                                          Margin="Margin.Dense"
+                                          Placeholder="Ej: 2026-A"
                                           Adornment="Adornment.Start"
                                           AdornmentIcon="@Icons.Material.Filled.MenuBook"
-                                          Class="force-black-text custom-input-borde" />
+                                          Class="force-black-text" />
                         </MudItem>
 
                         <MudItem xs="12" sm="6">
                             <MudTextField @bind-Value="model.Folio"
-                                          Label="Folio"
+                                          Label="Número de Folio"
                                           Required="true"
-                                          RequiredError="El folio es obligatorio"
+                                          RequiredError="Requerido"
                                           Variant="Variant.Outlined"
+                                          Margin="Margin.Dense"
                                           Placeholder="Ej: 142"
                                           Adornment="Adornment.Start"
                                           AdornmentIcon="@Icons.Material.Filled.Numbers"
-                                          Class="force-black-text custom-input-borde" />
+                                          Class="force-black-text" />
                         </MudItem>
 
                         @* Información adicional *@
-                        <MudItem xs="12" Class="mt-3">
-                            <MudPaper Elevation="0"
-                                      Class="pa-3 rounded-lg"
-                                      Style="background-color: #F8FAFC; border: 1px solid #e2e8f0;">
-                                <div class="d-flex align-center gap-2 mb-2">
-                                    <MudIcon Icon="@Icons.Material.Filled.Info"
-                                             Size="Size.Small"
-                                             Color="Color.Info" />
-                                    <MudText Typo="Typo.subtitle2"
-                                             Style="font-weight: 700; color: #456990;">
-                                        Información Importante
+                        <MudItem xs="12" Class="mt-4">
+                            <div class="pa-4 rounded-lg" style="background-color: #f8fafc; border: 1px solid #e2e8f0;">
+                                <div class="d-flex align-center gap-2 mb-1">
+                                    <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Style="color: #456990;" />
+                                    <MudText Typo="Typo.subtitle2" Style="font-weight: 800; color: #1e3a58; text-transform: uppercase;">
+                                        Instrucciones
                                     </MudText>
                                 </div>
-                                <MudText Typo="Typo.body2"
-                                         Style="color: #64748b; font-size: 0.875rem; line-height: 1.5;">
-                                    Los datos de <b>Libro</b> y <b>Folio</b> corresponden al registro
-                                    físico del acta. Una vez cerrada, quedará archivada de forma permanente.
+                                <MudText Typo="Typo.body2" Style="color: #64748b; font-size: 0.8rem; line-height: 1.4;">
+                                    Los datos de <b>Libro</b> y <b>Folio</b> deben coincidir con el acta física firmada entregada en Secretaría Académica.
                                 </MudText>
-                            </MudPaper>
+                            </div>
                         </MudItem>
                     </MudGrid>
                 </MudForm>
@@ -184,18 +172,10 @@
 
             @* --- FOOTER --- *@
             <div class="actions-footer">
-                <MudButton OnClick="Cancel"
-                           Variant="Variant.Outlined"
-                           Color="Color.Default"
-                           Class="rounded-lg">
+                <MudButton OnClick="Cancel" Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg font-weight-bold">
                     Cancelar
                 </MudButton>
-                <MudButton Color="Color.Error"
-                           Variant="Variant.Filled"
-                           OnClick="Submit"
-                           Disabled="@(!success)"
-                           Class="rounded-lg"
-                           StartIcon="@Icons.Material.Filled.Lock">
+                <MudButton Color="Color.Error" Variant="Variant.Filled" OnClick="Submit" Disabled="@(!success)" Class="rounded-lg px-6 font-weight-bold" StartIcon="@Icons.Material.Filled.Lock">
                     Confirmar Cierre
                 </MudButton>
             </div>
@@ -204,7 +184,8 @@
 </MudDialog>
 
 @code {
-    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = null!;
+    
     [Parameter] public int IdEvaluacion { get; set; }
 
     private CierreActaDTO model = new();
@@ -216,5 +197,12 @@
     }
 
     private void Cancel() => MudDialog.Cancel();
-    private void Submit() => MudDialog.Close(DialogResult.Ok(model));
+    
+    private void Submit()
+    {
+        if (success)
+        {
+            MudDialog.Close(DialogResult.Ok(model));
+        }
+    }
 }

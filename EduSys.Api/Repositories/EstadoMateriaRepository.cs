@@ -17,7 +17,10 @@ namespace EduSys.Api.Repositories
 
         public async Task<List<EstadoMateriaDTO>> ObtenerTodosAsync()
         {
+            // 🚀 OPTIMIZADO: AsNoTracking y OrderBy
             return await _context.EstadoMaterias
+                .AsNoTracking()
+                .OrderBy(e => e.Nombre)
                 .Select(e => new EstadoMateriaDTO
                 {
                     Id = e.Id,
@@ -30,7 +33,11 @@ namespace EduSys.Api.Repositories
 
         public async Task<EstadoMateriaDTO?> ObtenerPorIdAsync(int id)
         {
-            var estado = await _context.EstadoMaterias.FindAsync(id);
+            // 🚀 OPTIMIZADO: Cambiamos FindAsync por FirstOrDefault + AsNoTracking
+            var estado = await _context.EstadoMaterias
+                .AsNoTracking()
+                .FirstOrDefaultAsync(e => e.Id == id);
+
             if (estado == null) return null;
 
             return new EstadoMateriaDTO
@@ -70,7 +77,9 @@ namespace EduSys.Api.Repositories
             estado.HabilitaFinal = dto.HabilitaFinal;
             estado.Activo = dto.Activo;
 
-            _context.EstadoMaterias.Update(estado);
+            // 🚀 CORRECCIÓN: ELIMINAMOS _context.Update(estado);
+            // EF Core ya sabe que cambiaste los datos gracias al FindAsync().
+
             await _context.SaveChangesAsync();
             return true;
         }
@@ -82,7 +91,9 @@ namespace EduSys.Api.Repositories
 
             // Baja lógica
             estado.Activo = false;
-            _context.EstadoMaterias.Update(estado);
+
+            // 🚀 CORRECCIÓN: ELIMINAMOS _context.Update(estado);
+
             await _context.SaveChangesAsync();
             return true;
         }

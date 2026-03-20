@@ -19,13 +19,10 @@ namespace EduSys.Api.Repositories
             _context = context;
         }
 
-        // ... (Los métodos GetAllAsync, GetByIdAsync, CrearAsync, EditarAsync, EliminarAsync, ExisteLegajoAsync SE MANTIENEN IGUAL) ...
-        // ... (Solo copia y pega tus métodos existentes aquí si no los quieres reescribir) ...
-
         public async Task<List<DocenteListadoDTO>> GetAllAsync()
         {
+            // 🚀 OPTIMIZADO: Proyección directa y AsNoTracking implícito
             return await _context.Docentes
-                .Include(d => d.IdUsuarioNavigation)
                 .Where(d => d.Activo == true)
                 .Select(d => new DocenteListadoDTO
                 {
@@ -40,63 +37,11 @@ namespace EduSys.Api.Repositories
                 .ToListAsync();
         }
 
-        // ... (Mantén tus métodos GetByIdAsync, CrearAsync, EditarAsync, EliminarAsync, ExisteLegajoAsync aquí) ...
-        // Para ahorrar espacio en la respuesta asumo que mantienes tu código original arriba
-
-        // ✅ NUEVA IMPLEMENTACIÓN: Dashboard Docente
-        public async Task<List<ComisionDocenteDTO>> GetMisComisionesAsync(int idUsuario)
-        {
-            var docente = await _context.Docentes
-                .FirstOrDefaultAsync(d => d.IdUsuario == idUsuario && d.Activo == true);
-
-            if (docente == null)
-                return new List<ComisionDocenteDTO>();
-
-            // Traemos TODAS las comisiones en las que está asignado el docente, sin importar el período
-            var comisionesDocente = await _context.DocenteComisions
-                .Include(dc => dc.IdComisionNavigation)
-                    .ThenInclude(c => c.IdPlanMateriaNavigation.IdMateriaNavigation)
-                .Include(dc => dc.IdComisionNavigation)
-                    .ThenInclude(c => c.IdPlanMateriaNavigation.IdPlanNavigation.IdCarreraNavigation)
-                .Include(dc => dc.IdComisionNavigation)
-                    .ThenInclude(c => c.IdSedeNavigation)
-                .Include(dc => dc.IdComisionNavigation)
-                    .ThenInclude(c => c.HorarioComisions)
-                        .ThenInclude(hc => hc.IdAulaNavigation)
-                .Include(dc => dc.IdComisionNavigation)
-                    .ThenInclude(c => c.InscripcionCursada) // Necesario para contar alumnos reales
-                .Where(dc => dc.IdDocente == docente.Id && dc.Activo)
-                .ToListAsync();
-
-            return comisionesDocente.Select(dc => new ComisionDocenteDTO
-            {
-                IdComision = dc.IdComision,
-                CodigoComision = dc.IdComisionNavigation.Codigo,
-                Materia = dc.IdComisionNavigation.IdPlanMateriaNavigation.IdMateriaNavigation.Nombre,
-                Carrera = dc.IdComisionNavigation.IdPlanMateriaNavigation.IdPlanNavigation.IdCarreraNavigation.Nombre,
-                Sede = dc.IdComisionNavigation.IdSedeNavigation.Nombre,
-                Rol = dc.RolDocente,
-
-                // 👇 CORRECCIÓN: Contamos a todos los que pasaron por la materia, no solo a los que "Cursan"
-                CantidadAlumnos = dc.IdComisionNavigation.InscripcionCursada.Count(i => i.Estado != "Baja"),
-
-                Horario = dc.IdComisionNavigation.HorarioComisions.Any()
-                    ? string.Join(", ", dc.IdComisionNavigation.HorarioComisions.Select(h => $"{h.DiaSemana} {h.HoraInicio:hh\\:mm}-{h.HoraFin:hh\\:mm}"))
-                    : "Sin asignar",
-
-                Aula = dc.IdComisionNavigation.HorarioComisions.FirstOrDefault()?.IdAulaNavigation?.Nombre ?? "Sin asignar"
-            })
-            .OrderBy(c => c.Carrera)
-            .ThenBy(c => c.Materia)
-            .ToList();
-        }
-
-        // ... (Aquí sigue el resto de tus métodos: GetByIdAsync, CrearAsync, etc.) ...
-
-        // --- AGREGO TUS MÉTODOS ORIGINALES PARA QUE EL ARCHIVO TE QUEDE COMPLETO SI COPIAS TODO ---
         public async Task<DocenteRequestDTO?> GetByIdAsync(int id)
         {
+            // 🚀 OPTIMIZADO: AsNoTracking para lectura
             var docente = await _context.Docentes
+                .AsNoTracking()
                 .Include(d => d.IdUsuarioNavigation)
                 .FirstOrDefaultAsync(d => d.Id == id);
 
@@ -123,6 +68,52 @@ namespace EduSys.Api.Repositories
                 TituloAcademico = docente.TituloAcademico ?? "",
                 Activo = docente.Activo ?? true
             };
+        }
+
+        // ✅ NUEVA IMPLEMENTACIÓN: Dashboard Docente - 🚀 OPTIMIZACIÓN EXTREMA DE CONSULTA (Proyección en BD)
+        public async Task<List<ComisionDocenteDTO>> GetMisComisionesAsync(int idUsuario)
+        {
+            var docenteId = await _context.Docentes
+                .AsNoTracking()
+                .Where(d => d.IdUsuario == idUsuario && d.Activo == true)
+                .Select(d => d.Id)
+                .FirstOrDefaultAsync();
+
+            if (docenteId == 0) return new List<ComisionDocenteDTO>();
+
+            // Al usar Select directo, evitamos los 7 .Include() pesados en memoria
+            var comisionesDocente = await _context.DocenteComisions
+                .AsNoTracking()
+                .Where(dc => dc.IdDocente == docenteId && dc.Activo)
+                .Select(dc => new ComisionDocenteDTO
+                {
+                    IdComision = dc.IdComision,
+                    CodigoComision = dc.IdComisionNavigation.Codigo,
+                    Materia = dc.IdComisionNavigation.IdPlanMateriaNavigation.IdMateriaNavigation.Nombre,
+                    Carrera = dc.IdComisionNavigation.IdPlanMateriaNavigation.IdPlanNavigation.IdCarreraNavigation.Nombre,
+                    Sede = dc.IdComisionNavigation.IdSedeNavigation.Nombre,
+                    Rol = dc.RolDocente,
+
+                    // Contamos directo en BD
+                    CantidadAlumnos = dc.IdComisionNavigation.InscripcionCursada.Count(i => i.Estado != "Baja"),
+
+                    // Evaluamos los horarios seguros
+                    Horario = dc.IdComisionNavigation.HorarioComisions.Any()
+                        ? string.Join(", ", dc.IdComisionNavigation.HorarioComisions.Select(h => h.DiaSemana + " " + h.HoraInicio.ToString(@"hh\:mm") + "-" + h.HoraFin.ToString(@"hh\:mm")))
+                        : "Sin asignar",
+
+                    Aula = dc.IdComisionNavigation.HorarioComisions.FirstOrDefault() != null &&
+                           dc.IdComisionNavigation.HorarioComisions.FirstOrDefault()!.IdAulaNavigation != null
+                           ? dc.IdComisionNavigation.HorarioComisions.FirstOrDefault()!.IdAulaNavigation!.Nombre
+                           : "Sin asignar",
+
+                    Estado = dc.IdComisionNavigation.Estado ?? "Desconocido"
+                })
+                .OrderBy(c => c.Carrera)
+                .ThenBy(c => c.Materia)
+                .ToListAsync();
+
+            return comisionesDocente;
         }
 
         public async Task<bool> CrearAsync(DocenteRequestDTO dto)
@@ -216,8 +207,12 @@ namespace EduSys.Api.Repositories
 
         public async Task<bool> EliminarAsync(int id)
         {
-            var docente = await _context.Docentes.Include(d => d.IdUsuarioNavigation).FirstOrDefaultAsync(d => d.Id == id);
+            var docente = await _context.Docentes
+                .Include(d => d.IdUsuarioNavigation)
+                .FirstOrDefaultAsync(d => d.Id == id);
+
             if (docente == null) return false;
+
             docente.Activo = false;
             docente.IdUsuarioNavigation.Activo = false;
             await _context.SaveChangesAsync();
@@ -226,7 +221,35 @@ namespace EduSys.Api.Repositories
 
         public async Task<bool> ExisteLegajoAsync(string legajo)
         {
-            return await _context.Docentes.AnyAsync(d => d.Legajo == legajo && d.Activo == true);
+            return await _context.Docentes
+                .AsNoTracking()
+                .AnyAsync(d => d.Legajo == legajo && d.Activo == true);
+        }
+
+        public async Task<DocenteRequestDTO?> GetMiPerfilAsync(string emailUsuario)
+        {
+            // Buscamos al docente cuyo usuario asociado tenga el email del Token JWT
+            var docente = await _context.Docentes
+                .Include(d => d.IdUsuarioNavigation) // Incluimos la tabla de Usuario para traer Nombre, Email, etc.
+                .AsNoTracking()
+                .FirstOrDefaultAsync(d => d.IdUsuarioNavigation.Email == emailUsuario);
+
+            if (docente == null) return null;
+
+            // Mapeamos a DocenteRequestDTO (el mismo que usamos en la vista)
+            return new DocenteRequestDTO
+            {
+                IdDocente = docente.Id,
+                Nombre = docente.IdUsuarioNavigation.Nombre,
+                Apellido = docente.IdUsuarioNavigation.Apellido,
+                Dni = docente.IdUsuarioNavigation.Dni,
+                Legajo = docente.Legajo,
+                TituloAcademico = docente.TituloAcademico,
+                Email = docente.IdUsuarioNavigation.Email,
+                Telefono = docente.IdUsuarioNavigation.Telefono,
+                // ✅ CORRECCIÓN AQUÍ: Si es null, por defecto lo ponemos en false (o true, según prefieras)
+                Activo = docente.Activo ?? false
+            };
         }
     }
 }

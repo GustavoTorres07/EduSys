@@ -23,6 +23,7 @@ namespace EduSys.Api.Controllers
         // --- LECTURA ---
 
         [HttpGet]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<ComisionDTO>))]
         public async Task<ActionResult<List<ComisionDTO>>> Get()
         {
             var lista = await _comisionRepository.GetAllAsync();
@@ -31,67 +32,58 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpGet("{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ComisionDTO))]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<ComisionDTO>> Get(int id)
         {
             var comision = await _comisionRepository.GetByIdAsync(id);
-            if (comision == null) return NotFound("Comisión no encontrada");
+            if (comision == null) return NotFound(new { message = "Comisión no encontrada" });
             return Ok(MapToDTO(comision));
         }
 
         [HttpGet("periodo/{idPeriodo}")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<ComisionDTO>))]
         public async Task<ActionResult<List<ComisionDTO>>> GetByPeriodo(int idPeriodo)
         {
             var lista = await _comisionRepository.GetByPeriodoAsync(idPeriodo);
             return Ok(lista.Select(c => MapToDTO(c)).ToList());
         }
 
-        // GET: api/Comisiones/periodo/{id}/carrera/{id}
         [HttpGet("periodo/{idPeriodo}/carrera/{idCarrera}")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<ComisionDTO>))]
         public async Task<ActionResult<List<ComisionDTO>>> GetByPeriodoAndCarrera(int idPeriodo, int idCarrera, [FromQuery] int? idAlumno = null)
         {
-            // 1. Traemos todo de la base de datos (aquí vienen los duplicados)
             var listaRaw = await _comisionRepository.GetByPeriodoAndCarreraAsync(idPeriodo, idCarrera);
-
             var dtos = new List<ComisionDTO>();
 
-            // 2. ¡LA SOLUCIÓN! Agrupamos por Materia + Código (Nombre de comisión)
-            // Esto hace que todas las "1º B" de "Programación I" se junten en un solo grupo.
             var grupos = listaRaw
                 .GroupBy(c => new { c.IdPlanMateria, c.Codigo })
                 .ToList();
 
             foreach (var grupo in grupos)
             {
-                // Tomamos la primera comisión del grupo como referencia (para el ID, Cupos, etc)
                 var principal = grupo.First();
 
-                // 3. FUSIONAMOS HORARIOS: Recolectamos los horarios de TODAS las filas del grupo
                 var horariosFusionados = grupo
-                    .SelectMany(x => x.HorarioComisions)
-                    .OrderBy(h => h.DiaSemana) // Opcional: ordenar
+                    .SelectMany(x => x.HorarioComisions ?? new List<HorarioComision>())
+                    .OrderBy(h => h.DiaSemana)
                     .ToList();
 
-                // 4. FUSIONAMOS DOCENTES: Buscamos si ALGUNA de las filas tiene docente asignado
                 var docenteFusionado = grupo
-                    .SelectMany(x => x.DocenteComisions)
+                    .SelectMany(x => x.DocenteComisions ?? new List<DocenteComision>())
                     .FirstOrDefault(d => d.Activo == true);
 
-                // Preparamos el texto de horarios
                 string horariosTexto = horariosFusionados.Any()
                     ? string.Join(" / ", horariosFusionados.Select(h => $"{h.DiaSemana[..3]} {h.HoraInicio:hh\\:mm}-{h.HoraFin:hh\\:mm}"))
                     : "Sin horario";
 
-                // Preparamos el nombre del profesor
-                string nombreProfesor = "Profesor aún no asignado";
-                if (docenteFusionado?.IdDocenteNavigation?.IdUsuarioNavigation != null)
-                {
-                    nombreProfesor = $"{docenteFusionado.IdDocenteNavigation.IdUsuarioNavigation.Apellido} {docenteFusionado.IdDocenteNavigation.IdUsuarioNavigation.Nombre}";
-                }
+                string nombreProfesor = docenteFusionado?.IdDocenteNavigation?.IdUsuarioNavigation != null
+                    ? $"{docenteFusionado.IdDocenteNavigation.IdUsuarioNavigation.Apellido} {docenteFusionado.IdDocenteNavigation.IdUsuarioNavigation.Nombre}"
+                    : "Profesor aún no asignado";
 
-                // 5. Creamos el DTO ÚNICO
                 var dto = new ComisionDTO
                 {
-                    Id = principal.Id, // Usamos el ID de la primera (el alumno se inscribirá a esta)
+                    Id = principal.Id,
                     Codigo = principal.Codigo,
                     IdPlanMateria = principal.IdPlanMateria,
                     MateriaNombre = principal.IdPlanMateriaNavigation?.IdMateriaNavigation?.Nombre ?? "Desconocida",
@@ -101,15 +93,15 @@ namespace EduSys.Api.Controllers
                     SedeNombre = principal.IdSedeNavigation?.Nombre ?? "",
                     CupoMaximo = principal.CupoMaximo,
 
-                    // Usamos los datos fusionados:
-                    Turno = $"{principal.Turno} ({horariosTexto})",
-                    Profesor = nombreProfesor,
+                    // ✅ FIX: Separamos el Turno puro del texto de Horarios
+                    Turno = principal.Turno ?? "",
+                    Horario = horariosTexto,
 
+                    Profesor = nombreProfesor,
                     Estado = principal.Estado,
                     AnioCursada = principal.IdPlanMateriaNavigation?.AnioCursada ?? 1
                 };
 
-                // Lógica de Correlativas (Igual que antes)
                 if (idAlumno.HasValue)
                 {
                     bool cumple = await _inscripcionRepository.ValidarCorrelativasAsync(idAlumno.Value, principal.IdPlanMateria);
@@ -123,7 +115,16 @@ namespace EduSys.Api.Controllers
             return Ok(dtos);
         }
 
+        [HttpGet("sede/{idSede}")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<ComisionDTO>))]
+        public async Task<ActionResult<List<ComisionDTO>>> GetPorSede(int idSede)
+        {
+            var comisiones = await _comisionRepository.GetPorSedeAsync(idSede);
+            return Ok(comisiones);
+        }
+
         [HttpGet("{id}/docentes")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<DocenteComisionListadoDTO>))]
         public async Task<ActionResult<List<DocenteComisionListadoDTO>>> GetDocentes(int id)
         {
             var docentes = await _comisionRepository.GetDocentesPorComisionAsync(id);
@@ -134,7 +135,8 @@ namespace EduSys.Api.Controllers
 
         [HttpPost]
         [Authorize(Roles = "Administrador, Secretaria Academica")]
-        public async Task<ActionResult> Post(ComisionDTO dto)
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ResultadoOperacionDTO))]
+        public async Task<ActionResult<ResultadoOperacionDTO>> Post(ComisionDTO dto)
         {
             var comision = new Comision
             {
@@ -147,12 +149,17 @@ namespace EduSys.Api.Controllers
                 Estado = dto.Estado
             };
             var result = await _comisionRepository.CreateAsync(comision);
-            return result ? Ok() : BadRequest("Error al crear");
+
+            return result
+                ? Ok(new ResultadoOperacionDTO { Exito = true, Mensaje = "Comisión creada correctamente." })
+                : BadRequest(new ResultadoOperacionDTO { Exito = false, Mensaje = "Error al crear la comisión." });
         }
 
         [HttpPut]
         [Authorize(Roles = "Administrador, Secretaria Academica")]
-        public async Task<ActionResult> Put(ComisionDTO dto)
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ResultadoOperacionDTO))]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<ResultadoOperacionDTO>> Put(ComisionDTO dto)
         {
             var comision = new Comision
             {
@@ -166,72 +173,68 @@ namespace EduSys.Api.Controllers
                 Estado = dto.Estado
             };
             var result = await _comisionRepository.UpdateAsync(comision);
-            return result ? Ok() : NotFound();
+
+            return result
+                ? Ok(new ResultadoOperacionDTO { Exito = true, Mensaje = "Comisión actualizada." })
+                : NotFound(new ResultadoOperacionDTO { Exito = false, Mensaje = "Comisión no encontrada." });
         }
 
         [HttpDelete("{id}")]
         [Authorize(Roles = "Administrador, Secretaria Academica")]
-        public async Task<ActionResult> Delete(int id)
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ResultadoOperacionDTO))]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<ResultadoOperacionDTO>> Delete(int id)
         {
             var result = await _comisionRepository.DeleteAsync(id);
-            return result ? Ok() : NotFound();
+
+            return result
+                ? Ok(new ResultadoOperacionDTO { Exito = true, Mensaje = "Comisión eliminada lógicamente." })
+                : NotFound(new ResultadoOperacionDTO { Exito = false, Mensaje = "Comisión no encontrada." });
         }
 
         [HttpPost("asignar-docente")]
         [Authorize(Roles = "Administrador, Secretaria Academica")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ResultadoOperacionDTO))]
         public async Task<ActionResult<ResultadoOperacionDTO>> AsignarDocente(DocenteComisionRequestDTO dto)
         {
             try
             {
                 await _comisionRepository.AsignarDocenteAsync(dto);
-                // Éxito
                 return Ok(new ResultadoOperacionDTO { Exito = true, Mensaje = "Docente asignado correctamente." });
             }
             catch (Exception ex)
             {
-                // Error de Negocio (Conflicto Horario, Ya asignado, etc)
-                // Devolvemos Ok con Exito = false para que el front lea el mensaje fácilmente
-                return Ok(new ResultadoOperacionDTO
-                {
-                    Exito = false,
-                    Mensaje = ex.Message // <--- AQUÍ VA TU MENSAJE DE CONFLICTO
-                });
+                return Ok(new ResultadoOperacionDTO { Exito = false, Mensaje = ex.Message });
             }
-        }
-
-        [HttpGet("sede/{idSede}")]
-        public async Task<ActionResult<List<ComisionDTO>>> GetPorSede(int idSede)
-        {
-            // Usamos el repositorio para buscar las comisiones
-            var comisiones = await _comisionRepository.GetPorSedeAsync(idSede);
-            return Ok(comisiones);
         }
 
         [HttpDelete("docentes/{idAsignacion}")]
         [Authorize(Roles = "Administrador, Secretaria Academica")]
-        public async Task<ActionResult> DesasignarDocente(int idAsignacion)
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ResultadoOperacionDTO))]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<ResultadoOperacionDTO>> DesasignarDocente(int idAsignacion)
         {
-            return await _comisionRepository.DesasignarDocenteAsync(idAsignacion) ? Ok(new { message = "Eliminado" }) : NotFound();
+            var result = await _comisionRepository.DesasignarDocenteAsync(idAsignacion);
+
+            return result
+                ? Ok(new ResultadoOperacionDTO { Exito = true, Mensaje = "Docente desasignado." })
+                : NotFound(new ResultadoOperacionDTO { Exito = false, Mensaje = "Asignación no encontrada." });
         }
 
         // --- Helper Mapeo ---
         private static ComisionDTO MapToDTO(Comision c)
         {
-            // Ordenar y formatear horarios
-            var horariosOrdenados = c.HorarioComisions.OrderBy(h => h.DiaSemana).ToList();
+            var horariosOrdenados = c.HorarioComisions?.OrderBy(h => h.DiaSemana).ToList() ?? new List<HorarioComision>();
+
             string horariosTexto = horariosOrdenados.Any()
                 ? string.Join(" / ", horariosOrdenados.Select(h => $"{h.DiaSemana[..3]} {h.HoraInicio:hh\\:mm}-{h.HoraFin:hh\\:mm}"))
                 : "Sin horario";
 
-            // Lógica segura para obtener el nombre del profesor
-            // ⚠️ CORRECCIÓN AQUÍ: Usamos "d.Activo == true" en lugar de "d.Activo"
             var docenteAsignado = c.DocenteComisions?.FirstOrDefault(d => d.Activo == true);
 
-            string nombreProfesor = "Profesor aún no asignado";
-            if (docenteAsignado?.IdDocenteNavigation?.IdUsuarioNavigation != null)
-            {
-                nombreProfesor = $"{docenteAsignado.IdDocenteNavigation.IdUsuarioNavigation.Apellido} {docenteAsignado.IdDocenteNavigation.IdUsuarioNavigation.Nombre}";
-            }
+            string nombreProfesor = docenteAsignado?.IdDocenteNavigation?.IdUsuarioNavigation != null
+                ? $"{docenteAsignado.IdDocenteNavigation.IdUsuarioNavigation.Apellido} {docenteAsignado.IdDocenteNavigation.IdUsuarioNavigation.Nombre}"
+                : "Profesor aún no asignado";
 
             return new ComisionDTO
             {
@@ -244,10 +247,14 @@ namespace EduSys.Api.Controllers
                 IdSede = c.IdSede,
                 SedeNombre = c.IdSedeNavigation?.Nombre ?? "",
                 CupoMaximo = c.CupoMaximo,
-                Turno = $"{c.Turno} ({horariosTexto})",
+
+                // ✅ FIX: Separamos el Turno puro del texto de Horarios
+                Turno = c.Turno ?? "",
+                Horario = horariosTexto,
+
                 Estado = c.Estado,
                 AnioCursada = c.IdPlanMateriaNavigation?.AnioCursada ?? 1,
-                Profesor = nombreProfesor // Asignamos el nombre calculado
+                Profesor = nombreProfesor
             };
         }
     }

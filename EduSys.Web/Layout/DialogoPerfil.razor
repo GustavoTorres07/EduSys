@@ -1,27 +1,27 @@
 ﻿@using EduSys.Shared.DTOs
+@using EduSys.Web.Services.Interfaces
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+
 @inject ISnackbar Snackbar
+@* ✅ INYECTAMOS EL SERVICIO REAL DE USUARIOS *@
+@inject IUsuarioService UsuarioService
 
 <style>
-    /* --- ESTILOS CORPORATIVOS --- */
-    .mud-dialog-close-icon {
-        display: none !important;
-    }
-
-    .mud-dialog-content {
-        padding: 0 !important;
-    }
+    /* --- AJUSTES DEL MODAL --- */
+    .mud-dialog-close-icon { display: none !important; }
+    .mud-dialog-content { padding: 0 !important; }
 
     .dialog-container {
         display: flex;
         flex-direction: column;
-        background-color: white;
-        max-height: 85vh;
-        min-width: 500px;
+        background-color: #f8fafc;
+        max-height: 90vh;
     }
 
-    /* HEADER AZUL */
+    /* --- HEADER AZUL INTEGRADO --- */
     .dialog-header-integrated {
-        background: #456990;
+        background: linear-gradient(135deg, #1e3a58 0%, #456990 100%);
         color: white;
         padding: 16px 24px;
         display: flex;
@@ -30,12 +30,73 @@
         flex-shrink: 0;
     }
 
+    /* --- ÁREA DE CONTENIDO --- */
     .dialog-body {
         padding: 24px;
         overflow-y: auto;
         flex-grow: 1;
+        position: relative;
     }
 
+    .profile-avatar-modal {
+        width: 72px;
+        height: 72px;
+        font-size: 2rem;
+        font-weight: 800;
+        border: 3px solid white;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    .readonly-field .mud-input-adornment-start .mud-icon-root {
+    color: #456990 !important; /* Azul corporativo para que resalte */
+    opacity: 1 !important;
+}
+
+    /* --- ETIQUETAS DE SECCIÓN --- */
+    .section-label {
+        color: #456990;
+        font-size: 0.75rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid #e2e8f0;
+        padding-bottom: 4px;
+        margin-bottom: 12px;
+        margin-top: 20px;
+    }
+
+    /* --- CAMPOS DE SOLO LECTURA --- */
+    .readonly-field .mud-input-slot,
+    .readonly-field input {
+        color: #64748b !important;
+        -webkit-text-fill-color: #64748b !important;
+        background-color: #f1f5f9 !important;
+        font-weight: 600;
+        border-radius: 6px;
+    }
+    .readonly-field .mud-input-outlined-border { border-color: #e2e8f0 !important; }
+    .readonly-field .mud-input-label { color: #94a3b8 !important; font-weight: 600; }
+
+    /* --- CAMPOS EDITABLES --- */
+    .force-black-text input,
+    .force-black-text .mud-input-slot {
+        color: #1e293b !important;
+        font-weight: 600;
+        -webkit-text-fill-color: #1e293b !important;
+    }
+    .force-black-text .mud-input-label {
+        color: #456990 !important;
+        background-color: white !important;
+        padding: 0 5px;
+        font-weight: 700;
+    }
+    .custom-input-borde .mud-input-outlined-border { border-color: #cbd5e1 !important; transition: 0.2s; }
+    .custom-input-borde:hover .mud-input-outlined-border { border-color: #456990 !important; }
+    .custom-input-borde.mud-input-control.mud-input-focused .mud-input-outlined-border { border-width: 2px !important; border-color: #456990 !important; }
+    .custom-input-borde .mud-icon-root { color: #64748b !important; }
+    .custom-input-borde.mud-input-control.mud-input-focused .mud-icon-root { color: #456990 !important; }
+
+    /* --- FOOTER --- */
     .actions-footer {
         padding: 16px 24px;
         border-top: 1px solid #e2e8f0;
@@ -45,168 +106,110 @@
         background-color: white;
         flex-shrink: 0;
     }
-
-    /* Inputs y Labels - Fix Visibilidad */
-    .force-black-text input,
-    .force-black-text .mud-input-slot,
-    .force-black-text .mud-select-input,
-    .force-black-text textarea {
-        color: #1F2937 !important;
-        font-weight: 500;
-        -webkit-text-fill-color: #1F2937 !important;
-    }
-
-    .force-black-text .mud-input-label {
-        color: #456990 !important;
-        background-color: white !important;
-        padding: 0 5px;
-        font-weight: 600;
-    }
-
-    .custom-input-borde .mud-input-outlined-border {
-        border-color: #456990 !important;
-    }
-
-    .custom-input-borde .mud-icon-root {
-        color: #456990 !important;
-    }
-
-    /* Campos de solo lectura */
-    .readonly-field .mud-input-slot,
-    .readonly-field input {
-        color: #64748b !important;
-        -webkit-text-fill-color: #64748b !important;
-        background-color: #f8fafc !important;
-    }
-
-    .readonly-field .mud-input-outlined-border {
-        border-color: #e2e8f0 !important;
-    }
 </style>
 
-<MudDialog DisableSidePadding="true" Class="rounded-lg overflow-hidden">
+<MudDialog DisableSidePadding="true" Class="rounded-xl overflow-hidden" Style="max-width: 550px; width: 100%;">
     <DialogContent>
         <div class="dialog-container">
 
-            @* --- CABECERA --- *@
+            @* --- CABECERA AZUL --- *@
             <div class="dialog-header-integrated">
                 <div class="d-flex align-center">
-                    <MudIcon Icon="@Icons.Material.Filled.ManageAccounts" Class="mr-3" />
-                    <div>
-                        <MudText Typo="Typo.h6" Style="font-weight: 700; line-height: 1.2;">
-                            Mi Perfil
-                        </MudText>
-                        <MudText Typo="Typo.caption" Style="opacity: 0.9;">
-                            Información personal y contacto
-                        </MudText>
-                    </div>
+                    <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" Class="mr-3" />
+                    <MudText Typo="Typo.h6" Style="font-weight: 800; letter-spacing: -0.5px;">Mi Perfil de Usuario</MudText>
                 </div>
-                <MudIconButton Icon="@Icons.Material.Filled.Close"
-                               Color="Color.Inherit"
-                               OnClick="Cancel"
-                               Size="Size.Small" />
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" OnClick="Cancel" Size="Size.Small" Disabled="@_guardando" />
             </div>
 
             @* --- CUERPO --- *@
             <div class="dialog-body">
-                <MudText Typo="Typo.body2" Class="mb-4" Style="color: #64748b;">
-                    Actualiza tu información de contacto. Los datos de identidad no pueden modificarse.
-                </MudText>
+                @if (_cargando)
+                {
+                    <div class="d-flex flex-column justify-center align-center" style="height: 300px;">
+                        <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
+                        <MudText Typo="Typo.body2" Class="mt-3" Style="color: #64748b; font-weight: 600;">Cargando tus datos...</MudText>
+                    </div>
+                }
+                else
+                {
+                    @* CABECERA DE PERFIL (Avatar + Nombre) *@
+                    <div class="d-flex flex-column align-center text-center mb-6 animate__animated animate__fadeIn">
+                        <MudAvatar Color="Color.Primary" Class="profile-avatar-modal mb-3">
+                            @(string.IsNullOrWhiteSpace(modelo.Nombre) ? "U" : modelo.Nombre.Substring(0, 1).ToUpper())
+                        </MudAvatar>
+                        <MudText Typo="Typo.h5" Style="font-weight: 800; color: #1e293b; line-height: 1.2;">@modelo.Nombre @modelo.Apellido</MudText>
+                        
+                        <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined" Class="mt-1 font-weight-bold">
+                            @(_rolUsuario.ToUpper())
+                        </MudChip>
+                    </div>
 
-                <MudGrid Spacing="2">
-                    @* --- DATOS FIJOS (SOLO LECTURA) --- *@
-                    <MudItem xs="6">
-                        <MudTextField Value="@modelo.Nombre"
-                                      Label="Nombre"
-                                      Variant="Variant.Outlined"
-                                      ReadOnly="true"
-                                      Margin="Margin.Dense"
-                                      Class="readonly-field" />
-                    </MudItem>
-                    <MudItem xs="6">
-                        <MudTextField Value="@modelo.Apellido"
-                                      Label="Apellido"
-                                      Variant="Variant.Outlined"
-                                      ReadOnly="true"
-                                      Margin="Margin.Dense"
-                                      Class="readonly-field" />
-                    </MudItem>
-                    <MudItem xs="12">
-                        <MudTextField Value="@modelo.Dni"
-                                      Label="DNI"
-                                      Variant="Variant.Outlined"
-                                      ReadOnly="true"
-                                      Margin="Margin.Dense"
-                                      Adornment="Adornment.Start"
-                                      AdornmentIcon="@Icons.Material.Filled.Badge"
-                                      Class="readonly-field" />
-                    </MudItem>
+                    @* TARJETA BLANCA DE DATOS *@
+                    <MudPaper Elevation="0" Class="pa-6 rounded-lg animate__animated animate__fadeInUp" Style="border: 1px solid #e2e8f0; background-color: white;">
+                        
+                        <div class="section-label mt-0">Identidad Registrada</div>
+                        <MudGrid Spacing="2">
+                            <MudItem xs="12" sm="6">
+                                <MudTextField Value="@modelo.Nombre" Label="Nombres" Variant="Variant.Outlined" ReadOnly="true" Margin="Margin.Dense" Class="readonly-field" />
+                            </MudItem>
+                            <MudItem xs="12" sm="6">
+                                <MudTextField Value="@modelo.Apellido" Label="Apellidos" Variant="Variant.Outlined" ReadOnly="true" Margin="Margin.Dense" Class="readonly-field" />
+                            </MudItem>
+<MudItem xs="12">
+    <MudTextField Value="@modelo.Dni" 
+                  Label="Documento de Identidad (DNI)" 
+                  Variant="Variant.Outlined" 
+                  ReadOnly="true" 
+                  Margin="Margin.Dense" 
+                  Adornment="Adornment.Start" 
+                  AdornmentIcon="@Icons.Material.Filled.AssignmentInd" 
+                  Class="readonly-field" />
+</MudItem>
+                        </MudGrid>
 
-                    @* --- DATOS EDITABLES --- *@
-                    <MudItem xs="12">
-                        <MudDivider Class="my-2" />
-                        <MudText Typo="Typo.caption"
-                                 Style="font-weight:700; color:#456990; text-transform: uppercase; font-size: 0.75rem;">
-                            Datos de Contacto
+                        <div class="section-label">Información de Contacto</div>
+                        <MudText Typo="Typo.caption" Class="mb-3 d-block" Style="color: #64748b;">
+                            Mantén estos datos actualizados para recibir notificaciones del sistema.
                         </MudText>
-                    </MudItem>
+                        
+                        <EditForm Model="@modelo">
+                            <MudGrid Spacing="3">
+                                <MudItem xs="12">
+                                    <MudTextField @bind-Value="modelo.Email" Label="Correo Electrónico" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text custom-input-borde" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Email" Disabled="@_guardando" />
+                                </MudItem>
 
-                    <MudItem xs="12">
-                        <MudTextField @bind-Value="modelo.Email"
-                                      Label="Email"
-                                      Variant="Variant.Outlined"
-                                      Margin="Margin.Dense"
-                                      Class="force-black-text custom-input-borde"
-                                      Adornment="Adornment.Start"
-                                      AdornmentIcon="@Icons.Material.Filled.Email" />
-                    </MudItem>
+                                <MudItem xs="12" sm="6">
+                                    <MudTextField @bind-Value="modelo.Telefono" Label="Teléfono / Celular" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text custom-input-borde" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Phone" Disabled="@_guardando" />
+                                </MudItem>
 
-                    <MudItem xs="12">
-                        <MudTextField @bind-Value="modelo.Telefono"
-                                      Label="Teléfono / Celular"
-                                      Variant="Variant.Outlined"
-                                      Margin="Margin.Dense"
-                                      Class="force-black-text custom-input-borde"
-                                      Adornment="Adornment.Start"
-                                      AdornmentIcon="@Icons.Material.Filled.Phone" />
-                    </MudItem>
+                                <MudItem xs="12" sm="6">
+                                    <MudTextField @bind-Value="modelo.Localidad" Label="Localidad" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text custom-input-borde" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.LocationCity" Disabled="@_guardando" />
+                                </MudItem>
 
-                    <MudItem xs="12">
-                        <MudTextField @bind-Value="modelo.Direccion"
-                                      Label="Dirección"
-                                      Variant="Variant.Outlined"
-                                      Margin="Margin.Dense"
-                                      Class="force-black-text custom-input-borde"
-                                      Adornment="Adornment.Start"
-                                      AdornmentIcon="@Icons.Material.Filled.Home" />
-                    </MudItem>
-
-                    <MudItem xs="12">
-                        <MudTextField @bind-Value="modelo.Localidad"
-                                      Label="Localidad"
-                                      Variant="Variant.Outlined"
-                                      Margin="Margin.Dense"
-                                      Class="force-black-text custom-input-borde"
-                                      Adornment="Adornment.Start"
-                                      AdornmentIcon="@Icons.Material.Filled.Map" />
-                    </MudItem>
-                </MudGrid>
+                                <MudItem xs="12">
+                                    <MudTextField @bind-Value="modelo.Direccion" Label="Dirección de Domicilio" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text custom-input-borde" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Home" Disabled="@_guardando" />
+                                </MudItem>
+                            </MudGrid>
+                        </EditForm>
+                    </MudPaper>
+                }
             </div>
 
             @* --- FOOTER --- *@
             <div class="actions-footer">
-                <MudButton OnClick="Cancel"
-                           Variant="Variant.Outlined"
-                           Color="Color.Default"
-                           Class="rounded-lg">
+                <MudButton OnClick="Cancel" Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg font-weight-bold" Style="min-width: 120px;" Disabled="@(_cargando || _guardando)">
                     Cancelar
                 </MudButton>
-                <MudButton OnClick="Guardar"
-                           Variant="Variant.Filled"
-                           Color="Color.Primary"
-                           Class="rounded-lg"
-                           StartIcon="@Icons.Material.Filled.Save">
-                    Guardar Cambios
+                <MudButton OnClick="GuardarAsync" Variant="Variant.Filled" Color="Color.Primary" Class="rounded-lg font-weight-bold" StartIcon="@Icons.Material.Filled.Save" Style="min-width: 160px;" Disabled="@(_cargando || _guardando)">
+                    @if (_guardando)
+                    {
+                        <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
+                        <span class="ms-2">Guardando...</span>
+                    }
+                    else
+                    {
+                        <span>Guardar Cambios</span>
+                    }
                 </MudButton>
             </div>
         </div>
@@ -214,35 +217,88 @@
 </MudDialog>
 
 @code {
-    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = null!;
+    [CascadingParameter] private Task<AuthenticationState> authenticationStateTask { get; set; } = null!;
 
-    // Modelo temporal (reemplazar con DTO real del usuario)
-    private class PerfilModel
+    private string _rolUsuario = "Cargando...";
+    private bool _cargando = true;
+    private bool _guardando = false;
+    private int _idUsuarioActual;
+
+    // ✅ Utilizamos el DTO real del proyecto
+    private UsuarioDTO modelo = new UsuarioDTO();
+
+    protected override async Task OnInitializedAsync()
     {
-        public string Nombre { get; set; } = "Juan";
-        public string Apellido { get; set; } = "Pérez";
-        public string Dni { get; set; } = "40.123.456";
-        public string Email { get; set; } = "juan.perez@example.com";
-        public string Telefono { get; set; } = "11-1234-5678";
-        public string Direccion { get; set; } = "Av. Siempre Viva 742";
-        public string Localidad { get; set; } = "Springfield";
+        _cargando = true;
+        try
+        {
+            var authState = await authenticationStateTask;
+            var user = authState.User;
+
+            if (user.Identity?.IsAuthenticated == true)
+            {
+                // 1. Obtenemos el rol
+                var roleClaim = user.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role);
+                _rolUsuario = roleClaim?.Value ?? "USUARIO";
+
+                // 2. Extraemos el ID del usuario desde los Claims del token
+                var idClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value;
+                
+                if (int.TryParse(idClaim, out _idUsuarioActual))
+                {
+                    // 3. LLAMADA REAL A LA API PARA TRAER DATOS DEL ADMINISTRADOR (CON VALIDACIÓN DE NULOS)
+                    var resultado = await UsuarioService.GetByIdAsync(_idUsuarioActual);
+                    
+                    if (resultado != null)
+                    {
+                        modelo = resultado;
+                    }
+                    else
+                    {
+                        Snackbar.Add("No se encontró el perfil en la base de datos.", Severity.Warning);
+                        MudDialog.Cancel();
+                    }
+                }
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("No se pudieron cargar los datos del perfil.", Severity.Error);
+            MudDialog.Cancel();
+        }
+        finally
+        {
+            _cargando = false;
+        }
     }
 
-    private PerfilModel modelo = new();
-
-    protected override void OnInitialized()
+    private async Task GuardarAsync()
     {
-        // TODO: Cargar datos reales del usuario autenticado
-        // var userId = AuthState...
-        // modelo = await UsuarioService.GetPerfilAsync(userId);
-    }
-
-    private void Guardar()
-    {
-        // TODO: Llamar al servicio para actualizar
-        // await UsuarioService.ActualizarPerfilAsync(modelo);
-        Snackbar.Add("Perfil actualizado correctamente", Severity.Success);
-        MudDialog.Close(DialogResult.Ok(true));
+        _guardando = true;
+        try
+        {
+            // ✅ LLAMADA REAL A LA API PARA ACTUALIZAR
+            var resultado = await UsuarioService.UpdateAsync(modelo);
+            
+            if (resultado) // Si devuelve booleano o un DTO validamos
+            {
+                Snackbar.Add("Perfil actualizado correctamente.", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+            {
+                Snackbar.Add("No se pudo actualizar el perfil.", Severity.Warning);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Error al comunicarse con el servidor.", Severity.Error);
+        }
+        finally
+        {
+            _guardando = false;
+        }
     }
 
     private void Cancel() => MudDialog.Cancel();

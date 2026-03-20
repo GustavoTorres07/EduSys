@@ -18,5 +18,7 @@ namespace EduSys.Api.Repositories.Interfaces
 
         Task<List<ComisionDocenteDTO>> GetMisComisionesAsync(int idUsuario);
 
+        Task<DocenteRequestDTO?> GetMiPerfilAsync(string emailUsuario);
+
     }
 }

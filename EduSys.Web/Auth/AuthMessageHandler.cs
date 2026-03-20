@@ -1,24 +1,33 @@
 ﻿using Blazored.LocalStorage;
 using System.Net.Http.Headers;
 
-public class AuthMessageHandler : DelegatingHandler
+namespace EduSys.Web.Auth
 {
-    private readonly ILocalStorageService _localStorage;
-
-    public AuthMessageHandler(ILocalStorageService localStorage)
+    /// <summary>
+    /// Intercepta todas las peticiones HTTP salientes y adjunta el Token JWT si existe.
+    /// </summary>
+    public class AuthMessageHandler : DelegatingHandler
     {
-        _localStorage = localStorage;
-    }
+        private readonly ILocalStorageService _localStorage;
 
-    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-    {
-        var token = await _localStorage.GetItemAsync<string>("authToken");
-
-        if (!string.IsNullOrWhiteSpace(token))
+        public AuthMessageHandler(ILocalStorageService localStorage)
         {
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            _localStorage = localStorage;
         }
 
-        return await base.SendAsync(request, cancellationToken);
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            // Leemos el token del LocalStorage
+            var token = await _localStorage.GetItemAsync<string>(CustomAuthStateProvider.AuthTokenKey);
+
+            if (!string.IsNullOrWhiteSpace(token))
+            {
+                // Si hay token, lo inyectamos en la cabecera Authorization
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            }
+
+            // Continuamos con el flujo normal de la petición HTTP
+            return await base.SendAsync(request, cancellationToken);
+        }
     }
 }

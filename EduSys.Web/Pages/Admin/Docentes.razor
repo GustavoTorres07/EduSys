@@ -20,41 +20,103 @@
         letter-spacing: 0.5px;
     }
 
-    /* Eliminamos el estilo de cursor pointer (manito) ya que no es clickeable la fila */
-
-    /* Estilos para inputs */
-    .force-black-text input, .force-black-text .mud-input-slot {
-        color: #1F2937 !important;
-        font-weight: 500;
+    .row-hover-effect:hover {
+        background-color: #f1f5f9 !important;
     }
 
-    .force-black-text .mud-input-outlined-border {
+    /* Estilos consistentes para inputs de filtro */
+    .custom-filter-input .mud-input-outlined-border {
+        border-color: #cbd5e1 !important;
+        transition: border-color 0.2s;
+    }
+    
+    .custom-filter-input:hover .mud-input-outlined-border {
         border-color: #456990 !important;
     }
 
-    .force-black-text .mud-icon-root {
-        color: #456990 !important;
+    .custom-filter-input.mud-input-control.mud-input-focused .mud-input-outlined-border {
+        border-color: #456990 !important;
+        border-width: 2px !important;
     }
+
+    .custom-filter-input .mud-input-label {
+        color: #456990 !important;
+        background-color: white !important;
+        padding: 0 5px;
+        font-weight: 600;
+    }
+
+    /* ✅ FIX PRINCIPAL: texto visible en todos los tipos de input */
+    .custom-filter-input input,
+    .custom-filter-input textarea,
+    .custom-filter-input .mud-select-input,
+    .custom-filter-input .mud-input-slot,
+    .custom-filter-input .mud-input input,
+    .custom-filter-input .mud-input textarea,
+    .custom-filter-input .mud-input .mud-select-input {
+        color: #1e293b !important;
+        font-weight: 600 !important;
+        -webkit-text-fill-color: #1e293b !important;
+    }
+
+    /* ✅ FIX: Visibilidad de iconos en los inputs (Adornments y Selects) */
+    .custom-filter-input .mud-icon-root,
+    .custom-filter-input .mud-input-adornment .mud-icon-root,
+    .custom-filter-input .mud-select-icon {
+        color: #456990 !important;
+        opacity: 1 !important;
+    }
+
+    /* ✅ FIX: evita fondo oscuro por autofill del navegador */
+    .custom-filter-input input:-webkit-autofill,
+    .custom-filter-input input:-webkit-autofill:hover,
+    .custom-filter-input input:-webkit-autofill:focus {
+        -webkit-text-fill-color: #1e293b !important;
+        -webkit-box-shadow: 0 0 0px 1000px white inset !important;
+        transition: background-color 5000s ease-in-out 0s;
+    }
+
+    /* ✅ FIX VISIBILIDAD: Paginador (Filas por página y números) */
+    .mud-table-pager {
+        color: #1e293b !important;
+    }
+    
+        .mud-table-pager .mud-input-slot,
+        .mud-table-pager .mud-select-input {
+            color: #1e293b !important;
+            -webkit-text-fill-color: #1e293b !important;
+            font-weight: 600 !important;
+        }
+    
+        .mud-table-pager .mud-icon-root {
+            color: #456990 !important;
+        }
 </style>
 
-<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-6">
+@* OVERLAY PARA PROTECCIÓN DURANTE LECTURAS/ESCRITURAS *@
+<MudOverlay Visible="_procesandoAccion" DarkBackground="true" Absolute="false" ZIndex="9999">
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+</MudOverlay>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-6 mb-10">
 
     @* --- CABECERA DE LA PÁGINA --- *@
-    <div class="d-flex align-center justify-space-between mb-6">
+    <div class="d-flex align-center justify-space-between mb-6 flex-wrap gap-4">
         <div>
-            <MudText Typo="Typo.h4" Style="font-weight: 700; color: #456990;">Gestión de Docentes</MudText>
-            <MudText Typo="Typo.subtitle1" Class="mud-text-secondary">Directorio de profesores y personal académico.</MudText>
+            <MudText Typo="Typo.h4" Style="font-weight: 800; color: #456990; letter-spacing: -0.5px;">Gestión de Docentes</MudText>
+            <MudText Typo="Typo.subtitle1" Class="mud-text-secondary">Directorio de profesores y personal académico activo.</MudText>
         </div>
         <MudButton Variant="Variant.Filled"
                    StartIcon="@Icons.Material.Filled.PersonAdd"
                    Color="Color.Primary"
+                   Size="Size.Large"
+                   Style="font-weight: 700; border-radius: 8px;"
                    OnClick="CrearDocente">
             Nuevo Docente
         </MudButton>
     </div>
 
     @* --- GRILLA DE DATOS --- *@
-    @* ✅ CAMBIO: Se eliminó 'OnRowClick' y 'RowClass' para desactivar el click en la fila *@
     <MudTable T="DocenteListadoDTO"
               Items="@listaDocentes"
               Dense="true"
@@ -62,25 +124,32 @@
               Bordered="false"
               Striped="false"
               Filter="new Func<DocenteListadoDTO, bool>(FiltrarDocentes)"
-              Elevation="3"
-              Class="rounded-lg table-header-custom"
-              Loading="@cargando">
+              Elevation="2"
+              Class="rounded-lg table-header-custom overflow-hidden"
+              Loading="@cargando"
+              LoadingProgressColor="Color.Primary"
+              RowClass="row-hover-effect">
 
         <ToolBarContent>
             <MudSpacer />
+            @* BUSCADOR OPTIMIZADO (Debounce y Limpiable) *@
             <MudTextField @bind-Value="searchString"
                           Placeholder="Buscar por nombre, DNI o legajo..."
                           Adornment="Adornment.Start"
                           AdornmentIcon="@Icons.Material.Filled.Search"
-                          Class="force-black-text mt-0"
+                          AdornmentColor="Color.Primary"
+                          Class="custom-filter-input mt-0"
                           Variant="Variant.Outlined"
                           Margin="Margin.Dense"
-                          Style="max-width: 400px;" />
+                          Style="min-width: 350px; background-color: white; border-radius: 8px;"
+                          Immediate="true"
+                          DebounceInterval="300"
+                          Clearable="true" />
         </ToolBarContent>
 
         <HeaderContent>
-            <MudTh>Legajo</MudTh>
-            <MudTh>Docente</MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<DocenteListadoDTO, object>(x => x.Legajo)">Legajo</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<DocenteListadoDTO, object>(x => x.NombreCompleto)">Docente</MudTableSortLabel></MudTh>
             <MudTh>DNI</MudTh>
             <MudTh>Título</MudTh>
             <MudTh>Email</MudTh>
@@ -90,12 +159,16 @@
 
         <RowTemplate>
             <MudTd DataLabel="Legajo">
-                <MudText Style="font-weight:700; color:#456990;">@context.Legajo</MudText>
+                <MudText Style="font-weight:700; color:#456990;" Typo="Typo.body2">@context.Legajo</MudText>
             </MudTd>
 
-            <MudTd DataLabel="Docente">@context.NombreCompleto</MudTd>
+            <MudTd DataLabel="Docente">
+                <MudText Style="font-weight: 600; color: #1e293b;" Typo="Typo.body2">@context.NombreCompleto</MudText>
+            </MudTd>
 
-            <MudTd DataLabel="DNI">@context.Dni</MudTd>
+            <MudTd DataLabel="DNI">
+                <MudText Style="color: #475569;" Typo="Typo.body2">@context.Dni</MudText>
+            </MudTd>
 
             <MudTd DataLabel="Título">
                 <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text" Class="font-weight-bold">
@@ -103,45 +176,57 @@
                 </MudChip>
             </MudTd>
 
-            <MudTd DataLabel="Email">@context.Email</MudTd>
+            <MudTd DataLabel="Email">
+                <MudText Typo="Typo.body2" Style="color: #475569;">@context.Email</MudText>
+            </MudTd>
 
             <MudTd DataLabel="Estado" Style="text-align:center;">
                 @if (context.Activo)
                 {
-                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" />
+                    <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Outlined" Style="font-weight: 600;">ACTIVO</MudChip>
                 }
                 else
                 {
-                    <MudIcon Icon="@Icons.Material.Filled.Cancel" Color="Color.Error" Size="Size.Small" />
+                    <MudChip T="string" Color="Color.Error" Size="Size.Small" Variant="Variant.Outlined" Style="font-weight: 600;">INACTIVO</MudChip>
                 }
             </MudTd>
 
-            <MudTd Style="text-align:center;">
-                @* Botón Editar (Única forma de editar ahora) *@
+            <MudTd Style="text-align:center;" DataLabel="Acciones">
                 <MudTooltip Text="Editar Datos">
                     <MudIconButton Icon="@Icons.Material.Filled.Edit"
                                    Color="Color.Primary"
                                    Size="Size.Small"
+                                   Disabled="@_procesandoAccion"
                                    OnClick="@(() => EditarDocente(context))" />
                 </MudTooltip>
 
-                @* Botón Baja Lógica *@
-                <MudTooltip Text="Dar de Baja">
+                <MudTooltip Text="Dar de Baja / Activar">
                     <MudIconButton Icon="@Icons.Material.Filled.PersonOff"
                                    Color="Color.Error"
                                    Size="Size.Small"
+                                   Disabled="@_procesandoAccion"
                                    OnClick="@(() => EliminarDocente(context))" />
                 </MudTooltip>
             </MudTd>
         </RowTemplate>
 
+        <LoadingContent>
+            <MudText Typo="Typo.body1" Class="pa-4 text-center" Style="color: #64748b;">
+                Cargando directorio de docentes...
+            </MudText>
+        </LoadingContent>
+
+        <NoRecordsContent>
+            <div class="d-flex flex-column align-center justify-center pa-8">
+                <MudIcon Icon="@Icons.Material.Filled.PersonSearch" Style="font-size: 4rem; color: #cbd5e1;" Class="mb-3" />
+                <MudText Typo="Typo.h6" Style="font-weight: 700; color: #475569;">No hay resultados</MudText>
+                <MudText Typo="Typo.body2" Style="color: #94a3b8;">No se encontraron docentes con los datos ingresados.</MudText>
+            </div>
+        </NoRecordsContent>
+
         <PagerContent>
             <MudTablePager InfoFormat="{first_item}-{last_item} de {all_items}" RowsPerPageString="Filas por página:" />
         </PagerContent>
-
-        <NoRecordsContent>
-            <MudText>No se encontraron docentes registrados.</MudText>
-        </NoRecordsContent>
     </MudTable>
 
 </MudContainer>
@@ -149,7 +234,9 @@
 @code {
     private List<DocenteListadoDTO> listaDocentes = new();
     private string searchString = "";
+    
     private bool cargando = true;
+    private bool _procesandoAccion = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -163,9 +250,9 @@
         {
             listaDocentes = await DocenteService.GetDocentesAsync();
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            Snackbar.Add("Error al cargar docentes: " + ex.Message, Severity.Error);
+            Snackbar.Add("Error de conexión al cargar la lista de docentes.", Severity.Error);
         }
         finally
         {
@@ -176,10 +263,14 @@
     private bool FiltrarDocentes(DocenteListadoDTO element)
     {
         if (string.IsNullOrWhiteSpace(searchString)) return true;
-        if (element.NombreCompleto.Contains(searchString, StringComparison.OrdinalIgnoreCase)) return true;
-        if (element.Dni.Contains(searchString, StringComparison.OrdinalIgnoreCase)) return true;
-        if (element.Legajo.Contains(searchString, StringComparison.OrdinalIgnoreCase)) return true;
-        return false;
+        
+        var term = searchString.Trim().ToLower();
+
+        // Null checks defensivos por seguridad
+        return (element.NombreCompleto?.ToLower().Contains(term) ?? false) ||
+               (element.Dni?.Contains(term) ?? false) ||
+               (element.Legajo?.ToLower().Contains(term) ?? false) ||
+               (element.Email?.ToLower().Contains(term) ?? false); // Agregamos email al buscador
     }
 
     private async Task CrearDocente()
@@ -193,57 +284,94 @@
             NoHeader = true
         };
 
-        var parameters = new DialogParameters { { "Docente", new DocenteRequestDTO() } };
+        var parameters = new DialogParameters { ["Docente"] = new DocenteRequestDTO() };
 
         var dialog = DialogService.Show<CrearEditarDocenteDialog>("", parameters, options);
         var result = await dialog.Result;
 
         if (!result.Canceled && result.Data is DocenteRequestDTO nuevoDocente)
         {
+            _procesandoAccion = true;
+            StateHasChanged();
+            
             var exito = await DocenteService.CrearDocenteAsync(nuevoDocente);
+            
+            _procesandoAccion = false;
+            
             if (exito)
             {
-                Snackbar.Add("Docente creado correctamente", Severity.Success);
+                Snackbar.Add("¡Docente registrado exitosamente!", Severity.Success);
                 await CargarDatos();
             }
             else
             {
-                Snackbar.Add("Error al crear docente", Severity.Error);
+                Snackbar.Add("No se pudo registrar al docente. Verifica los datos.", Severity.Error);
             }
         }
     }
 
     private async Task EditarDocente(DocenteListadoDTO item)
     {
-        var docenteCompleto = await DocenteService.GetDocenteByIdAsync(item.IdDocente);
-        if (docenteCompleto == null) return;
-
-        var options = new DialogOptions
+        try
         {
-            MaxWidth = MaxWidth.Medium,
-            FullWidth = true,
-            BackdropClick = false,
-            CloseButton = false,
-            NoHeader = true
-        };
+            _procesandoAccion = true;
+            StateHasChanged(); // Bloqueamos la pantalla con el Overlay
 
-        var parameters = new DialogParameters { { "Docente", docenteCompleto } };
+            // Vamos al servidor a traer los datos pesados/completos
+            var docenteCompleto = await DocenteService.GetDocenteByIdAsync(item.IdDocente);
+            
+            if (docenteCompleto == null)
+            {
+                Snackbar.Add("No se pudo obtener la información completa del docente.", Severity.Warning);
+                return;
+            }
 
-        var dialog = DialogService.Show<CrearEditarDocenteDialog>("", parameters, options);
-        var result = await dialog.Result;
+            var options = new DialogOptions
+            {
+                MaxWidth = MaxWidth.Medium,
+                FullWidth = true,
+                BackdropClick = false,
+                CloseButton = false,
+                NoHeader = true
+            };
 
-        if (!result.Canceled && result.Data is DocenteRequestDTO docenteEditado)
+            var parameters = new DialogParameters { ["Docente"] = docenteCompleto };
+
+            // Ocultamos el overlay justo antes de abrir el modal
+            _procesandoAccion = false;
+            StateHasChanged();
+
+            var dialog = DialogService.Show<CrearEditarDocenteDialog>("", parameters, options);
+            var result = await dialog.Result;
+
+            if (!result.Canceled && result.Data is DocenteRequestDTO docenteEditado)
+            {
+                _procesandoAccion = true;
+                StateHasChanged();
+
+                var exito = await DocenteService.EditarDocenteAsync(docenteEditado);
+                
+                _procesandoAccion = false;
+
+                if (exito)
+                {
+                    Snackbar.Add("Ficha del docente actualizada correctamente.", Severity.Success);
+                    await CargarDatos();
+                }
+                else
+                {
+                    Snackbar.Add("Ocurrió un error al intentar actualizar al docente.", Severity.Error);
+                }
+            }
+        }
+        catch (Exception)
         {
-            var exito = await DocenteService.EditarDocenteAsync(docenteEditado);
-            if (exito)
-            {
-                Snackbar.Add("Docente actualizado", Severity.Success);
-                await CargarDatos();
-            }
-            else
-            {
-                Snackbar.Add("Error al actualizar", Severity.Error);
-            }
+            Snackbar.Add("Ocurrió un error inesperado al intentar editar.", Severity.Error);
+        }
+        finally
+        {
+            _procesandoAccion = false;
+            StateHasChanged();
         }
     }
 
@@ -260,7 +388,7 @@
 
         var parameters = new DialogParameters
         {
-            { "NombreEntidad", item.NombreCompleto }
+            ["NombreEntidad"] = item.NombreCompleto
         };
 
         var dialog = DialogService.Show<ConfirmarBajaDialog>("", parameters, options);
@@ -268,15 +396,22 @@
 
         if (!result.Canceled)
         {
+            _procesandoAccion = true;
+            StateHasChanged();
+            
             var exito = await DocenteService.EliminarDocenteAsync(item.IdDocente);
+            
+            _procesandoAccion = false;
+            StateHasChanged();
+
             if (exito)
             {
-                Snackbar.Add("Docente dado de baja correctamente", Severity.Success);
+                Snackbar.Add("El estado del docente se actualizó correctamente.", Severity.Success);
                 await CargarDatos();
             }
             else
             {
-                Snackbar.Add("Ocurrió un error al intentar dar de baja", Severity.Error);
+                Snackbar.Add("No se pudo dar de baja al docente.", Severity.Error);
             }
         }
     }

@@ -3,20 +3,28 @@
 @using System.Security.Claims
 @using EduSys.Web.Auth
 @using Microsoft.AspNetCore.Components.Authorization
-@using EduSys.Web.Pages.Auth.Components
 
 @inject IAuthService AuthService
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider _authStateProvider
 @inject IDialogService DialogService
+@inject ISnackbar Snackbar
 
+@* --- CONFIGURACIÓN GLOBAL DE COMPONENTES --- *@
 <MudThemeProvider Theme="_currentTheme" />
 <MudPopoverProvider />
-<MudSnackbarProvider />
-<MudDialogProvider FullWidth="true" MaxWidth="MaxWidth.Small" CloseButton="true" BackdropClick="false" Position="DialogPosition.Center" />
+<MudSnackbarProvider Position="SnackbarPosition.TopRight" ShowCloseIcon="true" VisibleStateDuration="4000" />
+<MudDialogProvider />
+
+@* --- CORTINA BLANCA INSTANTÁNEA PARA SALIDA LIMPIA --- *@
+@if (_saliendo)
+{
+    <div style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #ffffff; z-index: 999999;"></div>
+}
 
 <MudLayout>
-    <MudAppBar Elevation="1" Fixed="true" Style="background: #1e3a58; border-bottom: 1px solid rgba(255,255,255,0.1); z-index: 1300;">
+    @* --- BARRA SUPERIOR (APPBAR) --- *@
+    <MudAppBar Elevation="2" Fixed="true" Style="background: #1e3a58; border-bottom: 1px solid rgba(255,255,255,0.1); z-index: 1300;">
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="ToggleDrawer" Class="mr-3" />
         <MudText Typo="Typo.h6" Style="font-weight:700; letter-spacing:0.5px; color: white;">EduSys</MudText>
         <MudSpacer />
@@ -24,13 +32,18 @@
         <AuthorizeView>
             <Authorized>
                 <div class="d-flex align-center gap-2">
-                    <MudTooltip Text="Mensajería"><MudIconButton Icon="@Icons.Material.Filled.Email" Color="Color.Inherit" /></MudTooltip>
-                    <NotificacionesMenu />
-                    <MudTooltip Text="Soporte"><MudIconButton Icon="@Icons.Material.Filled.SupportAgent" Color="Color.Inherit" /></MudTooltip>
+                    <MudTooltip Text="Mensajería">
+                        <MudIconButton Icon="@Icons.Material.Filled.Email" Color="Color.Inherit" />
+                    </MudTooltip>
+                    
+                    <MudTooltip Text="Soporte">
+                        <MudIconButton Icon="@Icons.Material.Filled.SupportAgent" Color="Color.Inherit" />
+                    </MudTooltip>
 
+                    @* MENÚ DE PERFIL DEL USUARIO *@
                     <MudMenu AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" LockScroll="true" Class="ml-3 mr-2">
                         <ActivatorContent>
-                            <div class="d-flex align-center cursor-pointer" style="background-color:rgba(255,255,255,0.1); padding:4px 12px; border-radius:20px; border: 1px solid rgba(255,255,255,0.1);">
+                            <div class="d-flex align-center cursor-pointer pa-1 pr-3 rounded-xl" style="background-color:rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); transition: background-color 0.2s;">
                                 <MudAvatar Size="Size.Small" Class="mr-2" Color="@GetAvatarColor(context.User)">
                                     @if (!string.IsNullOrEmpty(ObtenerFotoPerfil(context.User)))
                                     {
@@ -41,22 +54,22 @@
                                         @GetUserInitial(context.User)
                                     }
                                 </MudAvatar>
-                                <MudText Typo="Typo.body2" Color="Color.Inherit" Style="font-weight:600; color: white;" Class="mr-1 d-none d-sm-block">
+                                <MudText Typo="Typo.body2" Style="font-weight:600; color: white;" Class="mr-1 d-none d-sm-block">
                                     @GetFullUserName(context.User)
                                 </MudText>
                                 <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" Color="Color.Inherit" Size="Size.Small" />
                             </div>
                         </ActivatorContent>
                         <ChildContent>
-                            <div class="pa-4 d-flex flex-column align-center border-b mb-2" style="min-width: 220px;">
-                                <MudAvatar Style="height:64px; width:64px; border: 2px solid #1e3a58;" Class="mb-2" Color="@GetAvatarColor(context.User)">
+                            <div class="pa-4 d-flex flex-column align-center border-b mb-2" style="min-width: 240px;">
+                                <MudAvatar Style="height:64px; width:64px; border: 2px solid #1e3a58;" Class="mb-2 shadow-sm" Color="@GetAvatarColor(context.User)">
                                     @if (!string.IsNullOrEmpty(ObtenerFotoPerfil(context.User)))
                                     {
                                         <MudImage Src="@ObtenerFotoPerfil(context.User)" Style="width:100%; height:100%; object-fit:cover;" />
                                     }
                                     else
                                     {
-                                        @GetUserInitial(context.User)
+                                        <span style="font-size: 1.5rem;">@GetUserInitial(context.User)</span>
                                     }
                                 </MudAvatar>
                                 <MudText Typo="Typo.body1" Style="font-weight:700;">@GetFullUserName(context.User)</MudText>
@@ -64,7 +77,7 @@
                             </div>
                             <MudMenuItem Icon="@Icons.Material.Filled.Person" OnClick="AbrirPerfil">Mi Perfil</MudMenuItem>
                             <MudDivider Class="my-2" />
-                            <MudMenuItem Icon="@Icons.Material.Filled.Logout" IconColor="Color.Error" OnClick="CerrarSesion">Cerrar Sesión</MudMenuItem>
+                            <MudMenuItem Icon="@Icons.Material.Filled.Logout" IconColor="Color.Error" OnClick="CerrarSesionAsync">Cerrar Sesión</MudMenuItem>
                         </ChildContent>
                     </MudMenu>
                 </div>
@@ -72,29 +85,49 @@
         </AuthorizeView>
     </MudAppBar>
 
+    @* --- MENÚ LATERAL (DRAWER) --- *@
     <MudDrawer @bind-Open="_drawerOpen"
                Variant="DrawerVariant.Responsive"
                ClipMode="DrawerClipMode.Always"
-               Elevation="2"
-               Width="340px"
+               Elevation="3"
+               Width="280px"
                Style="z-index: 1200;">
         <NavMenu />
     </MudDrawer>
 
-    <MudMainContent Style="background-color: #F8FAFC; min-height: 100vh; padding-top: 80px;">
-        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pb-10 px-4">
-            @Body
+    @* --- CONTENIDO PRINCIPAL --- *@
+    <MudMainContent Style="background-color: #F8FAFC; min-height: 100vh;">
+        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pt-6 pb-10 px-4">
+            
+            <ErrorBoundary @ref="_errorBoundary">
+                <ChildContent>
+                    @Body
+                </ChildContent>
+                <ErrorContent Context="ex">
+                    <MudPaper Elevation="2" Class="pa-8 text-center rounded-lg mt-10 mx-auto" Style="max-width: 600px; border-top: 4px solid #EF767A;">
+                        <MudIcon Icon="@Icons.Material.Filled.HeartBroken" Color="Color.Error" Size="Size.Large" Class="mb-4" />
+                        <MudText Typo="Typo.h5" Style="font-weight: 700;" Class="mb-2">¡Ups! Algo no salió como esperábamos</MudText>
+                        <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-6">
+                            La pantalla que intentabas ver tuvo un problema interno. No te preocupes, el resto del sistema sigue funcionando.
+                        </MudText>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="RecargarPagina" StartIcon="@Icons.Material.Filled.Refresh" Class="rounded-lg">
+                            Recargar Pantalla
+                        </MudButton>
+                    </MudPaper>
+                </ErrorContent>
+            </ErrorBoundary>
+
         </MudContainer>
     </MudMainContent>
-
 </MudLayout>
 
 @code {
     [CascadingParameter]
-    private Task<AuthenticationState> authenticationStateTask { get; set; }
+    private Task<AuthenticationState> authenticationStateTask { get; set; } = null!;
 
     private bool _drawerOpen = true;
     private bool _saliendo = false;
+    private ErrorBoundary? _errorBoundary;
 
     private MudTheme _currentTheme = new MudTheme()
     {
@@ -105,31 +138,75 @@
             Tertiary = "#49BEAA",
             AppbarBackground = "#1e3a58",
             Background = "#F8FAFC",
-            DrawerBackground = "#ffffff"
+            DrawerBackground = "#ffffff",
+            TextPrimary = "#1F2937",
+            TextSecondary = "#64748B"
+        },
+        Typography = new Typography()
+        {
+            Default = new Default() { FontFamily = new[] { "Inter", "Segoe UI", "sans-serif" } }
         }
     };
 
     protected override async Task OnInitializedAsync()
     {
         _drawerOpen = true;
-        var authState = await authenticationStateTask;
+        await authenticationStateTask;
     }
 
-    void ToggleDrawer() => _drawerOpen = !_drawerOpen;
-
-    async Task CerrarSesion()
+    protected override void OnParametersSet()
     {
-        _saliendo = true;
-        Navigation.NavigateTo("/");
-        await AuthService.Logout();
+        _errorBoundary?.Recover();
+    }
+
+    private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+
+    private void RecargarPagina()
+    {
+        _errorBoundary?.Recover();
+        Navigation.NavigateTo(Navigation.Uri, forceLoad: true);
+    }
+
+    private async Task CerrarSesionAsync()
+    {
+        try
+        {
+            await AuthService.LogoutAsync();
+            Navigation.NavigateTo("/");
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Ocurrió un problema al cerrar sesión.", Severity.Error);
+        }
     }
 
     private async Task AbrirPerfil()
     {
         var authState = await authenticationStateTask;
         var user = authState.User;
-        var url = user.IsInRole("Docente") ? "/mi-perfil-docente" : "/alumno/perfil";
-        Navigation.NavigateTo(url);
+        
+        if (user.IsInRole("Docente"))
+        {
+            // ✅ CORRECCIÓN RUTA OFICIAL PERFIL DOCENTE
+            Navigation.NavigateTo("/docente/mi-perfil");
+        }
+        else if (user.IsInRole("Alumno"))
+        {
+            Navigation.NavigateTo("/alumno/perfil");
+        }
+        else
+        {
+            var options = new DialogOptions
+            {
+                MaxWidth = MaxWidth.Small,
+                FullWidth = true,
+                NoHeader = true,
+                CloseButton = false,
+                BackdropClick = true
+            };
+            
+            DialogService.Show<DialogoPerfil>("", options);
+        }
     }
 
     private string GetFullUserName(ClaimsPrincipal user)
@@ -139,9 +216,13 @@
         return (!string.IsNullOrEmpty(nombre)) ? $"{nombre} {apellido}".Trim() : user.Identity?.Name ?? "Usuario";
     }
 
-    private string GetUserInitial(ClaimsPrincipal user) => GetFullUserName(user).Substring(0, 1).ToUpper();
+    private string GetUserInitial(ClaimsPrincipal user)
+    {
+        var fullName = GetFullUserName(user);
+        return string.IsNullOrEmpty(fullName) ? "U" : fullName.Substring(0, 1).ToUpper();
+    }
 
-    private string ObtenerFotoPerfil(ClaimsPrincipal user)
+    private string? ObtenerFotoPerfil(ClaimsPrincipal user)
     {
         var foto = user.FindFirst("FotoPerfilUrl")?.Value;
         if (string.IsNullOrWhiteSpace(foto) || foto == "null") return null;
@@ -152,7 +233,7 @@
     {
         if (user.IsInRole("Docente")) return Color.Tertiary;
         if (user.IsInRole("Alumno")) return Color.Secondary;
-        return Color.Default;
+        return Color.Primary;
     }
 
     private string GetRoleLabel(ClaimsPrincipal user)

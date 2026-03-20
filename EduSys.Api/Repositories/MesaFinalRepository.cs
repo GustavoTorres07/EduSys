@@ -17,44 +17,39 @@ namespace EduSys.Api.Repositories
 
         public async Task<List<MesaFinalDTO>> GetAllAsync()
         {
-            // Traemos todo con un buen Include para armar el DTO completo
-            var mesas = await _context.MesaFinals
-                .Include(m => m.IdPlanMateriaNavigation).ThenInclude(pm => pm.IdMateriaNavigation)
-                .Include(m => m.IdPlanMateriaNavigation).ThenInclude(pm => pm.IdPlanNavigation).ThenInclude(p => p.IdCarreraNavigation)
-                .Include(m => m.IdPeriodoNavigation)
-                .Include(m => m.IdPresidenteMesaNavigation).ThenInclude(d => d.IdUsuarioNavigation)
-                .Include(m => m.InscripcionFinals)
+            // 🚀 OPTIMIZADO: Proyección directa para evitar traer datos pesados a memoria
+            return await _context.MesaFinals
+                .AsNoTracking()
                 .OrderByDescending(m => m.FechaHora)
+                .Select(m => MapearAProyeccionDTO(m))
                 .ToListAsync();
-
-            return mesas.Select(MapearADTO).ToList();
         }
 
         public async Task<List<MesaFinalDTO>> GetByPeriodoAsync(int idPeriodo)
         {
-            var mesas = await _context.MesaFinals
-                .Include(m => m.IdPlanMateriaNavigation).ThenInclude(pm => pm.IdMateriaNavigation)
-                .Include(m => m.IdPlanMateriaNavigation).ThenInclude(pm => pm.IdPlanNavigation).ThenInclude(p => p.IdCarreraNavigation)
-                .Include(m => m.IdPeriodoNavigation)
-                .Include(m => m.IdPresidenteMesaNavigation).ThenInclude(d => d.IdUsuarioNavigation)
-                .Include(m => m.InscripcionFinals)
+            return await _context.MesaFinals
+                .AsNoTracking()
                 .Where(m => m.IdPeriodo == idPeriodo)
                 .OrderByDescending(m => m.FechaHora)
+                .Select(m => MapearAProyeccionDTO(m))
                 .ToListAsync();
-
-            return mesas.Select(MapearADTO).ToList();
         }
 
         public async Task<MesaFinalDTO?> GetByIdAsync(int id)
         {
+            // Aquí sí necesitamos los datos completos
             var mesa = await _context.MesaFinals
+                .AsNoTracking()
                 .Include(m => m.IdPlanMateriaNavigation).ThenInclude(pm => pm.IdMateriaNavigation)
                 .Include(m => m.IdPeriodoNavigation)
                 .Include(m => m.IdPresidenteMesaNavigation).ThenInclude(d => d.IdUsuarioNavigation)
-                .Include(m => m.InscripcionFinals)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
-            return mesa == null ? null : MapearADTO(mesa);
+            if (mesa == null) return null;
+
+            var dto = MapearAProyeccionDTO(mesa);
+            dto.CantidadInscriptos = await _context.InscripcionFinals.CountAsync(i => i.IdMesaFinal == id && i.Estado != "Baja");
+            return dto;
         }
 
         public async Task<ResultadoOperacionDTO> CreateAsync(MesaFinalRequestDTO dto)
@@ -84,8 +79,10 @@ namespace EduSys.Api.Repositories
 
         public async Task<ResultadoOperacionDTO> UpdateAsync(MesaFinalRequestDTO dto)
         {
-            var mesa = await _context.MesaFinals.FindAsync(dto.Id);
+            var mesa = await _context.MesaFinals.FirstOrDefaultAsync(m => m.Id == dto.Id);
             if (mesa == null) return new ResultadoOperacionDTO { Exito = false, Mensaje = "No encontrada." };
+
+            if (mesa.Estado == "Cerrada") return new ResultadoOperacionDTO { Exito = false, Mensaje = "No se puede editar una mesa cerrada." };
 
             mesa.IdPlanMateria = dto.IdPlanMateria;
             mesa.IdPeriodo = dto.IdPeriodo;
@@ -104,8 +101,8 @@ namespace EduSys.Api.Repositories
             var mesa = await _context.MesaFinals.Include(m => m.InscripcionFinals).FirstOrDefaultAsync(m => m.Id == id);
             if (mesa == null) return new ResultadoOperacionDTO { Exito = false, Mensaje = "No encontrada." };
 
-            if (mesa.InscripcionFinals.Any())
-                return new ResultadoOperacionDTO { Exito = false, Mensaje = "No se puede eliminar una mesa que ya tiene alumnos inscriptos." };
+            if (mesa.InscripcionFinals.Any(i => i.Estado != "Baja"))
+                return new ResultadoOperacionDTO { Exito = false, Mensaje = "No se puede eliminar una mesa con alumnos inscriptos." };
 
             _context.MesaFinals.Remove(mesa);
             await _context.SaveChangesAsync();
@@ -118,43 +115,39 @@ namespace EduSys.Api.Repositories
 
         public async Task<ActaMesaFinalDTO?> GetActaMesaFinalAsync(int idMesaFinal)
         {
-            var mesa = await _context.MesaFinals
-                .Include(m => m.IdPlanMateriaNavigation).ThenInclude(pm => pm.IdMateriaNavigation)
-                // 👇 AQUÍ ESTÁ LA CORRECCIÓN: IdPlanNavigation en lugar de IdPlanEstudioNavigation 👇
-                .Include(m => m.IdPlanMateriaNavigation).ThenInclude(pm => pm.IdPlanNavigation).ThenInclude(p => p.IdCarreraNavigation)
-                .Include(m => m.IdPresidenteMesaNavigation).ThenInclude(d => d.IdUsuarioNavigation)
-                .Include(m => m.InscripcionFinals)
-                    .ThenInclude(i => i.IdAlumnoNavigation).ThenInclude(a => a.IdUsuarioNavigation)
-                .FirstOrDefaultAsync(m => m.Id == idMesaFinal);
-
-            if (mesa == null) return null;
-
-            return new ActaMesaFinalDTO
-            {
-                IdMesaFinal = mesa.Id,
-                MateriaNombre = mesa.IdPlanMateriaNavigation.IdMateriaNavigation.Nombre,
-                // 👇 AQUÍ TAMBIÉN CORREGIDO 👇
-                CarreraNombre = mesa.IdPlanMateriaNavigation.IdPlanNavigation.IdCarreraNavigation.Nombre,
-                FechaHora = mesa.FechaHora,
-                Tribunal = $"{mesa.IdPresidenteMesaNavigation.IdUsuarioNavigation.Apellido} (Presidente)",
-                EstadoMesa = mesa.Estado ?? "Abierta",
-                Libro = mesa.Libro ?? "",
-                Folio = mesa.Folio ?? "",
-
-                // Traemos a todos los inscriptos que no se hayan dado de baja
-                Alumnos = mesa.InscripcionFinals.Where(i => i.Estado != "Baja").Select(i => new AlumnoActaFinalDTO
+            return await _context.MesaFinals
+                .AsNoTracking()
+                .AsSplitQuery() // 🚀 OPTIMIZADO para carga de muchos alumnos
+                .Where(m => m.Id == idMesaFinal)
+                .Select(mesa => new ActaMesaFinalDTO
                 {
-                    IdInscripcion = i.Id,
-                    IdAlumno = i.IdAlumno,
-                    Legajo = i.IdAlumnoNavigation.Legajo,
-                    AlumnoNombre = $"{i.IdAlumnoNavigation.IdUsuarioNavigation.Apellido}, {i.IdAlumnoNavigation.IdUsuarioNavigation.Nombre}",
-                    Dni = i.IdAlumnoNavigation.IdUsuarioNavigation.Dni,
-                    Condicion = "Regular",
-                    Nota = i.Nota,
-                    EstadoInscripcion = i.Estado ?? "Inscripto"
-                }).OrderBy(a => a.AlumnoNombre).ToList()
-            };
+                    IdMesaFinal = mesa.Id,
+                    MateriaNombre = mesa.IdPlanMateriaNavigation.IdMateriaNavigation.Nombre,
+                    CarreraNombre = mesa.IdPlanMateriaNavigation.IdPlanNavigation.IdCarreraNavigation.Nombre,
+                    FechaHora = mesa.FechaHora,
+                    Tribunal = $"{mesa.IdPresidenteMesaNavigation.IdUsuarioNavigation.Apellido} (Presidente)",
+                    EstadoMesa = mesa.Estado ?? "Abierta",
+                    Libro = mesa.Libro ?? "",
+                    Folio = mesa.Folio ?? "",
+                    Alumnos = mesa.InscripcionFinals
+                        .Where(i => i.Estado != "Baja")
+                        .Select(i => new AlumnoActaFinalDTO
+                        {
+                            IdInscripcion = i.Id,
+                            IdAlumno = i.IdAlumno,
+                            Legajo = i.IdAlumnoNavigation.Legajo,
+                            AlumnoNombre = $"{i.IdAlumnoNavigation.IdUsuarioNavigation.Apellido}, {i.IdAlumnoNavigation.IdUsuarioNavigation.Nombre}",
+                            Dni = i.IdAlumnoNavigation.IdUsuarioNavigation.Dni,
+                            Condicion = "Regular", // Esto podría venir de la inscripción si lo guardas
+                            Nota = i.Nota,
+                            EstadoInscripcion = i.Estado ?? "Inscripto"
+                        })
+                        .OrderBy(a => a.AlumnoNombre)
+                        .ToList()
+                })
+                .FirstOrDefaultAsync();
         }
+
         public async Task<bool> GuardarNotaFinalAsync(int idInscripcion, decimal? nota)
         {
             var inscripcion = await _context.InscripcionFinals.FindAsync(idInscripcion);
@@ -162,43 +155,49 @@ namespace EduSys.Api.Repositories
 
             inscripcion.Nota = nota;
 
-            // Calculamos en vivo el estado al poner la nota
             if (nota == null) inscripcion.Estado = "Inscripto";
             else if (nota >= 4) inscripcion.Estado = "Aprobado";
             else inscripcion.Estado = "Reprobado";
 
-            await _context.SaveChangesAsync();
-            return true;
+            return await _context.SaveChangesAsync() > 0;
         }
 
         public async Task<bool> CerrarActaFinalAsync(int idMesaFinal, string libro, string folio)
         {
-            var mesa = await _context.MesaFinals
-                .Include(m => m.InscripcionFinals)
-                .FirstOrDefaultAsync(m => m.Id == idMesaFinal);
-
-            if (mesa == null || mesa.Estado == "Cerrada") return false;
-
-            // 1. Cerramos la mesa y guardamos libro/folio
-            mesa.Estado = "Cerrada";
-            mesa.Libro = libro;
-            mesa.Folio = folio;
-
-            // 2. Evaluamos a los alumnos que no tienen nota cargada y los pasamos a "Ausente"
-            foreach (var inscripcion in mesa.InscripcionFinals.Where(i => i.Estado != "Baja"))
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
             {
-                if (!inscripcion.Nota.HasValue)
-                {
-                    inscripcion.Estado = "Ausente";
-                }
-            }
+                var mesa = await _context.MesaFinals
+                    .Include(m => m.InscripcionFinals)
+                    .FirstOrDefaultAsync(m => m.Id == idMesaFinal);
 
-            await _context.SaveChangesAsync();
-            return true;
+                if (mesa == null || mesa.Estado == "Cerrada") return false;
+
+                mesa.Estado = "Cerrada";
+                mesa.Libro = libro;
+                mesa.Folio = folio;
+
+                foreach (var inscripcion in mesa.InscripcionFinals.Where(i => i.Estado != "Baja"))
+                {
+                    if (!inscripcion.Nota.HasValue)
+                    {
+                        inscripcion.Estado = "Ausente";
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+                return true;
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                return false;
+            }
         }
 
-        // Helper interno para mapear y no repetir código
-        private MesaFinalDTO MapearADTO(MesaFinal m)
+        // Helper para proyecciones limpias en SQL
+        private static MesaFinalDTO MapearAProyeccionDTO(MesaFinal m)
         {
             return new MesaFinalDTO
             {
@@ -209,14 +208,16 @@ namespace EduSys.Api.Repositories
                 IdPeriodo = m.IdPeriodo,
                 PeriodoNombre = m.IdPeriodoNavigation?.Nombre ?? "S/D",
                 IdPresidenteMesa = m.IdPresidenteMesa,
-                PresidenteNombre = $"{m.IdPresidenteMesaNavigation?.IdUsuarioNavigation?.Apellido}, {m.IdPresidenteMesaNavigation?.IdUsuarioNavigation?.Nombre}",
+                PresidenteNombre = m.IdPresidenteMesaNavigation?.IdUsuarioNavigation != null
+                    ? $"{m.IdPresidenteMesaNavigation.IdUsuarioNavigation.Apellido}, {m.IdPresidenteMesaNavigation.IdUsuarioNavigation.Nombre}"
+                    : "No asignado",
                 IdVocal1 = m.IdVocal1,
                 IdVocal2 = m.IdVocal2,
                 FechaHora = m.FechaHora,
                 Estado = m.Estado,
                 Libro = m.Libro,
                 Folio = m.Folio,
-                CantidadInscriptos = m.InscripcionFinals?.Count ?? 0
+                CantidadInscriptos = m.InscripcionFinals.Count(i => i.Estado != "Baja")
             };
         }
     }

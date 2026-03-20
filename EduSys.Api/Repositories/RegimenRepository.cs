@@ -16,12 +16,19 @@ namespace EduSys.Api.Repositories
 
         public async Task<List<Regimen>> GetAllAsync()
         {
-            return await _context.Regimenes.ToListAsync();
+            // 🚀 OPTIMIZADO: AsNoTracking para evitar uso de caché y OrderBy para la UI
+            return await _context.Regimenes
+                .AsNoTracking()
+                .OrderBy(r => r.Nombre)
+                .ToListAsync();
         }
 
         public async Task<Regimen?> GetByIdAsync(int id)
         {
-            return await _context.Regimenes.FindAsync(id);
+            // 🚀 OPTIMIZADO: Lectura directa sin tracking
+            return await _context.Regimenes
+                .AsNoTracking()
+                .FirstOrDefaultAsync(r => r.Id == id);
         }
 
         public async Task<Regimen> CreateAsync(Regimen regimen)
@@ -33,10 +40,14 @@ namespace EduSys.Api.Repositories
 
         public async Task<bool> UpdateAsync(Regimen regimen)
         {
-            var existe = await _context.Regimenes.AnyAsync(r => r.Id == regimen.Id);
-            if (!existe) return false;
+            // Buscamos la entidad para que EF inicie el seguimiento
+            var existing = await _context.Regimenes.FirstOrDefaultAsync(r => r.Id == regimen.Id);
+            if (existing == null) return false;
 
-            _context.Entry(regimen).State = EntityState.Modified;
+            // 🚀 Actualización inteligente: solo se enviarán los cambios reales a la BD
+            existing.Nombre = regimen.Nombre;
+            existing.Activo = regimen.Activo;
+
             await _context.SaveChangesAsync();
             return true;
         }
@@ -46,9 +57,10 @@ namespace EduSys.Api.Repositories
             var regimen = await _context.Regimenes.FindAsync(id);
             if (regimen == null) return false;
 
-            regimen.Activo = false; // Baja Lógica
-            await _context.SaveChangesAsync();
-            return true;
+            // Baja Lógica: Mantenemos la integridad histórica de los planes de estudio
+            regimen.Activo = false;
+
+            return await _context.SaveChangesAsync() > 0;
         }
     }
 }

@@ -6,7 +6,6 @@
         public string Nombre { get; set; } = null!;
         public string? Codigo { get; set; }
         public bool? Activo { get; set; }
-
         public virtual ICollection<CarreraModalidad> CarreraModalidads { get; set; } = new List<CarreraModalidad>();
     }
 }

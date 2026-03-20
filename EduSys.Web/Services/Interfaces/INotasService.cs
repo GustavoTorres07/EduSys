@@ -5,19 +5,12 @@ namespace EduSys.Web.Services.Interfaces
     public interface INotasService
     {
         Task<PlanillaNotasDTO?> GetPlanillaAsync(int idComision);
-
         Task<bool> GuardarNotaAsync(int idInscripcion, int idEvaluacion, decimal? valor);
-
         Task<bool> CrearEvaluacionAsync(int idComision, EvaluacionDTO evaluacion);
-
         Task<bool> EditarEvaluacionAsync(EvaluacionDTO evaluacion);
-
         Task<bool> CerrarActaAsync(CierreActaDTO dto);
-
         Task<bool> ReabrirActaAsync(int idEvaluacion);
-
         Task<bool> CerrarCursadaAsync(CierreCursadaDTO dto);
-
         Task<bool> EliminarEvaluacionAsync(int idEvaluacion);
         Task<bool> ToggleCierreIndividualAsync(int idInscripcion);
         Task<bool> ReabrirComisionAsync(int idComision);

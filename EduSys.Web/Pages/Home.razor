@@ -4,11 +4,12 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using System.Security.Claims
 @using System.Globalization
-@using MudBlazor
+
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IDashboardService DashboardService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
+
 @implements IDisposable
 
 <style>
@@ -26,6 +27,16 @@
         background: linear-gradient(135deg, #f5f7fa 0%, #fafbfc 100%);
         min-height: 100vh;
         padding: 1.5rem;
+    }
+
+    /* ✅ Agregada la animación que faltaba */
+    .animate-fade-in {
+        animation: fadeIn 0.4s ease-out forwards;
+    }
+
+    @@keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
     }
 
     /* HEADER */
@@ -55,6 +66,7 @@
         font-size: 0.875rem;
         color: #64748b;
         margin: 0;
+        text-transform: capitalize; /* Para que "mes" inicie en mayúscula */
     }
 
     .system-status {
@@ -76,13 +88,8 @@
     }
 
     @@keyframes pulse {
-        0%, 100% {
-            opacity: 1;
-        }
-
-        50% {
-            opacity: 0.5;
-        }
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
     }
 
     /* GRID PRINCIPAL */
@@ -111,21 +118,19 @@
         cursor: pointer;
     }
 
-        .metric-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 4px;
-            background: var(--metric-color);
-        }
+    .metric-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%; height: 4px;
+        background: var(--metric-color);
+    }
 
-        .metric-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 28px rgba(0,0,0,0.12);
-            border-color: var(--metric-color);
-        }
+    .metric-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 28px rgba(0,0,0,0.12);
+        border-color: var(--metric-color);
+    }
 
     .metric-header {
         display: flex;
@@ -135,313 +140,132 @@
     }
 
     .metric-icon-box {
-        width: 48px;
-        height: 48px;
+        width: 48px; height: 48px;
         border-radius: 10px;
         display: flex;
-        align-items: center;
-        justify-content: center;
+        align-items: center; justify-content: center;
         background: var(--metric-bg);
     }
 
-    .metric-content {
-        flex: 1;
-    }
+    .metric-content { flex: 1; }
 
     .metric-label {
-        font-size: 0.8rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        color: #64748b;
+        font-size: 0.8rem; font-weight: 600;
+        text-transform: uppercase; color: #64748b;
         margin-bottom: 0.5rem;
     }
 
-    .metric-value {
-        font-size: 2.25rem;
-        font-weight: 800;
-        color: #1a202c;
-        line-height: 1;
-    }
+    .metric-value { font-size: 2.25rem; font-weight: 800; color: #1a202c; line-height: 1; }
 
     .metric-footer {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        font-size: 0.75rem;
-        color: #64748b;
-        margin-top: 0.75rem;
-        padding-top: 0.75rem;
-        border-top: 1px solid #f1f5f9;
+        display: flex; align-items: center; gap: 0.5rem;
+        font-size: 0.75rem; color: #64748b; margin-top: 0.75rem;
+        padding-top: 0.75rem; border-top: 1px solid #f1f5f9;
     }
 
     /* ACCIONES RÁPIDAS */
-    .quick-actions-section {
-        grid-column: span 12;
-    }
+    .quick-actions-section { grid-column: span 12; }
 
     .section-title {
-        font-size: 1rem;
-        font-weight: 700;
-        color: #1a202c;
-        margin-bottom: 1rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
+        font-size: 1rem; font-weight: 700; color: #1a202c;
+        margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;
     }
 
-        .section-title::before {
-            content: '';
-            width: 4px;
-            height: 20px;
-            background: var(--c-corp);
-            border-radius: 2px;
-        }
+    .section-title::before {
+        content: ''; width: 4px; height: 20px;
+        background: var(--c-corp); border-radius: 2px;
+    }
 
     .actions-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 0.75rem;
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem;
     }
 
     .action-btn {
-        background: white;
-        border: 1px solid #e2e8f0;
-        border-radius: 10px;
-        padding: 1rem;
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        transition: all 0.2s;
-        cursor: pointer;
+        background: white; border: 1px solid #e2e8f0; border-radius: 10px;
+        padding: 1rem; display: flex; align-items: center; gap: 0.75rem;
+        transition: all 0.2s; cursor: pointer;
     }
 
-        .action-btn:hover {
-            border-color: var(--action-color);
-            background: var(--action-bg);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-        }
+    .action-btn:hover {
+        border-color: var(--action-color); background: var(--action-bg);
+        transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
 
     .action-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: var(--action-bg);
-        color: var(--action-color);
-        flex-shrink: 0;
+        width: 40px; height: 40px; border-radius: 8px;
+        display: flex; align-items: center; justify-content: center;
+        background: var(--action-bg); color: var(--action-color); flex-shrink: 0;
     }
 
-    .action-text {
-        flex: 1;
-    }
-
-    .action-title {
-        font-size: 0.85rem;
-        font-weight: 600;
-        color: #1a202c;
-        margin: 0;
-    }
-
-    .action-subtitle {
-        font-size: 0.7rem;
-        color: #64748b;
-        margin: 0;
-    }
+    .action-text { flex: 1; }
+    .action-title { font-size: 0.85rem; font-weight: 600; color: #1a202c; margin: 0; }
+    .action-subtitle { font-size: 0.7rem; color: #64748b; margin: 0; }
 
     /* PANELES ADMIN */
     .admin-panels {
-        grid-column: span 12;
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-        gap: 1.25rem;
+        grid-column: span 12; display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.25rem;
     }
 
     .panel-card {
-        background: white;
-        border-radius: 12px;
-        border: 1px solid #e2e8f0;
-        overflow: hidden;
+        background: white; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden;
     }
 
     .panel-header {
-        padding: 1rem 1.25rem;
-        border-bottom: 1px solid #e2e8f0;
+        padding: 1rem 1.25rem; border-bottom: 1px solid #e2e8f0;
         background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+        display: flex; justify-content: space-between; align-items: center;
     }
 
-    .panel-title {
-        font-size: 0.95rem;
-        font-weight: 700;
-        color: #1a202c;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .panel-body {
-        padding: 1rem;
-    }
+    .panel-title { font-size: 0.95rem; font-weight: 700; color: #1a202c; display: flex; align-items: center; gap: 0.5rem; }
+    .panel-body { padding: 1rem; }
 
     .status-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0.75rem;
-        border-radius: 8px;
-        transition: background 0.2s;
-        margin-bottom: 0.5rem;
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 0.75rem; border-radius: 8px; transition: background 0.2s; margin-bottom: 0.5rem;
     }
 
-        .status-item:hover {
-            background: #f8fafc;
-        }
-
-    .status-label {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        font-size: 0.85rem;
-        color: #334155;
-        font-weight: 500;
-    }
-
-    .status-indicator {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: var(--indicator-color);
-    }
-
-    .status-value {
-        font-size: 0.9rem;
-        font-weight: 700;
-        color: #1a202c;
-    }
-
-    .status-badge {
-        padding: 0.25rem 0.625rem;
-        border-radius: 12px;
-        font-size: 0.7rem;
-        font-weight: 700;
-        background: var(--badge-bg);
-        color: var(--badge-color);
-    }
+    .status-item:hover { background: #f8fafc; }
+    .status-label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: #334155; font-weight: 500; }
+    .status-indicator { width: 8px; height: 8px; border-radius: 50%; background: var(--indicator-color); }
+    .status-value { font-size: 0.9rem; font-weight: 700; color: #1a202c; }
+    .status-badge { padding: 0.25rem 0.625rem; border-radius: 12px; font-size: 0.7rem; font-weight: 700; background: var(--badge-bg); color: var(--badge-color); }
 
     /* TIMELINE */
-    .activity-timeline {
-        max-height: 400px;
-        overflow-y: auto;
+    .activity-timeline { max-height: 400px; overflow-y: auto; }
+    .timeline-item { display: flex; gap: 1rem; padding: 0.75rem; border-radius: 8px; transition: background 0.2s; position: relative; }
+    .timeline-item:hover { background: #f8fafc; }
+    .timeline-item:not(:last-child)::after {
+        content: ''; position: absolute; left: 19px; top: 42px;
+        width: 2px; height: calc(100% - 22px); background: #e2e8f0;
     }
-
-    .timeline-item {
-        display: flex;
-        gap: 1rem;
-        padding: 0.75rem;
-        border-radius: 8px;
-        transition: background 0.2s;
-        position: relative;
-    }
-
-        .timeline-item:hover {
-            background: #f8fafc;
-        }
-
-        .timeline-item:not(:last-child)::after {
-            content: '';
-            position: absolute;
-            left: 19px;
-            top: 42px;
-            width: 2px;
-            height: calc(100% - 22px);
-            background: #e2e8f0;
-        }
 
     .timeline-marker {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: var(--marker-color);
-        margin-top: 6px;
-        flex-shrink: 0;
-        box-shadow: 0 0 0 4px rgba(var(--marker-rgb), 0.15);
+        width: 8px; height: 8px; border-radius: 50%; background: var(--marker-color);
+        margin-top: 6px; flex-shrink: 0; box-shadow: 0 0 0 4px rgba(var(--marker-rgb), 0.15);
     }
 
-    .timeline-content {
-        flex: 1;
-    }
-
-    .timeline-title {
-        font-weight: 600;
-        font-size: 0.85rem;
-        color: #1a202c;
-        margin-bottom: 0.25rem;
-    }
-
-    .timeline-desc {
-        font-size: 0.75rem;
-        color: #64748b;
-        margin-bottom: 0.25rem;
-    }
-
-    .timeline-time {
-        font-size: 0.7rem;
-        color: #94a3b8;
-    }
+    .timeline-content { flex: 1; }
+    .timeline-title { font-weight: 600; font-size: 0.85rem; color: #1a202c; margin-bottom: 0.25rem; }
+    .timeline-desc { font-size: 0.75rem; color: #64748b; margin-bottom: 0.25rem; }
+    .timeline-time { font-size: 0.7rem; color: #94a3b8; }
 
     /* ALERTAS */
     .alert-item {
-        padding: 0.875rem;
-        border-radius: 8px;
-        background: var(--alert-bg);
-        border-left: 3px solid var(--alert-color);
-        margin-bottom: 0.75rem;
-        display: flex;
-        gap: 0.75rem;
-        align-items: flex-start;
+        padding: 0.875rem; border-radius: 8px; background: var(--alert-bg);
+        border-left: 3px solid var(--alert-color); margin-bottom: 0.75rem;
+        display: flex; gap: 0.75rem; align-items: flex-start;
     }
 
-    .alert-icon {
-        color: var(--alert-color);
-        flex-shrink: 0;
-    }
+    .alert-icon { color: var(--alert-color); flex-shrink: 0; }
+    .alert-content { flex: 1; }
+    .alert-title { font-size: 0.85rem; font-weight: 600; color: #1a202c; margin-bottom: 0.25rem; }
+    .alert-text { font-size: 0.75rem; color: #64748b; }
 
-    .alert-content {
-        flex: 1;
-    }
-
-    .alert-title {
-        font-size: 0.85rem;
-        font-weight: 600;
-        color: #1a202c;
-        margin-bottom: 0.25rem;
-    }
-
-    .alert-text {
-        font-size: 0.75rem;
-        color: #64748b;
-    }
-
-    @@media (max-width: 1400px) {
-        .admin-panels {
-            grid-template-columns: 1fr;
-        }
-    }
-
+    @@media (max-width: 1400px) { .admin-panels { grid-template-columns: 1fr; } }
     @@media (max-width: 768px) {
-        .main-grid, .metrics-section, .actions-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .dash-header {
-            flex-direction: column;
-            align-items: flex-start;
-        }
+        .main-grid, .metrics-section, .actions-grid { grid-template-columns: 1fr; }
+        .dash-header { flex-direction: column; align-items: flex-start; }
     }
 </style>
 
@@ -454,7 +278,6 @@
                 @GetInitials(nombreUsuario)
             </MudAvatar>
             <div class="greeting-text">
-                @* ✅ AQUÍ SE MUESTRA EL NOMBRE COMPLETO *@
                 <h1>Hola, @nombreUsuario</h1>
                 <p>@GetGreeting() · @fechaActual</p>
             </div>
@@ -462,16 +285,16 @@
         <div class="system-status">
             <div class="status-pulse"></div>
             <span style="font-size: 0.875rem; font-weight: 600; color: #334155;">Sistema Operativo</span>
-            <span style="font-size: 0.875rem; color: #64748b;">@horaActual</span>
+            <span style="font-size: 0.875rem; color: #64748b; font-family: monospace;">@horaActual</span>
         </div>
     </div>
 
     @if (loading)
     {
         <MudGrid>
-            <MudItem xs="12"><MudSkeleton Height="140px" /></MudItem>
-            <MudItem xs="12"><MudSkeleton Height="300px" /></MudItem>
-            <MudItem xs="12"><MudSkeleton Height="400px" /></MudItem>
+            <MudItem xs="12"><MudSkeleton Height="140px" Animation="Animation.Wave" /></MudItem>
+            <MudItem xs="12"><MudSkeleton Height="300px" Animation="Animation.Wave" /></MudItem>
+            <MudItem xs="12"><MudSkeleton Height="400px" Animation="Animation.Wave" /></MudItem>
         </MudGrid>
     }
     else
@@ -626,6 +449,7 @@
 
             @* --- PANELES --- *@
             <div class="admin-panels">
+                
                 <div class="panel-card">
                     <div class="panel-header">
                         <div class="panel-title">
@@ -731,46 +555,60 @@
 
     private DashboardDTO data = new DashboardDTO();
     private bool loading = true;
-    private System.Timers.Timer _timer;
-    private Random _random = new Random();
+    private System.Threading.Timer? _timer;
 
     protected override async Task OnInitializedAsync()
     {
-        _timer = new System.Timers.Timer(1000);
-        _timer.Elapsed += (s, e) => ActualizarReloj();
-        _timer.Start();
-
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        if (uri.Query.Contains("login=exito"))
+        {
+            Snackbar.Add("¡Inicio de sesión exitoso! Bienvenido a EduSys.", Severity.Success, config => 
+{
+    config.VisibleStateDuration = 1500; // 1500 milisegundos = 1.5 segundos
+});
+            Navigation.NavigateTo(uri.GetLeftPart(UriPartial.Path), replace: true);
+        }
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
 
         if (user.Identity != null && user.Identity.IsAuthenticated)
         {
-            // ✅ LÓGICA DE NOMBRE COMPLETO
-            // Buscamos los Claims estándar de Nombre y Apellido
-            var nombre = user.FindFirst(ClaimTypes.GivenName)?.Value;
-            var apellido = user.FindFirst(ClaimTypes.Surname)?.Value;
+            // Extraer nombre de forma segura (soportando múltiples claims)
+            var nombre = user.FindFirst("Nombre")?.Value ?? user.FindFirst(ClaimTypes.GivenName)?.Value;
+            var apellido = user.FindFirst("Apellido")?.Value ?? user.FindFirst(ClaimTypes.Surname)?.Value;
 
-            if (!string.IsNullOrEmpty(nombre) || !string.IsNullOrEmpty(apellido))
+            if (!string.IsNullOrWhiteSpace(nombre) || !string.IsNullOrWhiteSpace(apellido))
             {
-                // Si existen, los concatenamos
                 nombreUsuario = $"{nombre} {apellido}".Trim();
             }
             else
             {
-                // Si no, usamos el Name (que suele ser el usuario/email)
                 nombreUsuario = user.Identity.Name ?? "Usuario";
             }
 
             rolUsuario = user.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value ?? "Admin";
         }
 
+        // Timer optimizado: En lugar de 1000ms, actualiza exactamente al cambiar el minuto
+        int millisecondsToNextMinute = (60 - DateTime.Now.Second) * 1000;
+        _timer = new System.Threading.Timer(
+            _ => ActualizarReloj(), 
+            null, 
+            millisecondsToNextMinute, // Espera hasta el siguiente minuto exacto
+            60000 // Luego actualiza cada 60 segundos
+        );
+
         await RecargarDatos();
     }
 
     private void ActualizarReloj()
     {
-        horaActual = DateTime.Now.ToString("HH:mm");
-        InvokeAsync(StateHasChanged);
+        var nuevaHora = DateTime.Now.ToString("HH:mm");
+        if (horaActual != nuevaHora) // Solo redibuja si la hora realmente cambió
+        {
+            horaActual = nuevaHora;
+            InvokeAsync(StateHasChanged);
+        }
     }
 
     private async Task RecargarDatos()
@@ -780,9 +618,9 @@
             loading = true;
             data = await DashboardService.GetResumenAsync();
         }
-        catch
+        catch (Exception)
         {
-            Snackbar.Add("Error de conexión", Severity.Error);
+            Snackbar.Add("No se pudo cargar la información del Dashboard.", Severity.Error);
         }
         finally
         {
@@ -793,15 +631,16 @@
     private string GetTimeAgo(DateTime fecha)
     {
         var span = DateTime.Now - fecha;
-        if (span.TotalMinutes < 60) return $"{span.Minutes}m";
-        if (span.TotalHours < 24) return $"{span.Hours}h";
-        return fecha.ToString("dd/MM");
+        if (span.TotalMinutes < 60) return $"Hace {Math.Max(1, span.Minutes)} min";
+        if (span.TotalHours < 24) return $"Hace {span.Hours} hs";
+        if (span.TotalDays < 7) return $"Hace {span.Days} días";
+        return fecha.ToString("dd/MM/yy");
     }
 
     private string GetInitials(string name)
     {
-        if (string.IsNullOrEmpty(name)) return "U";
-        return name.Substring(0, 1).ToUpper();
+        if (string.IsNullOrWhiteSpace(name)) return "U";
+        return name.Trim().Substring(0, 1).ToUpper();
     }
 
     private string GetGreeting()
@@ -811,8 +650,6 @@
         if (hour < 19) return "Buenas tardes";
         return "Buenas noches";
     }
-
-    private int GetRandomNumber(int min, int max) => _random.Next(min, max + 1);
 
     public void Dispose()
     {

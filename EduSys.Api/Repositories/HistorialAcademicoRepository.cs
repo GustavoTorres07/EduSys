@@ -21,7 +21,9 @@ namespace EduSys.Api.Repositories
         // 1. VISTA AVANCE (Lo que ve el alumno como "Analítico")
         public async Task<HistoriaAcademicaDTO> GetAvanceCarreraAsync(int idAlumno)
         {
+            // 🚀 OPTIMIZADO: AsNoTracking
             var alumno = await _context.Alumnos
+                .AsNoTracking()
                 .Include(a => a.IdUsuarioNavigation)
                 .Include(a => a.IdPlanActualNavigation).ThenInclude(p => p.IdCarreraNavigation)
                 .FirstOrDefaultAsync(a => a.Id == idAlumno);
@@ -30,19 +32,23 @@ namespace EduSys.Api.Repositories
 
             int idPlan = alumno.IdPlanActual.Value;
 
-            // Traemos TODAS las materias del plan
+            // 🚀 OPTIMIZADO: AsNoTracking
             var planMaterias = await _context.PlanMateria
+                .AsNoTracking()
                 .Include(pm => pm.IdMateriaNavigation)
                 .Where(pm => pm.IdPlan == idPlan)
                 .ToListAsync();
 
-            // Traemos solo lo APROBADO o REGULARIZADO (Estado actual)
+            // 🚀 OPTIMIZADO: AsNoTracking
             var cursadas = await _context.InscripcionCursada
+                .AsNoTracking()
                 .Include(i => i.IdComisionNavigation)
                 .Where(i => i.IdAlumno == idAlumno && i.Estado != "Baja")
                 .ToListAsync();
 
+            // 🚀 OPTIMIZADO: AsNoTracking
             var finales = await _context.InscripcionFinals
+                .AsNoTracking()
                 .Include(f => f.IdMesaFinalNavigation)
                 .Where(f => f.IdAlumno == idAlumno && f.Nota >= 4) // Solo finales aprobados
                 .ToListAsync();
@@ -147,27 +153,26 @@ namespace EduSys.Api.Repositories
         }
 
         // 2. VISTA CRONOLÓGICA (Timeline completo)
-        // ✅ CORREGIDO: Usamos PeriodoHistorialDTO (El nombre correcto)
         public async Task<List<PeriodoHistorialDTO>> GetHistorialCronologicoAsync(int idAlumno)
         {
-            // 1. Traer TODA la info relacionada a las cursadas del alumno
+            // 🚀 OPTIMIZADO: AsNoTracking. Lectura masiva mucho más rápida.
             var cursadas = await _context.InscripcionCursada
+                .AsNoTracking()
                 .Include(i => i.IdComisionNavigation)
-                    .ThenInclude(c => c.IdPeriodoNavigation) // Para agrupar por periodo
+                    .ThenInclude(c => c.IdPeriodoNavigation)
                 .Include(i => i.IdComisionNavigation)
                     .ThenInclude(c => c.IdPlanMateriaNavigation)
-                    .ThenInclude(pm => pm.IdMateriaNavigation) // Para el nombre de la materia
-                .Include(i => i.Nota) // ✅ CORREGIDO: Singular
+                    .ThenInclude(pm => pm.IdMateriaNavigation)
+                .Include(i => i.Nota)
                     .ThenInclude(n => n.IdEvaluacionNavigation)
-                .Include(i => i.Asistencia) // ✅ CORREGIDO: Singular
+                .Include(i => i.Asistencia)
                 .Where(i => i.IdAlumno == idAlumno && i.Estado != "Baja")
                 .ToListAsync();
 
-            // 2. Agrupar y Proyectar
+            // 2. Agrupar y Proyectar en memoria
             var historial = cursadas
                 .GroupBy(c => c.IdComisionNavigation.IdPeriodoNavigation)
                 .OrderByDescending(g => g.Key.FechaInicio)
-                // ✅ CORREGIDO: new PeriodoHistorialDTO
                 .Select(grupoPeriodo => new PeriodoHistorialDTO
                 {
                     IdPeriodo = grupoPeriodo.Key.Id,
@@ -176,12 +181,12 @@ namespace EduSys.Api.Repositories
                     Materias = grupoPeriodo.Select(m =>
                     {
                         // Cálculo de Asistencia
-                        int totalClases = m.Asistencia.Count; // ✅ Singular
-                        int presentes = m.Asistencia.Count(a => a.EstaPresente); // ✅ Singular
+                        int totalClases = m.Asistencia.Count;
+                        int presentes = m.Asistencia.Count(a => a.EstaPresente);
                         int porcentaje = totalClases > 0 ? (int)((double)presentes / totalClases * 100) : 0;
 
                         // Formateo de Notas Parciales
-                        var listaNotas = m.Nota // ✅ Singular
+                        var listaNotas = m.Nota
                             .OrderBy(n => n.IdEvaluacionNavigation.Fecha)
                             .Select(n => $"{n.IdEvaluacionNavigation.Nombre}: {n.Valor:0.#}")
                             .ToList();

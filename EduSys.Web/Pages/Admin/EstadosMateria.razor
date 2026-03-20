@@ -10,82 +10,198 @@
 
 @attribute [Authorize(Roles = "Administrador, Secretaria Academica")]
 
+<style>
+    /* Estilos de tabla consistentes (Padrón Alumnos/Docentes) */
+    .table-header-custom .mud-table-head .mud-table-cell {
+        color: #456990 !important;
+        font-weight: 800 !important;
+        background-color: #f8fafc !important;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.5px;
+    }
+
+    .row-hover-effect:hover {
+        background-color: #f1f5f9 !important;
+    }
+
+    /* Buscador consistente */
+    .custom-filter-input .mud-input-outlined-border {
+        border-color: #cbd5e1 !important;
+        transition: border-color 0.2s;
+    }
+    
+    .custom-filter-input:hover .mud-input-outlined-border {
+        border-color: #456990 !important;
+    }
+
+    .custom-filter-input.mud-input-control.mud-input-focused .mud-input-outlined-border {
+        border-color: #456990 !important;
+        border-width: 2px !important;
+    }
+
+    /* ✅ FIX VISIBILIDAD: texto en los inputs (Buscador) */
+    .custom-filter-input input {
+        color: #1e293b !important;
+        font-weight: 600 !important;
+        -webkit-text-fill-color: #1e293b !important;
+    }
+
+    .custom-filter-input .mud-input-adornment .mud-icon-root {
+        color: #456990 !important;
+        opacity: 1 !important;
+    }
+
+    /* ✅ FIX VISIBILIDAD: Paginador (Filas por página y números) */
+    .mud-table-pager {
+        color: #1e293b !important;
+    }
+    
+        .mud-table-pager .mud-input-slot,
+        .mud-table-pager .mud-select-input {
+            color: #1e293b !important;
+            -webkit-text-fill-color: #1e293b !important;
+            font-weight: 600 !important;
+        }
+    
+        .mud-table-pager .mud-icon-root {
+            color: #456990 !important;
+        }
+</style>
+
+@* OVERLAY PARA PROTEGER OPERACIONES DE CRUD *@
+<MudOverlay Visible="_procesandoAccion" DarkBackground="true" Absolute="false" ZIndex="9999">
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+</MudOverlay>
+
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-6 mb-10">
-    <div class="d-flex align-center justify-space-between mb-6">
+    
+    @* --- ENCABEZADO --- *@
+    <div class="d-flex align-center justify-space-between mb-6 flex-wrap gap-4">
         <div>
-            <MudText Typo="Typo.h5" Style="font-weight: 800; color: #1e3a58;">Estados de Materia</MudText>
-            <MudText Typo="Typo.body2" Class="mud-text-secondary">Gestión de condiciones académicas (Regular, Promocionado, Libre, etc.)</MudText>
+            <MudText Typo="Typo.h4" Style="font-weight: 800; color: #456990; letter-spacing: -0.5px;">Estados de Materia</MudText>
+            <MudText Typo="Typo.subtitle1" Class="mud-text-secondary">Gestión de condiciones académicas (Regular, Promocionado, Libre, etc.)</MudText>
         </div>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="AbrirDialogoCrear">
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   Size="Size.Large"
+                   Style="font-weight: 700; border-radius: 8px;"
+                   OnClick="AbrirDialogoCrear">
             Nuevo Estado
         </MudButton>
     </div>
 
-    <MudTable Items="@listaEstados" Dense="true" Hover="true" Bordered="true" Striped="true"
-              Filter="new Func<EstadoMateriaDTO, bool>(FilterFunc1)"
-              Loading="@cargando" LoadingProgressColor="Color.Info"
-              Elevation="1" Class="rounded-lg">
+    @* --- TABLA DE DATOS --- *@
+    <MudTable Items="@listaEstados"
+              Dense="true"
+              Hover="true"
+              Bordered="false"
+              Striped="false"
+              Filter="new Func<EstadoMateriaDTO, bool>(FilterFunc)"
+              Loading="@cargando"
+              LoadingProgressColor="Color.Primary"
+              Elevation="2"
+              Class="rounded-lg table-header-custom overflow-hidden"
+              RowClass="row-hover-effect">
 
         <ToolBarContent>
-            <MudTextField @bind-Value="searchString" Placeholder="Buscar estado..." Adornment="Adornment.Start"
-                          AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0" />
+            <MudSpacer />
+            <MudTextField @bind-Value="searchString"
+                          Placeholder="Buscar estado..."
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          AdornmentColor="Color.Primary"
+                          Class="custom-filter-input mt-0"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Style="min-width: 300px; background-color: white; border-radius: 8px;"
+                          Immediate="true"
+                          DebounceInterval="300"
+                          Clearable="true" />
         </ToolBarContent>
 
         <HeaderContent>
-            <MudTh Style="font-weight: bold; background-color: #f8f9fa;">ID</MudTh>
-            <MudTh Style="font-weight: bold; background-color: #f8f9fa;">Nombre</MudTh>
-            <MudTh Style="font-weight: bold; background-color: #f8f9fa; text-align: center;">Aprueba</MudTh>
-            <MudTh Style="font-weight: bold; background-color: #f8f9fa; text-align: center;">Habilita Final</MudTh>
-            <MudTh Style="font-weight: bold; background-color: #f8f9fa; text-align: center;">Estado</MudTh>
-            <MudTh Style="font-weight: bold; background-color: #f8f9fa; text-align: center;">Acciones</MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<EstadoMateriaDTO, object>(x => x.Id)">ID</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<EstadoMateriaDTO, object>(x => x.Nombre)">Nombre</MudTableSortLabel></MudTh>
+            <MudTh Style="text-align: center;">Materia Aprobada</MudTh>
+            <MudTh Style="text-align: center;">Cursada Aprobada (habilita rendir examen final)</MudTh>
+            <MudTh Style="text-align: center;">Estado</MudTh>
+            <MudTh Style="text-align: center;">Acciones</MudTh>
         </HeaderContent>
 
         <RowTemplate>
-            <MudTd DataLabel="ID">@context.Id</MudTd>
-            <MudTd DataLabel="Nombre" Style="font-weight: 600;">@context.Nombre.ToUpper()</MudTd>
+            <MudTd DataLabel="ID">
+                <MudText Typo="Typo.body2" Style="color: #64748b;">@context.Id</MudText>
+            </MudTd>
+            <MudTd DataLabel="Nombre">
+                <MudText Typo="Typo.body2" Style="font-weight: 700; color: #1e293b;">@context.Nombre.ToUpper()</MudText>
+            </MudTd>
 
-            <MudTd DataLabel="Aprueba" Style="text-align: center;">
+            <MudTd DataLabel="Materia Aprobada" Style="text-align: center;">
                 @if (context.EsAprobatoria)
                 {
-                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" />
+                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" />
                 }
                 else
                 {
-                    <MudIcon Icon="@Icons.Material.Filled.Cancel" Color="Color.Default" />
+                    <MudIcon Icon="@Icons.Material.Filled.Cancel" Style="color: #cbd5e1;" Size="Size.Small" />
                 }
             </MudTd>
 
-            <MudTd DataLabel="Habilita Final" Style="text-align: center;">
+            <MudTd DataLabel="Cursada Aprobada" Style="text-align: center;">
                 @if (context.HabilitaFinal)
                 {
-                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Info" />
+                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Info" Size="Size.Small" />
                 }
                 else
                 {
-                    <MudIcon Icon="@Icons.Material.Filled.Cancel" Color="Color.Default" />
+                    <MudIcon Icon="@Icons.Material.Filled.Cancel" Style="color: #cbd5e1;" Size="Size.Small" />
                 }
             </MudTd>
 
             <MudTd DataLabel="Estado" Style="text-align: center;">
                 @if (context.Activo)
                 {
-                    <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Filled">Activo</MudChip>
+                    <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Outlined" Style="font-weight: 600;">ACTIVO</MudChip>
                 }
                 else
                 {
-                    <MudChip T="string" Color="Color.Error" Size="Size.Small" Variant="Variant.Outlined">Inactivo</MudChip>
+                    <MudChip T="string" Color="Color.Error" Size="Size.Small" Variant="Variant.Outlined" Style="font-weight: 600;">INACTIVO</MudChip>
                 }
             </MudTd>
 
             <MudTd DataLabel="Acciones" Style="text-align: center;">
-                <MudTooltip Text="Editar">
-                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" OnClick="@(() => AbrirDialogoEditar(context))" />
+                <MudTooltip Text="Editar Configuración">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                   Color="Color.Primary"
+                                   Size="Size.Small"
+                                   Disabled="_procesandoAccion"
+                                   OnClick="@(() => AbrirDialogoEditar(context))" />
                 </MudTooltip>
-                <MudTooltip Text="Eliminar">
-                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => ConfirmarEliminacion(context))" />
+                <MudTooltip Text="Dar de Baja">
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                   Color="Color.Error"
+                                   Size="Size.Small"
+                                   Disabled="_procesandoAccion"
+                                   OnClick="@(() => ConfirmarEliminacion(context))" />
                 </MudTooltip>
             </MudTd>
         </RowTemplate>
+        
+        <LoadingContent>
+            <MudText Typo="Typo.body1" Class="pa-4 text-center" Style="color: #64748b;">
+                Cargando configuración de estados...
+            </MudText>
+        </LoadingContent>
+        
+        <NoRecordsContent>
+            <div class="d-flex flex-column align-center justify-center pa-8">
+                <MudIcon Icon="@Icons.Material.Filled.RuleFolder" Style="font-size: 4rem; color: #cbd5e1;" Class="mb-3" />
+                <MudText Typo="Typo.h6" Style="font-weight: 700; color: #475569;">Sin resultados</MudText>
+            </div>
+        </NoRecordsContent>
+
         <PagerContent>
             <MudTablePager RowsPerPageString="Filas por página:" InfoFormat="{first_item}-{last_item} de {all_items}" />
         </PagerContent>
@@ -95,6 +211,7 @@
 @code {
     private List<EstadoMateriaDTO> listaEstados = new();
     private bool cargando = true;
+    private bool _procesandoAccion = false;
     private string searchString = "";
 
     protected override async Task OnInitializedAsync()
@@ -105,28 +222,42 @@
     private async Task CargarDatos()
     {
         cargando = true;
-        listaEstados = await EstadoMateriaService.GetEstadosAsync();
-        cargando = false;
+        try
+        {
+            listaEstados = await EstadoMateriaService.GetEstadosAsync();
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("No se pudieron cargar los estados de materia.", Severity.Error);
+        }
+        finally
+        {
+            cargando = false;
+        }
     }
 
-    private bool FilterFunc1(EstadoMateriaDTO element) => FilterFunc(element, searchString);
-
-    private bool FilterFunc(EstadoMateriaDTO element, string searchString)
+    // Filtro simplificado y seguro
+    private bool FilterFunc(EstadoMateriaDTO element)
     {
         if (string.IsNullOrWhiteSpace(searchString)) return true;
-        if (element.Nombre.Contains(searchString, StringComparison.OrdinalIgnoreCase)) return true;
-        return false;
+        return element.Nombre?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false;
     }
 
     private async Task AbrirDialogoCrear()
     {
-        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true, BackdropClick = false };
         var dialog = await DialogService.ShowAsync<CrearEditarEstadoMateriaDialog>("Crear Estado", options);
         var result = await dialog.Result;
 
         if (!result.Canceled && result.Data is EstadoMateriaDTO nuevoEstado)
         {
+            _procesandoAccion = true;
+            StateHasChanged();
+
             var exito = await EstadoMateriaService.CrearEstadoAsync(nuevoEstado);
+            
+            _procesandoAccion = false;
+
             if (exito)
             {
                 Snackbar.Add("Estado creado correctamente", Severity.Success);
@@ -141,7 +272,7 @@
 
     private async Task AbrirDialogoEditar(EstadoMateriaDTO estado)
     {
-        // Clonamos el objeto
+        // Clonamos el objeto para evitar modificar la tabla antes de guardar
         var estadoClone = new EstadoMateriaDTO
         {
             Id = estado.Id,
@@ -151,17 +282,21 @@
             Activo = estado.Activo
         };
 
-        // CORRECCIÓN: Usamos la sintaxis segura de diccionario
         var parameters = new DialogParameters { ["Estado"] = estadoClone };
-
-        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true, BackdropClick = false };
 
         var dialog = await DialogService.ShowAsync<CrearEditarEstadoMateriaDialog>("Editar Estado", parameters, options);
         var result = await dialog.Result;
 
         if (!result.Canceled && result.Data is EstadoMateriaDTO estadoEditado)
         {
+            _procesandoAccion = true;
+            StateHasChanged();
+
             var exito = await EstadoMateriaService.EditarEstadoAsync(estadoEditado.Id, estadoEditado);
+            
+            _procesandoAccion = false;
+
             if (exito)
             {
                 Snackbar.Add("Estado actualizado correctamente", Severity.Success);
@@ -176,10 +311,7 @@
 
     private async Task ConfirmarEliminacion(EstadoMateriaDTO estado)
     {
-        // CORRECCIÓN: Sintaxis segura de diccionario
         var parameters = new DialogParameters { ["NombreEntidad"] = estado.Nombre };
-
-        // CORRECCIÓN: Se reemplaza DisableBackdropClick por BackdropClick = false
         var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true, BackdropClick = false };
 
         var dialog = await DialogService.ShowAsync<ConfirmarBajaDialog>("Confirmar Baja", parameters, options);
@@ -187,15 +319,21 @@
 
         if (!result.Canceled)
         {
+            _procesandoAccion = true;
+            StateHasChanged();
+
             var exito = await EstadoMateriaService.EliminarEstadoAsync(estado.Id);
+            
+            _procesandoAccion = false;
+
             if (exito)
             {
-                Snackbar.Add("Estado dado de baja", Severity.Success);
+                Snackbar.Add("El estado fue dado de baja.", Severity.Success);
                 await CargarDatos();
             }
             else
             {
-                Snackbar.Add("Error al dar de baja", Severity.Error);
+                Snackbar.Add("No se pudo dar de baja el estado. Es posible que esté en uso.", Severity.Error);
             }
         }
     }

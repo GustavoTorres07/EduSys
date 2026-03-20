@@ -1,0 +1,346 @@
+﻿@page "/docente/mi-perfil"
+@using EduSys.Shared.DTOs
+@using EduSys.Web.Services.Interfaces
+@using Microsoft.AspNetCore.Authorization
+
+@inject IDocenteService DocenteService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+@attribute [Authorize(Roles = "Docente")]
+
+<style>
+    /* --- SISTEMA DE DISEÑO EDUSYS --- */
+    :root {
+        --edusys-primary: #1e3a58;
+        --edusys-primary-light: #456990;
+        --edusys-border: #cbd5e1;
+        --edusys-bg: #f8fafc;
+        --edusys-text-main: #1e293b;
+        --edusys-text-muted: #64748b;
+    }
+
+    /* --- ESTILOS DEL PERFIL --- */
+    .profile-card {
+        background: white;
+        border-radius: 16px;
+        border: 1px solid var(--edusys-border);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        overflow: hidden;
+    }
+
+    .profile-banner {
+        height: 160px;
+        background: linear-gradient(135deg, var(--edusys-primary) 0%, var(--edusys-primary-light) 100%);
+    }
+
+    /* ✅ FIX: Contenedor con z-index para que la foto y el texto SIEMPRE estén por encima del banner */
+    .profile-header-content {
+        position: relative;
+        z-index: 2; 
+        padding: 0 2.5rem 2rem 2.5rem;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .profile-avatar {
+        width: 130px;
+        height: 130px;
+        border: 6px solid white;
+        background-color: white;
+        box-shadow: 0 4px 12px rgba(30, 58, 88, 0.15);
+        border-radius: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 2.8rem;
+        font-weight: 800;
+        color: var(--edusys-primary);
+        margin-top: -65px; /* Sube exactamente la mitad de la foto hacia el banner */
+        margin-bottom: 1rem;
+    }
+
+    .profile-card-header {
+        background-color: var(--edusys-bg);
+        border-bottom: 1px solid var(--edusys-border);
+        padding: 1rem 1.5rem;
+        font-weight: 800;
+        color: var(--edusys-primary);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-size: 0.9rem;
+    }
+
+    .profile-info-row {
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 1.25rem;
+    }
+
+    .profile-info-label {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--edusys-text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.25rem;
+    }
+
+    .profile-info-value {
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: var(--edusys-text-main);
+    }
+
+    /* --- FIX DE VISIBILIDAD PARA INPUTS --- */
+    .custom-input-profile .mud-input-outlined-border { border-color: var(--edusys-border) !important; transition: border-color 0.2s; }
+    .custom-input-profile:hover .mud-input-outlined-border { border-color: var(--edusys-primary) !important; }
+    .custom-input-profile.mud-input-control.mud-input-focused .mud-input-outlined-border { border-color: var(--edusys-primary) !important; border-width: 2px !important; }
+    .custom-input-profile .mud-input-label { color: var(--edusys-primary) !important; background-color: white !important; padding: 0 5px; font-weight: 600; }
+    
+    .custom-input-profile input {
+        color: var(--edusys-text-main) !important;
+        font-weight: 600 !important;
+        -webkit-text-fill-color: var(--edusys-text-main) !important;
+    }
+    
+    .custom-input-profile .mud-icon-root {
+        color: var(--edusys-primary) !important;
+        opacity: 1 !important;
+    }
+
+    .custom-input-profile input:-webkit-autofill,
+    .custom-input-profile input:-webkit-autofill:hover,
+    .custom-input-profile input:-webkit-autofill:focus {
+        -webkit-text-fill-color: var(--edusys-text-main) !important;
+        -webkit-box-shadow: 0 0 0px 1000px white inset !important;
+        transition: background-color 5000s ease-in-out 0s;
+    }
+</style>
+
+@* OVERLAY DE GUARDADO *@
+<MudOverlay Visible="_procesando" DarkBackground="true" Absolute="false" ZIndex="9999">
+    <MudStack AlignItems="AlignItems.Center">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+        <MudText Typo="Typo.h6" Style="color: white; font-weight: 600;">Guardando cambios...</MudText>
+    </MudStack>
+</MudOverlay>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-6 mb-12">
+
+    @if (cargando)
+    {
+        <MudPaper Elevation="0" Class="rounded-lg overflow-hidden border-solid border-2 mud-border-lines-default">
+            <MudSkeleton Width="100%" Height="160px" Animation="Animation.Wave" />
+            <div class="px-10 pb-6" style="margin-top: -65px;">
+                <MudSkeleton SkeletonType="SkeletonType.Circle" Width="130px" Height="130px" Animation="Animation.Wave" />
+                <MudSkeleton Width="40%" Height="40px" Animation="Animation.Wave" Class="mt-4" />
+                <MudSkeleton Width="20%" Height="20px" Animation="Animation.Wave" Class="mt-2" />
+            </div>
+        </MudPaper>
+    }
+    else if (perfil != null)
+    {
+        <div class="profile-card mb-6 animate__animated animate__fadeIn">
+            @* --- BANNER Y CABECERA --- *@
+            <div class="profile-banner"></div>
+            
+            <div class="profile-header-content">
+                <div class="profile-avatar">
+                    @perfil.Nombre.Substring(0, 1).ToUpper()@perfil.Apellido.Substring(0, 1).ToUpper()
+                </div>
+                <div>
+                    <MudText Typo="Typo.h3" Style="font-weight: 900; color: var(--edusys-text-main); letter-spacing: -1px; line-height: 1.1;">
+                        @perfil.Nombre @perfil.Apellido
+                    </MudText>
+                    <MudText Typo="Typo.h6" Style="color: var(--edusys-primary); font-weight: 700; margin-top: 4px;">
+                        @perfil.TituloAcademico
+                    </MudText>
+                </div>
+            </div>
+
+            <MudGrid Class="px-8 pb-8 pt-2" Spacing="4">
+                
+                @* --- COLUMNA IZQUIERDA: DATOS INSTITUCIONALES (Solo lectura) --- *@
+                <MudItem xs="12" md="6">
+                    <div class="profile-card h-100" style="border: 2px solid #f1f5f9; box-shadow: none;">
+                        <div class="profile-card-header">
+                            <MudIcon Icon="@Icons.Material.Filled.Badge" Size="Size.Small" />
+                            Información Institucional
+                        </div>
+                        <div class="pa-6">
+                            <div class="profile-info-row">
+                                <span class="profile-info-label">Legajo Docente</span>
+                                <span class="profile-info-value" style="color: var(--edusys-primary); font-size: 1.25rem;">@perfil.Legajo</span>
+                            </div>
+                            <div class="profile-info-row">
+                                <span class="profile-info-label">Documento Nacional de Identidad (DNI)</span>
+                                <span class="profile-info-value">@perfil.Dni</span>
+                            </div>
+                            <div class="profile-info-row">
+                                <span class="profile-info-label">Estado en el Sistema</span>
+                                <div>
+                                    @if (perfil.Activo)
+                                    {
+                                        <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Filled" Style="font-weight: 800;">ACTIVO</MudChip>
+                                    }
+                                    else
+                                    {
+                                        <MudChip T="string" Color="Color.Error" Size="Size.Small" Variant="Variant.Filled" Style="font-weight: 800;">INACTIVO</MudChip>
+                                    }
+                                </div>
+                            </div>
+                            
+                            <MudAlert Severity="Severity.Info" Class="mt-6 rounded-lg" Dense="true" Style="font-size: 0.8rem; font-weight: 600; background-color: #f0f9ff; color: #0369a1;">
+                                Para modificar tus datos institucionales, títulos o DNI, contacta a Secretaría Académica.
+                            </MudAlert>
+                        </div>
+                    </div>
+                </MudItem>
+
+                @* --- COLUMNA DERECHA: DATOS DE CONTACTO (Editables) --- *@
+                <MudItem xs="12" md="6">
+                    <div class="profile-card h-100" style="border: 2px solid #e0f2fe; box-shadow: none;">
+                        <div class="profile-card-header" style="background-color: #f0f9ff; border-bottom: 2px solid #bae6fd;">
+                            <MudIcon Icon="@Icons.Material.Filled.ContactMail" Size="Size.Small" />
+                            Datos de Contacto
+                        </div>
+                        <div class="pa-6">
+                            <MudForm @ref="_form">
+                                <MudTextField @bind-Value="perfilEdit.Email"
+                                              Label="Correo Electrónico (Institucional o Personal)"
+                                              Variant="Variant.Outlined"
+                                              Margin="Margin.Dense"
+                                              Class="custom-input-profile mb-4 bg-white"
+                                              Adornment="Adornment.Start"
+                                              AdornmentIcon="@Icons.Material.Filled.Email"
+                                              Required="true"
+                                              RequiredError="El correo electrónico es obligatorio"
+                                              Validation="@(new EmailAddressAttribute() {ErrorMessage = "El formato del correo es inválido"})" />
+
+                                <MudTextField @bind-Value="perfilEdit.Telefono"
+                                              Label="Teléfono de Contacto"
+                                              Variant="Variant.Outlined"
+                                              Margin="Margin.Dense"
+                                              Class="custom-input-profile mb-6 bg-white"
+                                              Adornment="Adornment.Start"
+                                              AdornmentIcon="@Icons.Material.Filled.Phone"
+                                              Placeholder="Ej: +54 9 11 1234-5678" />
+
+                                <div class="d-flex justify-end mt-2">
+                                    <MudButton Variant="Variant.Filled"
+                                               Color="Color.Primary"
+                                               StartIcon="@Icons.Material.Filled.Save"
+                                               Size="Size.Large"
+                                               Style="font-weight: 700; border-radius: 8px; padding: 8px 24px;"
+                                               OnClick="GuardarCambios">
+                                        Actualizar Contacto
+                                    </MudButton>
+                                </div>
+                            </MudForm>
+                        </div>
+                    </div>
+                </MudItem>
+            </MudGrid>
+        </div>
+    }
+    else
+    {
+        <div class="d-flex flex-column align-center justify-center py-16" style="background: white; border-radius: 12px; border: 2px dashed #cbd5e1;">
+            <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Style="font-size: 5rem; color: #94a3b8;" Class="mb-4" />
+            <MudText Typo="Typo.h5" Style="color: #475569; font-weight: 800;">No se pudo cargar el perfil</MudText>
+            <MudText Typo="Typo.body1" Style="color: #64748b;" Class="mb-6">Ocurrió un error al intentar obtener tus datos desde el servidor.</MudText>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="font-weight-bold rounded-lg px-6" OnClick="CargarPerfil">Reintentar</MudButton>
+        </div>
+    }
+</MudContainer>
+
+@using System.ComponentModel.DataAnnotations
+
+@code {
+    private bool cargando = true;
+    private bool _procesando = false;
+    private MudForm _form = null!;
+
+    private DocenteRequestDTO? perfil;
+    private DocenteRequestDTO perfilEdit = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarPerfil();
+    }
+
+    private async Task CargarPerfil()
+    {
+        cargando = true;
+        StateHasChanged();
+
+        try
+        {
+            perfil = await DocenteService.GetMiPerfilAsync(); 
+
+            if (perfil != null)
+            {
+                perfilEdit = new DocenteRequestDTO
+                {
+                    IdDocente = perfil.IdDocente,
+                    Nombre = perfil.Nombre,
+                    Apellido = perfil.Apellido,
+                    Dni = perfil.Dni,
+                    Legajo = perfil.Legajo,
+                    TituloAcademico = perfil.TituloAcademico,
+                    Email = perfil.Email,
+                    Telefono = perfil.Telefono,
+                    Activo = perfil.Activo
+                };
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Error al cargar la información de tu perfil.", Severity.Error);
+        }
+        finally
+        {
+            cargando = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task GuardarCambios()
+    {
+        await _form.Validate();
+        if (!_form.IsValid) return;
+
+        _procesando = true;
+        StateHasChanged();
+
+        try
+        {
+            perfil!.Email = perfilEdit.Email;
+            perfil!.Telefono = perfilEdit.Telefono;
+
+            var exito = await DocenteService.EditarDocenteAsync(perfil);
+
+            if (exito)
+            {
+                Snackbar.Add("Tus datos de contacto han sido actualizados.", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("No se pudieron guardar los cambios.", Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Ocurrió un error de red al intentar guardar.", Severity.Error);
+        }
+        finally
+        {
+            _procesando = false;
+            StateHasChanged();
+        }
+    }
+}

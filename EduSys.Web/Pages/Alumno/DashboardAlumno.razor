@@ -9,13 +9,13 @@
 
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager NavigationManager
-@inject IAlumnoPortalService AlumnoPortalService // ✅ USO CORRECTO DEL SERVICIO DEL PORTAL
+@inject IAlumnoPortalService AlumnoPortalService
 @inject IReportesService ReportesService
 @inject IPeriodoService PeriodoService
-@inject IAlumnoService AlumnoService // Solo para obtener datos de perfil (Nombre/Carrera)
+@inject IAlumnoService AlumnoService
+@inject ISnackbar Snackbar
 
 <style>
-    /* ... Tus estilos CSS (MANTENLOS, ESTÁN MUY BIEN) ... */
     :root {
         --dash-primary: #1e3a58;
         --dash-secondary: #EF767A;
@@ -23,166 +23,169 @@
         --card-bg: #ffffff;
     }
 
+    /* --- TARJETA DE BIENVENIDA --- */
     .welcome-card {
-        background: linear-gradient(135deg, var(--dash-primary) 0%, #2c537a 100%);
+        background: linear-gradient(135deg, var(--dash-primary) 0%, #2c5282 100%);
         color: white;
-        border-radius: 12px;
-        padding: 2rem;
+        border-radius: 16px;
+        padding: 2.5rem 2rem;
         position: relative;
         overflow: hidden;
-        box-shadow: 0 4px 15px rgba(30, 58, 88, 0.25);
+        box-shadow: 0 10px 25px rgba(30, 58, 88, 0.2);
     }
 
-        .welcome-card::before {
+        .welcome-card::after {
             content: '';
             position: absolute;
-            right: -30px;
-            top: -30px;
-            width: 180px;
-            height: 180px;
-            background: rgba(255,255,255,0.08);
+            top: -50px;
+            right: -50px;
+            width: 200px;
+            height: 200px;
+            background: rgba(255,255,255,0.05);
             border-radius: 50%;
         }
 
+    /* --- TARJETAS DE INFORMACIÓN --- */
     .info-card {
-        background: var(--card-bg);
-        border-radius: 10px;
-        padding: 1.25rem;
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
         border: 1px solid #e2e8f0;
         height: 100%;
-    }
-
-    .card-header {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        margin-bottom: 1rem;
-        padding-bottom: 0.75rem;
-        border-bottom: 1px solid #f1f5f9;
-    }
-
-    .icon-box {
-        width: 36px;
-        height: 36px;
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-    }
-
-    .class-item {
-        background-color: #F8FAFC;
-        border-left: 4px solid var(--dash-primary);
-        border-radius: 6px;
-        padding: 12px;
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
         box-shadow: 0 2px 4px rgba(0,0,0,0.02);
     }
 
-    .class-time {
-        font-weight: 700;
-        color: var(--dash-primary);
-        font-size: 0.85rem;
-        background-color: #E0F2F1;
-        padding: 2px 6px;
-        border-radius: 4px;
-        display: inline-block;
+    .card-header-dash {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.25rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #f1f5f9;
     }
 
+    /* --- ITEMS DE CLASE --- */
+    .class-item {
+        background-color: #f8fafc;
+        border-left: 5px solid var(--dash-primary);
+        border-radius: 8px;
+        padding: 1rem;
+        height: 100%;
+        transition: transform 0.2s;
+        border: 1px solid #e2e8f0;
+        border-left: 5px solid var(--dash-primary);
+    }
+
+        .class-item:hover {
+            transform: scale(1.02);
+        }
+
+    .class-time {
+        font-weight: 800;
+        color: #0d9488;
+        font-size: 0.75rem;
+        background-color: #f0fdfa;
+        padding: 4px 10px;
+        border-radius: 6px;
+        border: 1px solid #ccfbf1;
+    }
+
+    /* --- BOTONES RÁPIDOS --- */
     .quick-btn {
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
         background: white;
-        border: 1px solid #e2e8f0;
-        border-radius: 10px;
-        padding: 1.2rem;
+        border: 2px solid #f1f5f9;
+        border-radius: 16px;
+        padding: 1.5rem;
         cursor: pointer;
-        transition: all 0.2s;
-        gap: 0.5rem;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        gap: 0.75rem;
         height: 100%;
     }
 
         .quick-btn:hover {
             background-color: #f0f9ff;
             border-color: var(--dash-primary);
-            color: var(--dash-primary);
-            transform: translateY(-2px);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
         }
 
     .quick-icon {
-        font-size: 1.8rem;
+        font-size: 2.2rem;
         color: var(--dash-primary);
     }
 </style>
 
-<div class="dashboard-container">
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-6 mb-10">
     <MudGrid>
-        @* --- 1. BIENVENIDA --- *@
+        @* --- BIENVENIDA --- *@
         <MudItem xs="12">
             <div class="welcome-card animate__animated animate__fadeIn">
                 <MudGrid>
                     <MudItem xs="12" sm="8">
-                        <MudText Typo="Typo.h5" Style="font-weight: 700;">¡Hola, @NombreAlumno!</MudText>
-                        <MudText Typo="Typo.body2" Class="mt-1" Style="opacity: 0.9;">
+                        <MudText Typo="Typo.h4" Style="font-weight: 800; letter-spacing: -1px;">¡Hola, @NombreAlumno!</MudText>
+                        <MudText Typo="Typo.subtitle1" Class="mt-1" Style="opacity: 0.9; font-weight: 400;">
                             @if (!string.IsNullOrEmpty(CarreraNombre))
                             {
-                                <span>Cursando: <b>@CarreraNombre</b></span>
+                                <span>Carrera: <b>@CarreraNombre</b></span>
                             }
                         </MudText>
-                        <div class="d-flex align-center mt-3 gap-3">
-                            <MudChip T="string" Color="Color.Tertiary" Size="Size.Small" Variant="Variant.Filled" Icon="@Icons.Material.Filled.Badge">@Legajo</MudChip>
+                        <div class="d-flex align-center mt-4 gap-3">
+                            <MudChip T="string" Color="Color.Info" Size="Size.Small" Variant="Variant.Filled" Style="font-weight: 700;">LEGAJO: @Legajo</MudChip>
+                            <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Filled" Style="font-weight: 700;">ALUMNO REGULAR</MudChip>
                         </div>
                     </MudItem>
                     <MudItem xs="12" sm="4" Class="d-flex justify-end align-center">
-                        <div style="text-align: right; opacity: 0.9;">
-                            <MudText Typo="Typo.caption">HOY ES</MudText>
-                            <MudText Typo="Typo.h5" Style="font-weight: 800;">@DateTime.Now.ToString("dddd", new CultureInfo("es-ES")).ToUpper()</MudText>
-                            <MudText Typo="Typo.body2">@DateTime.Now.ToString("dd 'de' MMMM")</MudText>
+                        <div style="text-align: right; border-left: 2px solid rgba(255,255,255,0.2); padding-left: 1.5rem;">
+                            <MudText Typo="Typo.h5" Style="font-weight: 900;">@DateTime.Now.ToString("dddd", new CultureInfo("es-ES")).ToUpper()</MudText>
+                            <MudText Typo="Typo.subtitle1">@DateTime.Now.ToString("dd 'de' MMMM, yyyy")</MudText>
                         </div>
                     </MudItem>
                 </MudGrid>
             </div>
         </MudItem>
 
-        @* --- 2. COLUMNA PRINCIPAL --- *@
+        @* --- COLUMNA PRINCIPAL --- *@
         <MudItem xs="12" md="8">
             <MudGrid>
-                @* WIDGET: CURSADA DE HOY *@
+                @* CURSADA DE HOY *@
                 <MudItem xs="12">
-                    <div class="info-card">
-                        <div class="card-header">
-                            <div class="icon-box" style="background-color: var(--dash-accent);"><MudIcon Icon="@Icons.Material.Filled.AccessTimeFilled" /></div>
+                    <div class="info-card animate__animated animate__fadeInUp">
+                        <div class="card-header-dash">
+                            <div style="background-color: #e0f2fe; padding: 8px; border-radius: 10px;">
+                                <MudIcon Icon="@Icons.Material.Filled.EventNote" Color="Color.Primary" />
+                            </div>
                             <div>
-                                <MudText Typo="Typo.subtitle1" Style="font-weight: 700; color: var(--dash-primary);">Tu Cursada de Hoy</MudText>
-                                <MudText Typo="Typo.caption" Color="Color.Default">Materias activas (@diaSemanaActual)</MudText>
+                                <MudText Typo="Typo.h6" Style="font-weight: 800; color: #1e3a58;">Tu Cursada de Hoy</MudText>
+                                <MudText Typo="Typo.caption" Style="color: #64748b; font-weight: 600;">@diaSemanaActual.ToUpper()</MudText>
                             </div>
                         </div>
 
                         @if (cargandoClases)
                         {
-                            <div class="d-flex justify-center pa-4"><MudProgressCircular Color="Color.Primary" Size="Size.Medium" Indeterminate="true" /></div>
+                            <MudGrid>
+                                <MudItem xs="12" sm="6"><MudSkeleton Height="80px" Class="rounded-lg" /></MudItem>
+                                <MudItem xs="12" sm="6"><MudSkeleton Height="80px" Class="rounded-lg" /></MudItem>
+                            </MudGrid>
                         }
                         else if (clasesDeHoy.Any())
                         {
-                            <MudGrid Spacing="2">
+                            <MudGrid Spacing="3">
                                 @foreach (var clase in clasesDeHoy)
                                 {
                                     <MudItem xs="12" sm="6">
                                         <div class="class-item">
-                                            <div class="d-flex justify-space-between align-center mb-2">
-                                                <span class="class-time">@clase.HoraInicio.ToString(@"hh\:mm") hs - @clase.HoraFin.ToString(@"hh\:mm") hs</span>
-                                                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text" Class="ma-0">@clase.Curso</MudChip>
+                                            <div class="d-flex justify-space-between align-center mb-3">
+                                                <span class="class-time">@clase.HoraInicio.ToString(@"hh\:mm") - @clase.HoraFin.ToString(@"hh\:mm") HS</span>
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text" Style="font-weight: 800;">@clase.ComisionCodigo</MudChip>
                                             </div>
-                                            <MudText Typo="Typo.subtitle2" Style="font-weight: 800; color: #2c3e50; text-transform: uppercase;">@clase.Materia</MudText>
-                                            <div class="d-flex align-center gap-1 mt-2 pt-2" style="border-top: 1px dashed #e2e8f0;">
-                                                <MudIcon Icon="@Icons.Material.Filled.Room" Size="Size.Small" Style="color: #7f8c8d; font-size: 1rem;" />
-                                                <MudText Typo="Typo.caption" Style="color: #7f8c8d; font-weight: 600;">Aula: @(string.IsNullOrEmpty(clase.Aula) ? "Sin asignar" : clase.Aula)</MudText>
+                                            <MudText Typo="Typo.body1" Style="font-weight: 800; color: #1e293b; line-height: 1.2;">@clase.Materia.ToUpper()</MudText>
+                                            <div class="d-flex align-center gap-1 mt-3 pt-2" style="border-top: 1px dashed #cbd5e1;">
+                                                <MudIcon Icon="@Icons.Material.Filled.MeetingRoom" Size="Size.Small" Style="color: #94a3b8;" />
+                                                <MudText Typo="Typo.caption" Style="color: #64748b; font-weight: 700;">AULA: @(string.IsNullOrEmpty(clase.Aula) ? "A CONFIRMAR" : clase.Aula)</MudText>
                                             </div>
                                         </div>
                                     </MudItem>
@@ -191,10 +194,10 @@
                         }
                         else
                         {
-                            <div class="d-flex flex-column align-center justify-center py-4" style="color: #94a3b8;">
-                                <MudIcon Icon="@Icons.Material.Filled.EventAvailable" Size="Size.Large" Class="mb-2" />
-                                <MudText Typo="Typo.body2"><b>¡Día Libre!</b></MudText>
-                                <MudText Typo="Typo.caption">No tienes materias para cursar hoy.</MudText>
+                            <div class="d-flex flex-column align-center justify-center py-8" style="background: #f8fafc; border-radius: 12px; border: 2px dashed #e2e8f0;">
+                                <MudIcon Icon="@Icons.Material.Filled.Celebration" Style="font-size: 3rem; color: #cbd5e1;" Class="mb-2" />
+                                <MudText Typo="Typo.body1" Style="color: #475569; font-weight: 700;">¡Hoy no tienes clases!</MudText>
+                                <MudText Typo="Typo.caption" Style="color: #94a3b8;">Aprovecha el día para ponerte al día con tus lecturas.</MudText>
                             </div>
                         }
                     </div>
@@ -202,31 +205,30 @@
 
                 @* ACCESOS RÁPIDOS *@
                 <MudItem xs="12">
-                    <MudText Typo="Typo.subtitle1" Class="mb-2 ml-1" Style="font-weight: 700; color: var(--dash-primary);">Accesos Rápidos</MudText>
-                    <MudGrid Spacing="2">
+                    <MudText Typo="Typo.h6" Class="mb-3 ml-1" Style="font-weight: 800; color: #1e3a58;">Gestión Académica</MudText>
+                    <MudGrid Spacing="3">
                         <MudItem xs="6" sm="3">
-                            <div class="quick-btn" @onclick='() => Navegar("/alumno/dashboard")'>
-                                @* ✅ LLEVA A NOTAS *@
+                            <div class="quick-btn" @onclick='() => Navegar("/alumno/mis-cursadas")'>
                                 <MudIcon Icon="@Icons.Material.Filled.Grade" Class="quick-icon" />
-                                <MudText Typo="Typo.button" Style="font-size: 0.75rem;">Mis Notas</MudText>
+                                <MudText Typo="Typo.button" Style="font-weight: 700;">Notas</MudText>
                             </div>
                         </MudItem>
                         <MudItem xs="6" sm="3">
                             <div class="quick-btn" @onclick='() => Navegar("/horarios-alumno")'>
                                 <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Class="quick-icon" />
-                                <MudText Typo="Typo.button" Style="font-size: 0.75rem;">Horarios</MudText>
+                                <MudText Typo="Typo.button" Style="font-weight: 700;">Horarios</MudText>
                             </div>
                         </MudItem>
                         <MudItem xs="6" sm="3">
                             <div class="quick-btn" @onclick='() => Navegar("/inscripcion-materias")'>
-                                <MudIcon Icon="@Icons.Material.Filled.EditCalendar" Class="quick-icon" />
-                                <MudText Typo="Typo.button" Style="font-size: 0.75rem;">Inscribirse</MudText>
+                                <MudIcon Icon="@Icons.Material.Filled.AppRegistration" Class="quick-icon" />
+                                <MudText Typo="Typo.button" Style="font-weight: 700;">Inscribirse</MudText>
                             </div>
                         </MudItem>
                         <MudItem xs="6" sm="3">
                             <div class="quick-btn" @onclick='() => Navegar("/historia-academica")'>
                                 <MudIcon Icon="@Icons.Material.Filled.HistoryEdu" Class="quick-icon" />
-                                <MudText Typo="Typo.button" Style="font-size: 0.75rem;">Historia</MudText>
+                                <MudText Typo="Typo.button" Style="font-weight: 700;">Historia</MudText>
                             </div>
                         </MudItem>
                     </MudGrid>
@@ -234,25 +236,36 @@
             </MudGrid>
         </MudItem>
 
-        @* --- 3. COLUMNA DERECHA (AVISOS) --- *@
+        @* --- COLUMNA DERECHA (AVISOS) --- *@
         <MudItem xs="12" md="4">
-            <div class="info-card">
-                <div class="card-header">
-                    <div class="icon-box" style="background-color: #f39c12;"><MudIcon Icon="@Icons.Material.Filled.Notifications" /></div>
-                    <div><MudText Typo="Typo.subtitle2" Style="font-weight: 700;">Avisos</MudText></div>
+            <div class="info-card animate__animated animate__fadeInRight">
+                <div class="card-header-dash">
+                    <div style="background-color: #fff7ed; padding: 8px; border-radius: 10px;">
+                        <MudIcon Icon="@Icons.Material.Filled.Campaign" Style="color: #f59e0b;" />
+                    </div>
+                    <MudText Typo="Typo.h6" Style="font-weight: 800; color: #1e3a58;">Cartelera Virtual</MudText>
                 </div>
-                <MudTimeline TimelinePosition="TimelinePosition.Start">
+                
+                <MudTimeline TimelinePosition="TimelinePosition.Start" Dense="true">
                     <MudTimelineItem Color="Color.Info" Size="Size.Small">
                         <ItemContent>
-                            <MudText Typo="Typo.caption" Style="font-weight: 700;">Inicio de Clases</MudText>
-                            <MudText Typo="Typo.caption" Style="font-size: 0.7rem;">Comienzan el 10/03.</MudText>
+                            <MudText Typo="Typo.subtitle2" Style="font-weight: 700;">Inicio de Cuatrimestre</MudText>
+                            <MudText Typo="Typo.caption" Class="d-block">Las clases inician el próximo lunes 10/03.</MudText>
+                        </ItemContent>
+                    </MudTimelineItem>
+                    <MudTimelineItem Color="Color.Warning" Size="Size.Small">
+                        <ItemContent>
+                            <MudText Typo="Typo.subtitle2" Style="font-weight: 700;">Encuesta Docente</MudText>
+                            <MudText Typo="Typo.caption" Class="d-block">Recuerda completar la encuesta de satisfacción.</MudText>
                         </ItemContent>
                     </MudTimelineItem>
                 </MudTimeline>
+
+                <MudButton Variant="Variant.Text" Color="Color.Primary" FullWidth="true" Class="mt-4" Style="font-weight: 700;">Ver todos los avisos</MudButton>
             </div>
         </MudItem>
     </MudGrid>
-</div>
+</MudContainer>
 
 @code {
     private string NombreAlumno = "Alumno";
@@ -264,63 +277,69 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
-
-        if (user.Identity != null && user.Identity.IsAuthenticated)
+        var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        if (uri.Query.Contains("login=exito"))
         {
-            var userIdClaim = user.FindFirst(c => c.Type == ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value;
-
-            if (int.TryParse(userIdClaim, out int idUsuario))
-            {
-                // Usamos AlumnoService (ABM) para datos de perfil si PortalService no los trae
-                var alumno = await AlumnoService.GetByUsuarioIdAsync(idUsuario);
-                if (alumno != null)
-                {
-                    NombreAlumno = alumno.Nombre;
-                    CarreraNombre = alumno.NombreCarrera;
-                    Legajo = alumno.Legajo;
-                    await CargarClasesReales(alumno.Id);
-                }
-                else
-                {
-                    NombreAlumno = user.Identity.Name ?? "Usuario";
-                    cargandoClases = false;
-                }
-            }
+            Snackbar.Add("¡Bienvenido! Acceso concedido.", Severity.Success);
+            NavigationManager.NavigateTo(uri.GetLeftPart(UriPartial.Path), replace: true);
         }
-    }
-
-    private async Task CargarClasesReales(int idAlumno)
-    {
         try
         {
-            var periodos = await PeriodoService.GetAllAsync();
-            var periodoActivo = periodos.FirstOrDefault(p => p.Activo);
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
 
-            if (periodoActivo != null)
+            if (user.Identity?.IsAuthenticated == true)
             {
-                var cultura = new CultureInfo("es-ES");
-                diaSemanaActual = cultura.DateTimeFormat.GetDayName(DateTime.Now.DayOfWeek);
-                diaSemanaActual = char.ToUpper(diaSemanaActual[0]) + diaSemanaActual.Substring(1);
+                var userIdClaim = user.FindFirst(c => c.Type == ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value;
 
-                // Asumimos que ReportesService maneja la lógica compleja de horarios cruzados
-                var misMaterias = await ReportesService.GetHorariosCursandoAsync(periodoActivo.Id, idAlumno);
+                if (int.TryParse(userIdClaim, out int idUsuario))
+                {
+                    // Obtenemos el perfil en paralelo con el periodo para ganar milisegundos
+                    var alumnoTask = AlumnoService.GetByUsuarioIdAsync(idUsuario);
+                    var periodoTask = PeriodoService.GetAllAsync();
 
-                clasesDeHoy = misMaterias
-                    .Where(h => h.Dia.Equals(diaSemanaActual, StringComparison.OrdinalIgnoreCase))
-                    .OrderBy(h => h.HoraInicio)
-                    .ToList();
+                    await Task.WhenAll(alumnoTask, periodoTask);
+
+                    var alumno = alumnoTask.Result;
+                    var periodos = periodoTask.Result;
+
+                    if (alumno != null)
+                    {
+                        NombreAlumno = alumno.Nombre;
+                        CarreraNombre = alumno.NombreCarrera;
+                        Legajo = alumno.Legajo;
+
+                        var periodoActivo = periodos.FirstOrDefault(p => p.Activo);
+                        if (periodoActivo != null)
+                        {
+                            await CargarClasesReales(alumno.Id, periodoActivo.Id);
+                        }
+                    }
+                }
             }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            Console.WriteLine($"Error cargando horarios: {ex.Message}");
+            Snackbar.Add("Error al cargar los datos del Dashboard.", Severity.Error);
         }
         finally
         {
             cargandoClases = false;
         }
+    }
+
+    private async Task CargarClasesReales(int idAlumno, int idPeriodo)
+    {
+        var cultura = new CultureInfo("es-ES");
+        diaSemanaActual = cultura.DateTimeFormat.GetDayName(DateTime.Now.DayOfWeek);
+        diaSemanaActual = char.ToUpper(diaSemanaActual[0]) + diaSemanaActual.Substring(1);
+
+        var misMaterias = await ReportesService.GetHorariosCursandoAsync(idPeriodo, idAlumno);
+
+        clasesDeHoy = misMaterias
+            .Where(h => h.Dia.Trim().Equals(diaSemanaActual, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(h => h.HoraInicio)
+            .ToList();
     }
 
     private void Navegar(string url) => NavigationManager.NavigateTo(url);

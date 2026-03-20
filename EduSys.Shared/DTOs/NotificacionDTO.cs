@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace EduSys.Shared.DTOs
+﻿namespace EduSys.Shared.DTOs
 {
     public class NotificacionDTO
     {
@@ -13,7 +7,7 @@ namespace EduSys.Shared.DTOs
         public string Mensaje { get; set; } = string.Empty;
         public DateTime Fecha { get; set; }
         public bool Leida { get; set; }
-        public string Tipo { get; set; } = string.Empty; // "Examen", "Sistema", etc.
+        public string Tipo { get; set; } = string.Empty; 
         public string ColorIcono => Tipo switch
         {
             "Examen" => "Warning",

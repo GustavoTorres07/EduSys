@@ -1,6 +1,7 @@
-﻿@page "/planes/{id:int}/detalle"
+﻿@page "/planes/{PlanId:int}/detalle"
 @using EduSys.Shared.DTOs
 @using EduSys.Web.Services.Interfaces
+
 @inject IPlanService PlanService
 @inject IMateriaService MateriaService
 @inject IRegimenService RegimenService
@@ -10,692 +11,551 @@
 @inject IDialogService DialogService
 
 <style>
-    /* --- 1. HEADER INSTITUCIONAL --- */
-    .doc-header {
-        background-color: #002147;
-        color: white;
-        padding: 1.5rem 2rem;
-        border-radius: 4px 4px 0 0;
-        display: flex;
-        align-items: center;
-        gap: 1rem;
+    /* --- SISTEMA DE DISEÑO EDUSYS --- */
+    :root {
+        --edusys-primary: #1e3a58;
+        --edusys-primary-light: #2c5282;
+        --edusys-accent: #0284c7;
+        --edusys-border: #cbd5e1;
+        --edusys-bg: #f8fafc;
+        --edusys-text-main: #1e293b;
+        --edusys-text-muted: #64748b;
     }
 
-    .doc-subheader {
-        background-color: white;
-        border: 1px solid #E2E8F0;
-        border-top: none;
-        padding: 1.2rem;
-        text-align: center;
-        font-weight: 700;
-        color: #334155;
-        font-size: 1.1rem;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
+    .doc-header { background: linear-gradient(135deg, var(--edusys-primary) 0%, var(--edusys-primary-light) 100%); color: white; padding: 1.5rem 2.5rem; border-radius: 12px 12px 0 0; display: flex; align-items: center; gap: 1.25rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+    .doc-subheader { background-color: white; border: 1px solid var(--edusys-border); border-top: none; border-radius: 0 0 12px 12px; padding: 1.25rem; text-align: center; font-weight: 800; color: var(--edusys-text-main); font-size: 1.1rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2rem; }
+
+    .year-separator { text-align: center; margin: 3rem 0 1rem 0; font-weight: 900; color: var(--edusys-primary); font-size: 1.1rem; text-transform: uppercase; letter-spacing: 2px; display: flex; align-items: center; gap: 1rem; }
+    .year-separator::before, .year-separator::after { content: ""; flex: 1; height: 2px; background-color: var(--edusys-border); }
+
+    .table-responsive-wrapper { width: 100%; overflow-x: auto; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid var(--edusys-border); }
+    .official-table { width: 100%; border-collapse: collapse; background: white; font-size: 0.85rem; min-width: 1000px; }
+    .official-table thead th { background-color: var(--edusys-bg); color: var(--edusys-primary); font-weight: 800; text-align: center; padding: 12px 16px; border-bottom: 2px solid var(--edusys-border); text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px; white-space: nowrap; }
+    .official-table tbody tr { border-bottom: 1px solid #f1f5f9; transition: background-color 0.2s; }
+    .official-table tbody tr:hover { background-color: #f8fafc; }
+    .official-table tbody tr:last-child { border-bottom: none; }
+    .official-table td { padding: 10px 16px; color: var(--edusys-text-main); vertical-align: middle; }
+
+    .col-index { font-weight: 900; color: #94a3b8; width: 40px; text-align: center; border-right: 1px solid #e2e8f0; background-color: #f8fafc; }
+    .col-codigo { font-weight: 800; color: #475569; width: 90px; white-space: nowrap; text-align: left; }
+    .col-materia { font-weight: 800; color: var(--edusys-text-main); font-size: 0.95rem; text-transform: uppercase; text-align: left; white-space: nowrap; }
+    .col-center { text-align: center; }
+    .col-actions { text-align: center; width: 140px; white-space: nowrap; }
+    .col-libre { text-align: center; font-weight: 800; font-size: 0.8rem; width: 100px; }
+
+    /* --- REQUISITOS PREVIOS: nuevo diseño compacto --- */
+    .req-group { margin-bottom: 6px; }
+    .req-group:last-child { margin-bottom: 0; }
+    .req-cond-badge {
+        display: inline-flex; align-items: center; gap: 4px;
+        font-size: 0.62rem; font-weight: 700;
+        padding: 1px 6px; border-radius: 3px;
+        margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.3px;
     }
-
-    /* --- 2. TABLA OFICIAL --- */
-    .year-separator {
-        text-align: center;
-        margin: 2.5rem 0 1rem 0;
-        font-weight: 800;
-        color: #0F172A;
-        font-size: 0.95rem;
-        text-transform: uppercase;
-        letter-spacing: 2px;
+    .req-cond-badge.bc-cursar  { background-color: #e0f2fe; color: #0369a1; }
+    .req-cond-badge.bc-rendir  { background-color: #fef3c7; color: #92400e; }
+    .req-cond-badge.bc-ambos   { background-color: #f3e8ff; color: #6b21a8; }
+    .req-dot {
+        width: 6px; height: 6px; border-radius: 50%; display: inline-block; flex-shrink: 0;
     }
-
-    .official-table {
-        width: 100%;
-        border-collapse: collapse;
-        background: white;
-        font-size: 0.85rem;
-        border: 1px solid #E2E8F0;
+    .req-dot.rd-c { background: #0284c7; }
+    .req-dot.rd-m { background: #d97706; }
+    .req-dot.rd-cm { background: linear-gradient(135deg, #0284c7 50%, #d97706 50%); }
+    .req-mat-row {
+        display: flex; align-items: baseline; gap: 5px;
+        font-size: 0.73rem; line-height: 1.5;
     }
-
-        .official-table thead th {
-            background-color: #F8FAFC;
-            color: #1E293B;
-            font-weight: 700;
-            text-align: center;
-            padding: 12px 16px;
-            border-bottom: 2px solid #E2E8F0;
-            text-transform: uppercase;
-            font-size: 0.75rem;
-            vertical-align: middle;
-        }
-
-        .official-table tbody tr {
-            border-bottom: 1px solid #E2E8F0;
-        }
-
-            .official-table tbody tr:hover {
-                background-color: #F8FAFC;
-            }
-
-        .official-table td {
-            padding: 10px 16px;
-            color: #334155;
-            vertical-align: top;
-        }
-
-    .col-codigo {
-        font-weight: 700;
-        color: #475569;
-        width: 80px;
-        white-space: nowrap;
-        text-align: left;
+    .req-mat-code {
+        font-family: monospace; font-weight: 700; font-size: 0.68rem;
+        color: var(--edusys-text-muted); flex-shrink: 0;
     }
+    .req-mat-name { color: var(--edusys-text-main); }
+    /* ------------------------------------------------- */
 
-    .col-materia {
-        font-weight: 700;
-        color: #0F172A;
-        font-size: 0.9rem;
-        text-transform: uppercase;
-        text-align: left;
-    }
+    .btn-add-year { width: 100%; padding: 12px; background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 8px; color: #64748b; text-align: center; cursor: pointer; font-size: 0.85rem; font-weight: 700; transition: all 0.2s; margin-top: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .btn-add-year:hover { background: #e0f2fe; color: var(--edusys-primary); border-color: var(--edusys-primary); }
 
-    .col-center {
-        text-align: center;
-    }
+    .unified-dialog-card { background-color: white !important; border-radius: 16px !important; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1) !important; }
+    .dialog-header-integrated { background: var(--edusys-primary); color: white; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; border-radius: 16px 16px 0 0; }
+    .dialog-body { padding: 24px; overflow-y: auto; flex-grow: 1; }
+    .actions-footer { padding: 16px 24px; border-top: 1px solid var(--edusys-border); background-color: var(--edusys-bg); display: flex; justify-content: flex-end; gap: 12px; border-radius: 0 0 16px 16px; flex-shrink: 0; }
 
-    .col-actions {
-        text-align: right;
-        width: 140px;
-    }
+    .custom-input .mud-input-outlined-border { border-color: var(--edusys-border) !important; transition: border-color 0.2s; }
+    .custom-input:hover .mud-input-outlined-border { border-color: var(--edusys-primary) !important; }
+    .custom-input.mud-input-control.mud-input-focused .mud-input-outlined-border { border-color: var(--edusys-primary) !important; border-width: 2px !important; }
+    .custom-input .mud-input-label { color: var(--edusys-primary) !important; background-color: white !important; padding: 0 5px; font-weight: 600; }
+    .custom-input input, .custom-input textarea, .custom-input .mud-select-input, .custom-input .mud-input-slot, .custom-input .mud-input input, .custom-input .mud-input textarea, .custom-input .mud-input .mud-select-input { color: var(--edusys-text-main) !important; font-weight: 600; -webkit-text-fill-color: var(--edusys-text-main) !important; }
+    .custom-input .mud-icon-root, .custom-input .mud-input-adornment .mud-icon-root, .custom-input .mud-select-icon { color: var(--edusys-primary) !important; opacity: 1 !important; }
+    .custom-input input:-webkit-autofill, .custom-input input:-webkit-autofill:hover, .custom-input input:-webkit-autofill:focus { -webkit-text-fill-color: var(--edusys-text-main) !important; -webkit-box-shadow: 0 0 0px 1000px white inset !important; transition: background-color 5000s ease-in-out 0s; }
 
-    .col-libre {
-        text-align: center;
-        font-weight: 700;
-        font-size: 0.8rem;
-        width: 100px;
-    }
+    .mud-tabs-tabbar { background-color: transparent !important; border-bottom: 1px solid var(--edusys-border); }
+    .mud-tab { font-weight: 700; text-transform: none; letter-spacing: 0.5px; color: var(--edusys-text-muted); }
+    .mud-tab-active { color: var(--edusys-primary) !important; font-weight: 800; }
 
-    .btn-add-year {
-        width: 100%;
-        padding: 8px;
-        background: #F8FAFC;
-        border: 1px dashed #CBD5E1;
-        color: #64748B;
-        text-align: center;
-        cursor: pointer;
-        font-size: 0.8rem;
-        font-weight: 600;
-        transition: all 0.2s;
-    }
+    .correlativas-list-year { background-color: var(--edusys-bg); padding: 8px 12px; font-weight: 800; color: var(--edusys-primary); font-size: 0.85rem; border-radius: 6px; margin-top: 16px; margin-bottom: 8px; text-transform: uppercase; border: 1px solid var(--edusys-border); }
 
-        .btn-add-year:hover {
-            background: #EEF2FF;
-            color: #002147;
-            border-color: #002147;
-        }
-
-    /* --- 3. ESTILOS MODAL UNIFICADO --- */
-    .unified-dialog-card {
-        background-color: white !important;
-        border-radius: 12px !important;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.2) !important;
-    }
-
-    .modal-title {
-        color: var(--mud-palette-primary);
-        font-weight: 800;
-        font-size: 1.5rem;
-    }
-
-    .mud-dialog .mud-input-outlined-border {
-        border-color: #456990 !important;
-        border-width: 1px !important;
-    }
-
-    .mud-dialog .mud-input-control {
-        background-color: #FAFAFA;
-        border-radius: 4px;
-    }
-
-    .mud-dialog .mud-input-label {
-        color: #456990 !important;
-        background-color: #FAFAFA !important;
-        padding: 0 4px;
-        font-weight: 600;
-        z-index: 2;
-    }
-
-    .force-black-text, .force-black-text input, .force-black-text textarea, .force-black-text .mud-input-slot, .force-black-text .mud-select-input {
-        color: #1F2937 !important;
-        -webkit-text-fill-color: #1F2937 !important;
-        font-weight: 500;
-    }
-
-    .mud-tabs-tabbar {
-        background-color: transparent !important;
-        border-bottom: 1px solid #E5E7EB;
-    }
-
-    .mud-tab {
-        font-weight: 600;
-        text-transform: none;
-        letter-spacing: 0.5px;
-        color: #6B7280;
-    }
-
-    .mud-tab-active {
-        color: var(--mud-palette-primary) !important;
-        font-weight: 700;
-    }
-
-    .correlativas-list-year {
-        background-color: #F1F5F9;
-        padding: 8px 12px;
-        font-weight: 800;
-        color: #475569;
-        font-size: 0.85rem;
-        border-radius: 4px;
-        margin-top: 15px;
-        margin-bottom: 8px;
-        text-transform: uppercase;
-    }
-
-    /* --- 4. ETIQUETAS VISUALES AGRUPADAS --- */
-    .badge-cursar {
-        background-color: #e0f2fe;
-        color: #0284c7;
-        padding: 2px 6px;
-        border-radius: 4px;
-        font-size: 0.65rem;
-        font-weight: 800;
-        display: inline-block;
-        border: 1px solid #bae6fd;
-    }
-
-    .badge-rendir {
-        background-color: #fef3c7;
-        color: #d97706;
-        padding: 2px 6px;
-        border-radius: 4px;
-        font-size: 0.65rem;
-        font-weight: 800;
-        display: inline-block;
-        border: 1px solid #fde68a;
-    }
-
-    .badge-ambos {
-        background-color: #f3e8ff;
-        color: #7e22ce;
-        padding: 2px 6px;
-        border-radius: 4px;
-        font-size: 0.65rem;
-        font-weight: 800;
-        display: inline-block;
-        border: 1px solid #e9d5ff;
-    }
-
-    .mat-names {
-        font-size: 0.75rem;
-        font-weight: 600;
-        color: #334155;
-        line-height: 1.4;
-        display: block;
-        margin-top: 2px;
-        margin-bottom: 8px;
-    }
-
-    /* NUEVO: ESTILOS PARA BLOQUES DE REGLAS ACADÉMICAS */
-    .rule-block {
-        background-color: white;
-        border: 1px solid #E2E8F0;
-        border-radius: 8px;
-        padding: 16px;
-        margin-bottom: 16px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.02);
-    }
-
-    .rule-block-title {
-        font-size: 0.85rem;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 12px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .title-blue {
-        color: #0284c7;
-    }
-
-    .title-red {
-        color: #dc2626;
-    }
-
-    .title-green {
-        color: #16a34a;
-    }
-
-    .title-purple {
-        color: #9333ea;
-    }
-
-    .title-orange {
-        color: #d97706;
-    }
+    .rule-block { background-color: white; border: 1px solid var(--edusys-border); border-radius: 8px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+    .rule-block-title { font-size: 0.9rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; }
+    .title-blue { color: #0284c7; } .title-red { color: #dc2626; } .title-green { color: #16a34a; } .title-purple { color: #9333ea; } .title-orange { color: #d97706; }
 </style>
 
-@if (loading)
-{
-    <div style="height: 80vh; display: flex; justify-content: center; align-items: center;">
-        <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
-    </div>
-}
-else
-{
-    <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-0 px-0" Style="background-color: #F1F5F9; min-height: 100vh;">
+<MudOverlay Visible="_procesando" DarkBackground="true" Absolute="false" ZIndex="9999">
+    <MudStack AlignItems="AlignItems.Center">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+        <MudText Typo="Typo.h6" Style="color: white; font-weight: 600;">Guardando configuración...</MudText>
+    </MudStack>
+</MudOverlay>
 
-        <div class="doc-header">
-            <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Color="Color.Inherit" OnClick="@(() => Navigation.NavigateTo("/planes"))" />
-            <MudText Typo="Typo.h5" Style="font-weight: 700; letter-spacing: 1px;">
-                @(plan.NombreCarrera?.ToUpper() ?? "CARRERA NO DEFINIDA")
-            </MudText>
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-6 px-0 mb-10">
+
+    @if (loading)
+    {
+        <div class="px-6">
+            <MudSkeleton Height="120px" Class="rounded-t-lg mb-0" Animation="Animation.Wave" />
+            <MudSkeleton Height="60px" Class="rounded-b-lg mb-8" Animation="Animation.Wave" />
+            <MudSkeleton Height="40px" Width="30%" Class="mx-auto mb-4" Animation="Animation.Wave" />
+            <MudSkeleton Height="300px" Class="rounded-lg mb-8" Animation="Animation.Wave" />
         </div>
-
-        <div class="doc-subheader">
-            Plan de Estudios: (@(plan.ResolucionMinisterial ?? "S/R")) – @plan.Nombre - Cohorte @plan.AnioInicio
-        </div>
-
-        <MudContainer MaxWidth="MaxWidth.Large" Class="pb-10">
-            @if (!materiasDelPlan.Any())
-            {
-                <div class="d-flex flex-column align-center justify-center py-16 mt-4" style="background: white; border-radius: 8px; border: 1px solid #E2E8F0;">
-                    <MudText Typo="Typo.h6" Style="color: #64748B;">El plan no tiene materias cargadas</MudText>
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-4" OnClick="AbrirModalAgregar">Agregar Primera Materia</MudButton>
-                </div>
-            }
-            else
-            {
-                @for (int i = 1; i <= ObtenerMaximoAnio(); i++)
-                {
-                    var anioActual = i;
-                    var materiasAnio = materiasDelPlan.Where(m => m.AnioCursada == anioActual).OrderBy(m => ObtenerNumeroCodigo(m.CodigoMateria)).ToList();
-
-                    <div class="year-separator">- @ObtenerNombreAnio(anioActual) -</div>
-
-                    <table class="official-table">
-                        <thead>
-                            <tr>
-                                <th style="width: 80px;">Código</th>
-                                <th style="width: 280px;">Correlativas</th>
-                                <th>Materia</th>
-                                <th class="col-center" style="width: 120px;">Régimen</th>
-                                <th class="col-center" style="width: 80px;">H.C.</th>
-                                <th class="col-center" style="width: 100px;">Promoción</th>
-                                <th class="col-center col-libre">Libre</th>
-                                <th class="col-actions">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @if (materiasAnio.Any())
-                            {
-                                @foreach (var item in materiasAnio)
-                                {
-                                    <tr>
-                                        <td class="col-codigo">@item.CodigoMateria</td>
-
-                                        <td>
-                                            @if (item.CorrelativasDetalle != null && item.CorrelativasDetalle.Any())
-                                            {
-                                                var agrupadas = item.CorrelativasDetalle.GroupBy(c => c.IdPlanMateriaRequisito).ToList();
-                                                var soloCursar = new List<string>();
-                                                var soloRendir = new List<string>();
-                                                var cursarYRendir = new List<string>();
-
-                                                foreach (var g in agrupadas)
-                                                {
-                                                    var reqs = g.Select(x => x.TipoRequisito.Split('-')[0]).ToList();
-                                                    var matName = GetNombreMateria(g.Key);
-
-                                                    if (reqs.Contains("Cursar") && reqs.Contains("Rendir")) cursarYRendir.Add(matName);
-                                                    else if (reqs.Contains("Cursar")) soloCursar.Add(matName);
-                                                    else if (reqs.Contains("Rendir")) soloRendir.Add(matName);
-                                                }
-
-                                                <div class="d-flex flex-column">
-                                                    @if (cursarYRendir.Any())
-                                                    {
-                                                        <div>
-                                                            <span class="badge-ambos">PARA CURSAR Y RENDIR FINAL</span>
-                                                            <span class="mat-names">@string.Join(", ", cursarYRendir)</span>
-                                                        </div>
-                                                    }
-                                                    @if (soloCursar.Any())
-                                                    {
-                                                        <div>
-                                                            <span class="badge-cursar">PARA CURSAR</span>
-                                                            <span class="mat-names">@string.Join(", ", soloCursar)</span>
-                                                        </div>
-                                                    }
-                                                    @if (soloRendir.Any())
-                                                    {
-                                                        <div>
-                                                            <span class="badge-rendir">PARA RENDIR FINAL</span>
-                                                            <span class="mat-names">@string.Join(", ", soloRendir)</span>
-                                                        </div>
-                                                    }
-                                                </div>
-                                            }
-                                            else
-                                            {
-                                                <span style="opacity: 0.4; font-size: 0.8rem; font-style: italic;">- Sin requisitos -</span>
-                                            }
-                                        </td>
-
-                                        <td class="col-materia">@item.NombreMateria</td>
-                                        <td class="col-center" style="font-weight: 600; font-size: 0.75rem; text-transform: uppercase;">@item.NombreRegimen</td>
-                                        <td class="col-center" style="font-weight: 700;">@item.CargaHorariaTotal</td>
-                                        <td class="col-center" style="font-weight: 700; font-size: 0.8rem; color: @(item.EsPromocionable == true ? "#166534" : "#64748B");">
-                                            @(item.EsPromocionable == true ? "SÍ" : "NO")
-                                        </td>
-                                        <td class="col-libre" style="color: @(item.EsLibre ? "#9c27b0" : "#64748B"); font-weight: 700;">
-                                            @(item.EsLibre ? "SÍ" : "NO")
-                                        </td>
-                                        <td class="col-actions">
-                                            <MudTooltip Text="Gestionar Correlativas">
-                                                <MudIconButton Icon="@Icons.Material.Filled.Link" Size="Size.Small" Style="color: #0288D1;" OnClick="@(() => AbrirModalCorrelativas(item))" />
-                                            </MudTooltip>
-                                            <MudTooltip Text="Editar Reglas">
-                                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Style="color: #475569;" OnClick="@(() => AbrirModalDetalle(item))" />
-                                            </MudTooltip>
-                                            <MudTooltip Text="Eliminar">
-                                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Style="color: #EF4444;" OnClick="@(() => AbrirModalEliminar(item))" />
-                                            </MudTooltip>
-                                        </td>
-                                    </tr>
-                                }
-                            }
-                            else
-                            {
-                                <tr><td colspan="8" style="text-align:center; padding: 20px; color:#94A3B8; font-style:italic;">No hay materias en este año.</td></tr>
-                            }
-                        </tbody>
-                    </table>
-                    <div class="btn-add-year" @onclick="@(() => AbrirModalAgregarRapido(anioActual))">+ Agregar Asignatura a @ObtenerNombreAnio(anioActual, true)</div>
-                }
-            }
-        </MudContainer>
-    </MudContainer>
-}
-
-<MudDialog @bind-Visible="mostrarModal" Options="dialogOptions" Class="unified-dialog-card">
-    <TitleContent>
-        <div class="pa-6 pb-2 d-flex justify-space-between align-center">
-            <div>
-                <MudText Class="modal-title">@(esEdicion ? "Editar Asignatura" : "Nueva Asignatura")</MudText>
-                <MudText Typo="Typo.body2" Style="color: #6B7280;">Configuración de reglas académicas y de evaluación.</MudText>
+    }
+    else
+    {
+        <div class="px-6">
+            <div class="doc-header animate__animated animate__fadeInDown">
+                <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Color="Color.Inherit" OnClick="@(() => Navigation.NavigateTo("/planes"))" />
+                <MudText Typo="Typo.h4" Style="font-weight: 800; letter-spacing: -0.5px;">
+                    @(plan.NombreCarrera?.ToUpper() ?? "CARRERA NO DEFINIDA")
+                </MudText>
             </div>
+
+            <div class="doc-subheader animate__animated animate__fadeInDown">
+                Plan de Estudios: (@(plan.ResolucionMinisterial ?? "S/R")) – @plan.Nombre – Cohorte @plan.AnioInicio
+            </div>
+
+            <MudContainer MaxWidth="MaxWidth.Large" Class="px-0 pb-10">
+                @if (!materiasDelPlan.Any())
+                {
+                    <div class="d-flex flex-column align-center justify-center py-16 mt-4 animate__animated animate__fadeIn" style="background: white; border-radius: 12px; border: 2px dashed #cbd5e1;">
+                        <MudIcon Icon="@Icons.Material.Filled.MenuBook" Style="font-size: 5rem; color: #94a3b8;" Class="mb-4" />
+                        <MudText Typo="Typo.h5" Style="color: #475569; font-weight: 800;">Diseño Curricular Vacío</MudText>
+                        <MudText Typo="Typo.body1" Style="color: #64748b;" Class="mb-6">Comienza a estructurar el plan agregando la primera asignatura.</MudText>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" StartIcon="@Icons.Material.Filled.Add" Class="font-weight-bold rounded-lg px-6" OnClick="AbrirModalAgregar">Agregar Primera Materia</MudButton>
+                    </div>
+                }
+                else
+                {
+                    indiceGlobalMaterias = 1;
+
+                    for (int i = 1; i <= ObtenerMaximoAnio(); i++)
+                    {
+                        var anioActual = i;
+                        var materiasAnio = materiasDelPlan.Where(m => m.AnioCursada == anioActual).OrderBy(m => ObtenerNumeroCodigo(m.CodigoMateria)).ToList();
+
+                        <div class="year-separator animate__animated animate__fadeIn">@ObtenerNombreAnio(anioActual)</div>
+
+                        <div class="animate__animated animate__fadeInUp">
+                            <div class="table-responsive-wrapper">
+                                <table class="official-table">
+                                    <thead>
+                                        <tr>
+                                            <th class="col-index">#</th>
+                                            <th style="width: 90px; text-align: left;">Cód.</th>
+                                            <th style="width: 220px; text-align: left;">Requisitos Previos</th>
+                                            <th style="text-align: left;">Asignatura</th>
+                                            <th class="col-center" style="width: 120px;">Régimen</th>
+                                            <th class="col-center" style="width: 60px;">Hs.</th>
+                                            <th class="col-center" style="width: 80px;">Promo</th>
+                                            <th class="col-center col-libre">Libre</th>
+                                            <th class="col-actions">Controles</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @if (materiasAnio.Any())
+                                        {
+                                            foreach (var item in materiasAnio)
+                                            {
+                                                <tr>
+                                                    <td class="col-index">@indiceGlobalMaterias</td>
+                                                    <td class="col-codigo">@item.CodigoMateria</td>
+
+                                                    @* ── CELDA REQUISITOS PREVIOS ── *@
+                                                    <td>
+                                                        @if (item.CorrelativasDetalle != null && item.CorrelativasDetalle.Any())
+                                                        {
+                                                            @* Agrupamos por materia requisito para saber qué condiciones aplica cada una *@
+                                                            var porMateria = item.CorrelativasDetalle
+                                                                .GroupBy(c => c.IdPlanMateriaRequisito)
+                                                                .ToList();
+
+                                                            @* Luego separamos en 3 grupos de condición *@
+                                                            var grupoCursarYRendir = porMateria
+                                                                .Where(g => g.Any(x => x.TipoRequisito.StartsWith("Cursar"))
+                                                                         && g.Any(x => x.TipoRequisito.StartsWith("Rendir")))
+                                                                .ToList();
+
+                                                            var grupoCursar = porMateria
+                                                                .Where(g => g.Any(x => x.TipoRequisito.StartsWith("Cursar"))
+                                                                         && !g.Any(x => x.TipoRequisito.StartsWith("Rendir")))
+                                                                .ToList();
+
+                                                            var grupoRendir = porMateria
+                                                                .Where(g => !g.Any(x => x.TipoRequisito.StartsWith("Cursar"))
+                                                                          && g.Any(x => x.TipoRequisito.StartsWith("Rendir")))
+                                                                .ToList();
+
+                                                            @* Grupo: Cursada + Materia aprobada *@
+                                                            @if (grupoCursarYRendir.Any())
+                                                            {
+                                                                <div class="req-group">
+                                                                    <div class="req-cond-badge bc-ambos">
+                                                                        <span class="req-dot rd-cm"></span>
+                                                                        Cursada + Materia aprobada
+                                                                    </div>
+                                                                    <div style="display:flex; flex-direction:column; gap:1px; padding-left:2px;">
+                                                                        @foreach (var g in grupoCursarYRendir)
+                                                                        {
+                                                                            var mat = materiasDelPlan.FirstOrDefault(m => m.Id == g.Key);
+                                                                            <div class="req-mat-row">
+                                                                                <span class="req-mat-code">@(mat?.CodigoMateria ?? "—")</span>
+                                                                                <span class="req-mat-name">@(mat?.NombreMateria ?? "Materia")</span>
+                                                                            </div>
+                                                                        }
+                                                                    </div>
+                                                                </div>
+                                                            }
+
+                                                            @* Grupo: Solo cursada aprobada *@
+                                                            @if (grupoCursar.Any())
+                                                            {
+                                                                <div class="req-group">
+                                                                    <div class="req-cond-badge bc-cursar">
+                                                                        <span class="req-dot rd-c"></span>
+                                                                        Cursada aprobada
+                                                                    </div>
+                                                                    <div style="display:flex; flex-direction:column; gap:1px; padding-left:2px;">
+                                                                        @foreach (var g in grupoCursar)
+                                                                        {
+                                                                            var mat = materiasDelPlan.FirstOrDefault(m => m.Id == g.Key);
+                                                                            <div class="req-mat-row">
+                                                                                <span class="req-mat-code">@(mat?.CodigoMateria ?? "—")</span>
+                                                                                <span class="req-mat-name">@(mat?.NombreMateria ?? "Materia")</span>
+                                                                            </div>
+                                                                        }
+                                                                    </div>
+                                                                </div>
+                                                            }
+
+                                                            @* Grupo: Solo materia aprobada (final) *@
+                                                            @if (grupoRendir.Any())
+                                                            {
+                                                                <div class="req-group">
+                                                                    <div class="req-cond-badge bc-rendir">
+                                                                        <span class="req-dot rd-m"></span>
+                                                                        Materia aprobada (final)
+                                                                    </div>
+                                                                    <div style="display:flex; flex-direction:column; gap:1px; padding-left:2px;">
+                                                                        @foreach (var g in grupoRendir)
+                                                                        {
+                                                                            var mat = materiasDelPlan.FirstOrDefault(m => m.Id == g.Key);
+                                                                            <div class="req-mat-row">
+                                                                                <span class="req-mat-code">@(mat?.CodigoMateria ?? "—")</span>
+                                                                                <span class="req-mat-name">@(mat?.NombreMateria ?? "Materia")</span>
+                                                                            </div>
+                                                                        }
+                                                                    </div>
+                                                                </div>
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            <span style="color: #94a3b8; font-size: 0.78rem; font-style: italic;">Sin requisitos</span>
+                                                        }
+                                                    </td>
+                                                    @* ── FIN CELDA REQUISITOS PREVIOS ── *@
+
+                                                    <td class="col-materia">@item.NombreMateria</td>
+                                                    <td class="col-center" style="font-weight: 700; font-size: 0.8rem; color: var(--edusys-primary);">@item.NombreRegimen</td>
+                                                    <td class="col-center" style="font-weight: 800;">@item.CargaHorariaTotal</td>
+                                                    <td class="col-center" style="font-weight: 800; font-size: 0.85rem; color: @(item.EsPromocionable == true ? "#16a34a" : "#94a3b8");">
+                                                        @(item.EsPromocionable == true ? "SÍ" : "NO")
+                                                    </td>
+                                                    <td class="col-libre" style="color: @(item.EsLibre ? "#9333ea" : "#94a3b8"); font-weight: 800;">
+                                                        @(item.EsLibre ? "SÍ" : "NO")
+                                                    </td>
+                                                    <td class="col-actions">
+                                                        <div class="d-flex justify-center gap-1">
+                                                            <MudTooltip Text="Reglas de Correlatividad">
+                                                                <MudIconButton Icon="@Icons.Material.Filled.Link" Size="Size.Small" Color="Color.Info" OnClick="@(() => AbrirModalCorrelativas(item))" Disabled="_procesando" />
+                                                            </MudTooltip>
+                                                            <MudTooltip Text="Configurar Asignatura">
+                                                                <MudIconButton Icon="@Icons.Material.Filled.Settings" Size="Size.Small" Color="Color.Primary" OnClick="@(() => AbrirModalDetalle(item))" Disabled="_procesando" />
+                                                            </MudTooltip>
+                                                            <MudTooltip Text="Eliminar del Plan">
+                                                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => AbrirModalEliminar(item))" Disabled="_procesando" />
+                                                            </MudTooltip>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+
+                                                indiceGlobalMaterias++;
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <tr><td colspan="9" style="text-align:center; padding: 24px; color:#94a3b8; font-style:italic;">No hay materias asignadas en este año de cursada.</td></tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="btn-add-year" @onclick="@(() => AbrirModalAgregarRapido(anioActual))">
+                                <MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" Class="mr-1" Style="vertical-align: middle; margin-top: -2px;" />
+                                Agregar Asignatura a @ObtenerNombreAnio(anioActual, true)
+                            </div>
+                        </div>
+                    }
+
+                    <div class="d-flex justify-center mt-8">
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PostAdd" OnClick="@(() => AbrirModalAgregarRapido(ObtenerMaximoAnio() + 1))" Class="rounded-lg font-weight-bold bg-white" Disabled="_procesando">
+                            Crear @ObtenerNombreAnio(ObtenerMaximoAnio() + 1, true)
+                        </MudButton>
+                    </div>
+                }
+            </MudContainer>
         </div>
-    </TitleContent>
+    }
+</MudContainer>
+
+@* --- MODAL 1: CREAR/EDITAR REGLAS DE ASIGNATURA --- *@
+<MudDialog @bind-Visible="mostrarModal" Options="dialogOptions" Class="unified-dialog-card pa-0">
     <DialogContent>
-        <div class="px-6 pb-6" style="max-height: 70vh; overflow-y: auto; overflow-x: hidden;">
-            <EditForm Model="@materiaModel" OnValidSubmit="GuardarMateria">
-                <DataAnnotationsValidator />
+        <div class="dialog-header-integrated">
+            <div class="d-flex align-center">
+                <MudIcon Icon="@(esEdicion ? Icons.Material.Filled.Settings : Icons.Material.Filled.AddBox)" Class="mr-3" />
+                <div>
+                    <MudText Typo="Typo.h6" Style="font-weight: 700; letter-spacing: -0.5px;">@(esEdicion ? "Configurar Asignatura" : "Incorporar Asignatura al Plan")</MudText>
+                </div>
+            </div>
+            <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" OnClick="CerrarModales" Size="Size.Small" Disabled="_procesando" />
+        </div>
 
-                <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pt-4" MinimumHeight="400px">
+        <div class="dialog-body" style="background-color: #f8fafc;">
+            <MudForm @ref="_formMateria">
+                <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pt-4 pb-2" MinimumHeight="400px" Style="background: white; border-radius: 8px; border: 1px solid #e2e8f0;">
 
-                    <MudTabPanel Text="General" Icon="@Icons.Material.Filled.ListAlt">
-                        <MudGrid Spacing="2">
+                    @* TAB 1: GENERAL *@
+                    <MudTabPanel Text="Identificación" Icon="@Icons.Material.Filled.Info">
+                        <MudGrid Spacing="3" Class="px-4">
                             <MudItem xs="12">
-                                <MudSelect T="int" Label="Materia (Catálogo)" @bind-Value="materiaModel.IdMateria" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter" Class="force-black-text" Required="true" Disabled="@esEdicion" AdornmentIcon="@Icons.Material.Filled.Search">
-                                    <MudSelectItem T="int" Value="0">Seleccione una materia...</MudSelectItem>
+                                <MudSelect T="int" Label="Asignatura (Catálogo Central)" @bind-Value="materiaModel.IdMateria"
+                                           Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter"
+                                           Class="custom-input bg-white" Required="true" RequiredError="Obligatorio"
+                                           Disabled="@(esEdicion || _procesando)" AdornmentIcon="@Icons.Material.Filled.Search">
+                                    <MudSelectItem T="int" Value="0" Disabled="true">Seleccione una materia...</MudSelectItem>
                                     @foreach (var mat in catalogoMaterias.OrderBy(m => m.Nombre))
                                     {
                                         <MudSelectItem T="int" Value="@mat.Id">@mat.Codigo - @mat.Nombre</MudSelectItem>
                                     }
                                 </MudSelect>
                             </MudItem>
-                            <MudItem xs="6"><MudNumericField Label="Año de Cursada" @bind-Value="materiaModel.AnioCursada" Min="1" Max="6" Variant="Variant.Outlined" Class="force-black-text" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.CalendarToday" /></MudItem>
-                            <MudItem xs="6">
-                                <MudSelect T="int" Label="Período/Cuatrimestre" @bind-Value="materiaModel.Cuatrimestre" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter" Class="force-black-text">
-                                    <MudSelectItem Value="0">Anual / Único</MudSelectItem>
-                                    <MudSelectItem Value="1">1º Cuatrimestre</MudSelectItem>
-                                    <MudSelectItem Value="2">2º Cuatrimestre</MudSelectItem>
-                                </MudSelect>
+
+                            <MudItem xs="4">
+                                <MudNumericField Label="Año de Cursada" @bind-Value="materiaModel.AnioCursada" Min="1" Max="6"
+                                                 Variant="Variant.Outlined" Class="custom-input bg-white"
+                                                 Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.CalendarToday" Disabled="_procesando" />
                             </MudItem>
-                            <MudItem xs="6">
-                                <MudSelect T="int?" Label="Régimen" @bind-Value="materiaModel.IdRegimen" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter" Class="force-black-text" AdornmentIcon="@Icons.Material.Filled.Schedule">
+                            <MudItem xs="4">
+                                <MudSelect T="int?" Label="Régimen de Cursada" @bind-Value="materiaModel.IdRegimen"
+                                           Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter"
+                                           Class="custom-input bg-white" AdornmentIcon="@Icons.Material.Filled.Schedule" Disabled="_procesando" Required="true" RequiredError="Requerido">
                                     @foreach (var reg in listaRegimenes)
                                     {
                                         <MudSelectItem T="int?" Value="@reg.Id">@reg.Nombre</MudSelectItem>
                                     }
                                 </MudSelect>
                             </MudItem>
-                            <MudItem xs="6"><MudNumericField Label="Carga Horaria" @bind-Value="materiaModel.CargaHorariaTotal" Min="1" Variant="Variant.Outlined" Class="force-black-text" Adornment="Adornment.End" AdornmentText="Hs" /></MudItem>
+                            <MudItem xs="4">
+                                <MudNumericField Label="Carga Horaria Total" @bind-Value="materiaModel.CargaHorariaTotal" Min="1"
+                                                 Variant="Variant.Outlined" Class="custom-input bg-white"
+                                                 Adornment="Adornment.End" AdornmentText="Hs" Disabled="_procesando" />
+                            </MudItem>
                         </MudGrid>
                     </MudTabPanel>
 
-                    <MudTabPanel Text="Reglas Académicas" Icon="@Icons.Material.Filled.Gavel">
-
-                        @* --- BLOQUE 1: APROBACIÓN --- *@
-                        <div class="rule-block">
-                            <div class="rule-block-title title-blue">
-                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" />
-                                1. Requisitos para Aprobar Cursada (Estado Regular)
-                            </div>
-
-                            <MudGrid Spacing="2">
-                                <MudItem xs="12">
-                                    <MudSelect T="int" Label="Modo de Aprobación de Exámenes" @bind-Value="materiaModel.ModoAprobacionCursada" Variant="Variant.Outlined" Margin="Margin.Dense" AnchorOrigin="Origin.BottomCenter" Class="force-black-text bg-white">
-                                        <MudSelectItem T="int" Value="0">Por Promedio (La suma de notas se divide y debe dar el mínimo)</MudSelectItem>
-                                        <MudSelectItem T="int" Value="1">Instancia a Instancia (Debe aprobar TODOS los parciales)</MudSelectItem>
-                                    </MudSelect>
-                                </MudItem>
-
-                                <MudItem xs="12">
-                                    <MudSelect T="int" Label="Modo de Pisado de Notas en Recuperatorios" @bind-Value="materiaModel.ModoNotaRecuperatorio" Variant="Variant.Outlined" Margin="Margin.Dense" AnchorOrigin="Origin.BottomCenter" Class="force-black-text bg-white">
-                                        <MudSelectItem T="int" Value="0">Queda la nota más alta (Max. entre original y recuperatorio)</MudSelectItem>
-                                        <MudSelectItem T="int" Value="1">El recuperatorio pisa siempre (Aún si es menor que el original)</MudSelectItem>
-                                    </MudSelect>
-                                </MudItem>
-
-                                <MudItem xs="4"><MudNumericField Label="Cant. Parciales (Exigidos)" @bind-Value="materiaModel.CantidadParciales" Min="0" Max="10" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text bg-white" /></MudItem>
-                                <MudItem xs="4"><MudNumericField Label="Nota Mín. para Aprobar" @bind-Value="materiaModel.PromedioMinimoAprobacion" Min="1" Max="10" Step="0.5M" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text bg-white" HelperText="Ej: 4 o 6" /></MudItem>
-                                <MudItem xs="4"><MudNumericField Label="% Asistencia Mínima" @bind-Value="materiaModel.PorcentajeAsistenciaRegularizar" Min="0" Max="100" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text bg-white" Adornment="Adornment.End" AdornmentText="%" /></MudItem>
-
-                                <MudItem xs="12">
-                                    <MudSelect T="int?" Label="Estado si CUMPLE estas condiciones" @bind-Value="materiaModel.IdEstadoRegular" Variant="Variant.Outlined" Margin="Margin.Dense" AnchorOrigin="Origin.BottomCenter" Class="force-black-text bg-white" HelperText="Ej: Regular">
-                                        <MudSelectItem T="int?" Value="null">-- Usar defecto --</MudSelectItem>
-                                        @foreach (var est in listaEstados)
-                                        {
-                                            <MudSelectItem T="int?" Value="@est.Id">@est.Nombre</MudSelectItem>
-                                        }
-                                    </MudSelect>
-                                </MudItem>
-                            </MudGrid>
-                        </div>
-
-                        @* --- BLOQUE 2: INTEGRADOR --- *@
-                        <div class="rule-block" style="border-left: 4px solid #9333ea;">
-                            <div class="rule-block-title title-purple">
-                                <MudIcon Icon="@Icons.Material.Filled.LibraryAddCheck" Size="Size.Small" />
-                                2. Examen Integrador (Salvataje)
-                            </div>
-
-                            <MudGrid Spacing="2">
-                                <MudItem xs="12">
-                                    <MudSwitch @bind-Value="materiaModel.TieneIntegrador" Color="Color.Secondary" Label="La materia tiene Examen Integrador final" Class="force-black-text font-weight-bold" />
-                                </MudItem>
-
-                                @if (materiaModel.TieneIntegrador)
-                                {
+                    @* TAB 2: REGLAS ACADÉMICAS *@
+                    <MudTabPanel Text="Reglamento" Icon="@Icons.Material.Filled.Gavel">
+                        <div class="px-4">
+                            @* BLOQUE 1: APROBACIÓN *@
+                            <div class="rule-block" style="border-left: 4px solid #0284c7;">
+                                <div class="rule-block-title title-blue">
+                                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" />
+                                    1. Requisitos de Aprobación de Cursada (Estado Regular)
+                                </div>
+                                <MudGrid Spacing="2">
                                     <MudItem xs="12">
-                                        <MudNumericField Label="Cant. mínima de parciales aprobados para tener derecho a Integrador" @bind-Value="materiaModel.CondicionIntegradorParciales" Min="0" Max="10" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text bg-white" HelperText="Ej: Si son 3 parciales y pones 1, debe aprobar al menos 1 para ir a integrador." />
-                                    </MudItem>
-                                    <MudItem xs="6">
-                                        <MudNumericField Label="Nota para Aprobar Integrador" @bind-Value="materiaModel.NotaAprobacionIntegrador" Min="1" Max="10" Step="0.5M" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text bg-white" HelperText="Ej: 6" />
-                                    </MudItem>
-                                    <MudItem xs="6" Class="d-flex align-center">
-                                        <MudSwitch @bind-Value="materiaModel.IntegradorPermitePromocion" Color="Color.Success" Label="¿Permite Promocionar?" Class="force-black-text" />
-                                    </MudItem>
-                                    @if (materiaModel.IntegradorPermitePromocion)
-                                    {
-                                        <MudItem xs="12">
-                                            <MudNumericField Label="Nota para Promocionar en Integrador" @bind-Value="materiaModel.NotaPromocionIntegrador" Min="1" Max="10" Step="0.5M" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text bg-white" HelperText="Ej: 8" />
-                                        </MudItem>
-                                    }
-                                }
-                            </MudGrid>
-                        </div>
-
-                        @* --- BLOQUE 3: DESAPROBACIÓN Y LIBRE --- *@
-                        <div class="rule-block" style="border-left: 4px solid #dc2626;">
-                            <div class="rule-block-title title-red">
-                                <MudIcon Icon="@Icons.Material.Filled.Cancel" Size="Size.Small" />
-                                3. Reglas de Desaprobación y Abandono (Libre)
-                            </div>
-
-                            <MudGrid Spacing="2">
-                                <MudItem xs="6">
-                                    <MudNumericField Label="Límite de Aplazos" @bind-Value="materiaModel.CantidadAplazosParaLibre" Min="0" Max="10" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text bg-white" HelperText="Nº de parciales reprobados para quedar Libre de forma inmediata." />
-                                </MudItem>
-                                <MudItem xs="6">
-                                    <MudNumericField Label="Nota Eliminatoria (Muerte Súbita)" @bind-Value="materiaModel.NotaEliminatoria" Min="1" Max="10" Step="0.5M" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text bg-white" HelperText="Ej: Si saca menos de 3, queda libre sin recuperatorio." />
-                                </MudItem>
-
-                                <MudItem xs="6">
-                                    <MudSelect T="int?" Label="Estado si reprueba la cursada (o el integrador)" @bind-Value="materiaModel.IdEstadoSiDesaprueba" Variant="Variant.Outlined" Margin="Margin.Dense" AnchorOrigin="Origin.BottomCenter" Class="force-black-text bg-white" HelperText="Ej: Desaprobado">
-                                        <MudSelectItem T="int?" Value="null">-- Usar defecto --</MudSelectItem>
-                                        @foreach (var est in listaEstados)
-                                        {
-                                            <MudSelectItem T="int?" Value="@est.Id">@est.Nombre</MudSelectItem>
-                                        }
-                                    </MudSelect>
-                                </MudItem>
-
-                                <MudItem xs="6">
-                                    <MudSelect T="int?" Label="Estado por Inasistencia o Límite de Aplazos" @bind-Value="materiaModel.IdEstadoSiFaltaAsistencia" Variant="Variant.Outlined" Margin="Margin.Dense" AnchorOrigin="Origin.BottomCenter" Class="force-black-text bg-white" HelperText="Ej: Libre">
-                                        <MudSelectItem T="int?" Value="null">-- Usar defecto --</MudSelectItem>
-                                        @foreach (var est in listaEstados)
-                                        {
-                                            <MudSelectItem T="int?" Value="@est.Id">@est.Nombre</MudSelectItem>
-                                        }
-                                    </MudSelect>
-                                </MudItem>
-                            </MudGrid>
-                        </div>
-
-                        @* --- BLOQUE 4: PROMOCIÓN --- *@
-                        <div class="rule-block" style="border-left: 4px solid #16a34a;">
-                            <div class="rule-block-title title-green">
-                                <MudIcon Icon="@Icons.Material.Filled.EmojiEvents" Size="Size.Small" />
-                                4. Régimen de Promoción Directa
-                            </div>
-
-                            <MudGrid Spacing="2">
-                                <MudItem xs="12">
-                                    <MudSwitch @bind-Value="materiaModel.EsPromocionable" Color="Color.Success" Label="Materia Promocionable" Class="force-black-text font-weight-bold" />
-                                </MudItem>
-
-                                @if (materiaModel.EsPromocionable == true)
-                                {
-                                    <MudItem xs="6"><MudNumericField Label="Nota Mínima para Promoción" @bind-Value="materiaModel.NotaMinimaPromocion" Min="1" Max="10" Step="0.5M" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text bg-white" HelperText="Ej: 7 u 8" /></MudItem>
-                                    <MudItem xs="6"><MudNumericField Label="% Asistencia Promoción" @bind-Value="materiaModel.PorcentajeAsistenciaPromocion" Min="0" Max="100" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text bg-white" Adornment="Adornment.End" AdornmentText="%" /></MudItem>
-
-                                    <MudItem xs="12">
-                                        <MudSelect T="int?" Label="Estado si PROMOCIONA" @bind-Value="materiaModel.IdEstadoPromocion" Variant="Variant.Outlined" Margin="Margin.Dense" AnchorOrigin="Origin.BottomCenter" Class="force-black-text bg-white" HelperText="Estado definitivo (Ej: Promocionado)">
-                                            <MudSelectItem T="int?" Value="null">-- Usar defecto --</MudSelectItem>
-                                            @foreach (var est in listaEstados)
-                                            {
-                                                <MudSelectItem T="int?" Value="@est.Id">@est.Nombre</MudSelectItem>
-                                            }
+                                        <MudSelect T="int" Label="Lógica de Evaluación de Parciales" @bind-Value="materiaModel.ModoAprobacionCursada"
+                                                   Variant="Variant.Outlined" Margin="Margin.Dense" AnchorOrigin="Origin.BottomCenter" Class="custom-input bg-white" Disabled="_procesando">
+                                            <MudSelectItem T="int" Value="0">Por Promedio General (La suma dividida supera el mínimo)</MudSelectItem>
+                                            <MudSelectItem T="int" Value="1">Aprobación Estricta (Debe aprobar TODAS las instancias)</MudSelectItem>
                                         </MudSelect>
                                     </MudItem>
-                                }
-                            </MudGrid>
-                        </div>
-
-                        @* --- BLOQUE 5: FINAL Y LIBRES --- *@
-                        <div class="rule-block" style="border-left: 4px solid #d97706;">
-                            <div class="rule-block-title title-orange">
-                                <MudIcon Icon="@Icons.Material.Filled.School" Size="Size.Small" />
-                                5. Final y Alumnos Libres
+                                    <MudItem xs="12">
+                                        <MudSelect T="int" Label="Política de Recuperatorios" @bind-Value="materiaModel.ModoNotaRecuperatorio"
+                                                   Variant="Variant.Outlined" Margin="Margin.Dense" AnchorOrigin="Origin.BottomCenter" Class="custom-input bg-white" Disabled="_procesando">
+                                            <MudSelectItem T="int" Value="0">Conservar la nota más alta (Max. entre original y recup.)</MudSelectItem>
+                                            <MudSelectItem T="int" Value="1">El recuperatorio pisa la nota original siempre</MudSelectItem>
+                                        </MudSelect>
+                                    </MudItem>
+                                    <MudItem xs="4"><MudNumericField Label="Cant. Parciales Mínima" @bind-Value="materiaModel.CantidadParciales" Min="0" Max="10" Variant="Variant.Outlined" Margin="Margin.Dense" Class="custom-input bg-white" Disabled="_procesando" /></MudItem>
+                                    <MudItem xs="4"><MudNumericField Label="Nota Mín. para Aprobar" @bind-Value="materiaModel.PromedioMinimoAprobacion" Min="1" Max="10" Step="0.5M" Variant="Variant.Outlined" Margin="Margin.Dense" Class="custom-input bg-white" Disabled="_procesando" /></MudItem>
+                                    <MudItem xs="4"><MudNumericField Label="% Asistencia Requerida" @bind-Value="materiaModel.PorcentajeAsistenciaRegularizar" Min="0" Max="100" Variant="Variant.Outlined" Margin="Margin.Dense" Class="custom-input bg-white" Adornment="Adornment.End" AdornmentText="%" Disabled="_procesando" /></MudItem>
+                                    <MudItem xs="12">
+                                        <MudSelect T="int?" Label="Estado otorgado al cumplir condiciones" @bind-Value="materiaModel.IdEstadoRegular"
+                                                   Variant="Variant.Outlined" Margin="Margin.Dense" AnchorOrigin="Origin.BottomCenter" Class="custom-input bg-white" Disabled="_procesando">
+                                            <MudSelectItem T="int?" Value="null">-- Por Defecto (Regular) --</MudSelectItem>
+                                            @foreach (var est in listaEstados) { <MudSelectItem T="int?" Value="@est.Id">@est.Nombre</MudSelectItem> }
+                                        </MudSelect>
+                                    </MudItem>
+                                </MudGrid>
                             </div>
 
-                            <MudGrid Spacing="2">
-                                <MudItem xs="12">
-                                    <MudSwitch @bind-Value="materiaModel.TieneFinalObligatorio" Color="Color.Warning" Label="Examen Final Obligatorio Integrador" Class="force-black-text font-weight-bold" />
-                                </MudItem>
+                            @* BLOQUE 2: INTEGRADOR *@
+                            <div class="rule-block" style="border-left: 4px solid #9333ea;">
+                                <div class="rule-block-title title-purple">
+                                    <MudIcon Icon="@Icons.Material.Filled.LibraryAddCheck" Size="Size.Small" />
+                                    2. Examen Integrador (Instancia Global)
+                                </div>
+                                <MudGrid Spacing="2">
+                                    <MudItem xs="12">
+                                        <MudSwitch @bind-Value="materiaModel.TieneIntegrador" Color="Color.Secondary" Label="Habilitar Examen Integrador de fin de ciclo" Class="font-weight-bold" Disabled="_procesando" />
+                                    </MudItem>
+                                    @if (materiaModel.TieneIntegrador)
+                                    {
+                                        <MudItem xs="12">
+                                            <MudNumericField Label="Mínimo de parciales aprobados para acceder al Integrador" @bind-Value="materiaModel.CondicionIntegradorParciales" Min="0" Max="10" Variant="Variant.Outlined" Margin="Margin.Dense" Class="custom-input bg-white" Disabled="_procesando" />
+                                        </MudItem>
+                                        <MudItem xs="6"><MudNumericField Label="Nota para Aprobar Integrador" @bind-Value="materiaModel.NotaAprobacionIntegrador" Min="1" Max="10" Step="0.5M" Variant="Variant.Outlined" Margin="Margin.Dense" Class="custom-input bg-white" Disabled="_procesando" /></MudItem>
+                                        <MudItem xs="6" Class="d-flex align-center">
+                                            <MudSwitch @bind-Value="materiaModel.IntegradorPermitePromocion" Color="Color.Success" Label="Permite Promocionar" Disabled="_procesando" />
+                                        </MudItem>
+                                        @if (materiaModel.IntegradorPermitePromocion)
+                                        {
+                                            <MudItem xs="12"><MudNumericField Label="Nota requerida para Promoción vía Integrador" @bind-Value="materiaModel.NotaPromocionIntegrador" Min="1" Max="10" Step="0.5M" Variant="Variant.Outlined" Margin="Margin.Dense" Class="custom-input bg-white" Disabled="_procesando" /></MudItem>
+                                        }
+                                    }
+                                </MudGrid>
+                            </div>
 
-                                <MudItem xs="6"><MudNumericField Label="Nota para Aprobar Final" @bind-Value="materiaModel.NotaMinimaAprobacion" Min="1" Max="10" Step="0.5M" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text bg-white" /></MudItem>
-                                <MudItem xs="6"><MudNumericField Label="Vigencia Cursada" @bind-Value="materiaModel.VigenciaCursadaAnios" Min="1" Max="10" Variant="Variant.Outlined" Margin="Margin.Dense" Class="force-black-text bg-white" Adornment="Adornment.End" AdornmentText="Años" /></MudItem>
+                            @* BLOQUE 3: DESAPROBACIÓN *@
+                            <div class="rule-block" style="border-left: 4px solid #dc2626;">
+                                <div class="rule-block-title title-red">
+                                    <MudIcon Icon="@Icons.Material.Filled.Cancel" Size="Size.Small" />
+                                    3. Reglas de Desaprobación y Abandono
+                                </div>
+                                <MudGrid Spacing="2">
+                                    <MudItem xs="6"><MudNumericField Label="Límite de Aplazos Permitidos" @bind-Value="materiaModel.CantidadAplazosParaLibre" Min="0" Max="10" Variant="Variant.Outlined" Margin="Margin.Dense" Class="custom-input bg-white" Disabled="_procesando" /></MudItem>
+                                    <MudItem xs="6"><MudNumericField Label="Nota de Eliminación Inmediata" @bind-Value="materiaModel.NotaEliminatoria" Min="1" Max="10" Step="0.5M" Variant="Variant.Outlined" Margin="Margin.Dense" Class="custom-input bg-white" Disabled="_procesando" /></MudItem>
+                                    <MudItem xs="6">
+                                        <MudSelect T="int?" Label="Estado si reprobó académicamente" @bind-Value="materiaModel.IdEstadoSiDesaprueba" Variant="Variant.Outlined" Margin="Margin.Dense" AnchorOrigin="Origin.BottomCenter" Class="custom-input bg-white" Disabled="_procesando">
+                                            <MudSelectItem T="int?" Value="null">-- Por Defecto (Desaprobado) --</MudSelectItem>
+                                            @foreach (var est in listaEstados) { <MudSelectItem T="int?" Value="@est.Id">@est.Nombre</MudSelectItem> }
+                                        </MudSelect>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudSelect T="int?" Label="Estado por ausencias/aplazos" @bind-Value="materiaModel.IdEstadoSiFaltaAsistencia" Variant="Variant.Outlined" Margin="Margin.Dense" AnchorOrigin="Origin.BottomCenter" Class="custom-input bg-white" Disabled="_procesando">
+                                            <MudSelectItem T="int?" Value="null">-- Por Defecto (Libre) --</MudSelectItem>
+                                            @foreach (var est in listaEstados) { <MudSelectItem T="int?" Value="@est.Id">@est.Nombre</MudSelectItem> }
+                                        </MudSelect>
+                                    </MudItem>
+                                </MudGrid>
+                            </div>
 
-                                <MudItem xs="12">
-                                    <MudTextField Label="Metodología de Aprobación" @bind-Value="materiaModel.CondicionesAprobacion" Variant="Variant.Outlined" Lines="2" Class="force-black-text bg-white" Placeholder="Ej: Examen oral eliminatorio..." />
-                                </MudItem>
+                            @* BLOQUE 4: PROMOCIÓN *@
+                            <div class="rule-block" style="border-left: 4px solid #16a34a;">
+                                <div class="rule-block-title title-green">
+                                    <MudIcon Icon="@Icons.Material.Filled.EmojiEvents" Size="Size.Small" />
+                                    4. Promoción Directa
+                                </div>
+                                <MudGrid Spacing="2">
+                                    <MudItem xs="12"><MudSwitch @bind-Value="materiaModel.EsPromocionable" Color="Color.Success" Label="La materia es Promocionable" Class="font-weight-bold" Disabled="_procesando" /></MudItem>
+                                    @if (materiaModel.EsPromocionable == true)
+                                    {
+                                        <MudItem xs="6"><MudNumericField Label="Nota Mínima General" @bind-Value="materiaModel.NotaMinimaPromocion" Min="1" Max="10" Step="0.5M" Variant="Variant.Outlined" Margin="Margin.Dense" Class="custom-input bg-white" Disabled="_procesando" /></MudItem>
+                                        <MudItem xs="6"><MudNumericField Label="% Asistencia Exigido" @bind-Value="materiaModel.PorcentajeAsistenciaPromocion" Min="0" Max="100" Variant="Variant.Outlined" Margin="Margin.Dense" Class="custom-input bg-white" Adornment="Adornment.End" AdornmentText="%" Disabled="_procesando" /></MudItem>
+                                        <MudItem xs="12">
+                                            <MudSelect T="int?" Label="Estado otorgado" @bind-Value="materiaModel.IdEstadoPromocion" Variant="Variant.Outlined" Margin="Margin.Dense" AnchorOrigin="Origin.BottomCenter" Class="custom-input bg-white" Disabled="_procesando">
+                                                <MudSelectItem T="int?" Value="null">-- Por Defecto (Promocionado) --</MudSelectItem>
+                                                @foreach (var est in listaEstados) { <MudSelectItem T="int?" Value="@est.Id">@est.Nombre</MudSelectItem> }
+                                            </MudSelect>
+                                        </MudItem>
+                                    }
+                                </MudGrid>
+                            </div>
 
-                                <MudItem xs="12" Class="mt-2">
-                                    <MudSwitch @bind-Value="materiaModel.EsLibre" Color="Color.Error" Label="Permitir Rendir como Alumno Libre" Class="force-black-text font-weight-bold" />
-                                </MudItem>
-                            </MudGrid>
+                            @* BLOQUE 5: FINAL *@
+                            <div class="rule-block mb-0" style="border-left: 4px solid #d97706;">
+                                <div class="rule-block-title title-orange">
+                                    <MudIcon Icon="@Icons.Material.Filled.School" Size="Size.Small" />
+                                    5. Tribunal Final y Alumnos Libres
+                                </div>
+                                <MudGrid Spacing="2">
+                                    <MudItem xs="12"><MudSwitch @bind-Value="materiaModel.TieneFinalObligatorio" Color="Color.Warning" Label="Examen Final Obligatorio Integrador" Class="font-weight-bold" Disabled="_procesando" /></MudItem>
+                                    <MudItem xs="6"><MudNumericField Label="Nota Mín. de Aprobación" @bind-Value="materiaModel.NotaMinimaAprobacion" Min="1" Max="10" Step="0.5M" Variant="Variant.Outlined" Margin="Margin.Dense" Class="custom-input bg-white" Disabled="_procesando" /></MudItem>
+                                    <MudItem xs="6"><MudNumericField Label="Vigencia de Cursada" @bind-Value="materiaModel.VigenciaCursadaAnios" Min="1" Max="10" Variant="Variant.Outlined" Margin="Margin.Dense" Class="custom-input bg-white" Adornment="Adornment.End" AdornmentText="Años" Disabled="_procesando" /></MudItem>
+                                    <MudItem xs="12"><MudTextField Label="Metodología (Ej: Oral y Escrito)" @bind-Value="materiaModel.CondicionesAprobacion" Variant="Variant.Outlined" Lines="2" Class="custom-input bg-white" Disabled="_procesando" /></MudItem>
+                                    <MudItem xs="12" Class="mt-2"><MudSwitch @bind-Value="materiaModel.EsLibre" Color="Color.Error" Label="Permitir Rendición en Condición de Libre" Class="font-weight-bold" Disabled="_procesando" /></MudItem>
+                                </MudGrid>
+                            </div>
                         </div>
                     </MudTabPanel>
 
-                    <MudTabPanel Text="Contenidos" Icon="@Icons.Material.Filled.MenuBook">
-                        <MudGrid Spacing="2">
-                            <MudItem xs="12"><MudTextField Label="Objetivos Pedagógicos" @bind-Value="materiaModel.Objetivos" Variant="Variant.Outlined" Lines="4" Class="force-black-text bg-white" Placeholder="Describa qué se espera que el alumno logre..." /></MudItem>
-                            <MudItem xs="12"><MudTextField Label="Contenidos Mínimos" @bind-Value="materiaModel.ContenidosMinimos" Variant="Variant.Outlined" Lines="4" Class="force-black-text bg-white" Placeholder="Listado de temas principales..." /></MudItem>
-                        </MudGrid>
-                    </MudTabPanel>
-
-                    <MudTabPanel Text="Proyecto" Icon="@Icons.Material.Filled.WorkOutline">
-                        <MudGrid Spacing="2">
-                            <MudItem xs="12"><MudSwitch @bind-Value="materiaModel.TieneProyecto" Color="Color.Primary" Label="Requiere Proyecto Integrador" Class="force-black-text font-weight-bold" /></MudItem>
-                            @if (materiaModel.TieneProyecto == true)
-                            {
-                                <MudItem xs="12"><MudTextField Label="Descripción del Proyecto" @bind-Value="materiaModel.DescripcionProyecto" Variant="Variant.Outlined" Lines="6" Class="force-black-text bg-white" Placeholder="Detalles sobre el trabajo práctico final..." /></MudItem>
-                            }
-                            else
-                            {
-                                <MudItem xs="12">
-                                    <div class="d-flex align-center justify-center pa-8" style="border: 1px dashed #E5E7EB; border-radius: 8px; color: #9CA3AF;">
-                                        <MudText>No se requiere proyecto para esta asignatura.</MudText>
-                                    </div>
-                                </MudItem>
-                            }
+                    @* TAB 3: CONTENIDOS *@
+                    <MudTabPanel Text="Contenidos Mínimos" Icon="@Icons.Material.Filled.MenuBook">
+                        <MudGrid Spacing="3" Class="px-4">
+                            <MudItem xs="12"><MudTextField Label="Objetivos Pedagógicos" @bind-Value="materiaModel.Objetivos" Variant="Variant.Outlined" Lines="5" Class="custom-input bg-white" Disabled="_procesando" /></MudItem>
+                            <MudItem xs="12"><MudTextField Label="Unidades / Ejes Temáticos" @bind-Value="materiaModel.ContenidosMinimos" Variant="Variant.Outlined" Lines="5" Class="custom-input bg-white" Disabled="_procesando" /></MudItem>
                         </MudGrid>
                     </MudTabPanel>
                 </MudTabs>
+            </MudForm>
+        </div>
 
-                <div class="d-flex justify-end gap-2 mt-6 pt-4" style="border-top: 1px solid #E5E7EB;">
-                    <MudButton OnClick="CerrarModales" Variant="Variant.Text" Color="Color.Default">Cancelar</MudButton>
-                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="rounded-lg px-6">Guardar</MudButton>
-                </div>
-            </EditForm>
+        <div class="actions-footer">
+            <MudButton OnClick="CerrarModales" Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg font-weight-bold" Disabled="_procesando">Cancelar</MudButton>
+            <MudButton OnClick="GuardarMateria" Variant="Variant.Filled" Color="Color.Primary" Class="rounded-lg font-weight-bold px-6" Disabled="_procesando">
+                @(_procesando ? "Guardando..." : "Guardar Configuración")
+            </MudButton>
         </div>
     </DialogContent>
 </MudDialog>
 
-<MudDialog @bind-Visible="mostrarModalCorrelativas" Options="dialogOptions" Class="unified-dialog-card">
-    <TitleContent>
-        <div class="pa-6 pb-2 d-flex justify-space-between align-center">
-            <div>
-                <MudText Class="modal-title">Reglas de Correlatividad</MudText>
-                <MudText Typo="Typo.body2" Style="color: #6B7280;">Configura los requisitos previos para <b>@materiaEnEdicion?.NombreMateria</b>.</MudText>
-            </div>
-        </div>
-    </TitleContent>
+@* --- MODAL 2: CORRELATIVAS --- *@
+<MudDialog @bind-Visible="mostrarModalCorrelativas" Options="dialogOptions" Class="unified-dialog-card pa-0">
     <DialogContent>
-        <div class="px-6 pb-6" style="max-height: 55vh; overflow-y: auto; overflow-x: hidden;">
+        <div class="dialog-header-integrated">
+            <div class="d-flex align-center">
+                <MudIcon Icon="@Icons.Material.Filled.Link" Class="mr-3" />
+                <div>
+                    <MudText Typo="Typo.h6" Style="font-weight: 700; letter-spacing: -0.5px;">Reglas de Correlatividad</MudText>
+                    <MudText Typo="Typo.caption" Style="opacity: 0.9;">Requisitos para cursar y rendir <b>@materiaEnEdicion?.NombreMateria</b></MudText>
+                </div>
+            </div>
+            <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" OnClick="CerrarModales" Size="Size.Small" Disabled="_procesando" />
+        </div>
+
+        <div class="dialog-body" style="background-color: #f8fafc;">
             @if (materiasCandidatas != null && materiasCandidatas.Any())
             {
-                <MudAlert Severity="Severity.Info" Class="mb-4 text-sm">
-                    Define qué se le exige al alumno de las materias previas:<br />
-                    <span style="color: #0284c7; font-weight: bold;">[PARA CURSAR]:</span> Necesita tener la cursada previa aprobada (Regular).<br />
-                    <span style="color: #d97706; font-weight: bold;">[PARA RENDIR FINAL]:</span> Necesita tener la materia previa aprobada definitivamente (Final o Promoción).
-                </MudAlert>
+                <div class="pa-4 mb-4 rounded-lg" style="background-color: #f0f9ff; border-left: 4px solid #0284c7;">
+                    <MudText Typo="Typo.body2" Style="color: #0369a1; font-weight: 600; line-height: 1.5;">
+                        <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="mr-1" Style="vertical-align: middle;" />
+                        Selecciona qué nivel de aprobación se exige de las materias previas:<br />
+                        • <span style="font-weight: 800;">[Aprobar Cursada]:</span> Requiere tener la cursada previa regularizada o aprobada.<br />
+                        • <span style="font-weight: 800;">[Aprobar Materia]:</span> Requiere tener el examen final de la previa aprobado o promocionado.
+                    </MudText>
+                </div>
 
                 @foreach (var grupo in materiasCandidatas.GroupBy(m => m.AnioCursada).OrderBy(g => g.Key))
                 {
-                    <div class="correlativas-list-year">@ObtenerNombreAnio(grupo.Key)</div>
+                    <div class="correlativas-list-year">Asignaturas de @ObtenerNombreAnio(grupo.Key, true)</div>
                     <MudGrid Spacing="2">
                         @foreach (var mat in grupo.OrderBy(m => m.CodigoMateria))
                         {
@@ -705,24 +565,17 @@ else
 
                             <MudItem xs="12">
                                 <div class="pa-3 transition-all"
-                                     style="@(isSelected ? "background-color: #f0fdf4; border: 1px solid #bbf7d0; border-left: 4px solid #16a34a; border-radius: 8px;" : "background-color: white; border: 1px solid #E2E8F0; border-left: 4px solid transparent; border-radius: 8px;")">
+                                     style="@(isSelected ? "background-color: #f0fdf4; border: 1px solid #bbf7d0; border-left: 4px solid #16a34a; border-radius: 8px;" : "background-color: white; border: 1px solid #cbd5e1; border-left: 4px solid transparent; border-radius: 8px;")">
 
-                                    <MudText Typo="Typo.body1" Style="@(isSelected ? "font-weight: 800; color: #166534; margin-bottom: 4px;" : "font-weight: 600; color: #475569; margin-bottom: 4px;")">
+                                    <MudText Typo="Typo.body1" Style="@(isSelected ? "font-weight: 800; color: #166534; margin-bottom: 4px;" : "font-weight: 700; color: #334155; margin-bottom: 4px;")">
                                         @mat.CodigoMateria - @mat.NombreMateria
                                     </MudText>
 
-                                    <div class="d-flex gap-4 ml-2" style="flex-wrap: wrap;">
-                                        <MudCheckBox T="bool"
-                                                     Value="@reqCursar"
-                                                     ValueChanged="@((bool v) => ToggleRequisito(mat.Id, "Cursar", v))"
-                                                     Label="Exigir para CURSAR"
-                                                     Color="Color.Info" Dense="true" Size="Size.Small" />
-
-                                        <MudCheckBox T="bool"
-                                                     Value="@reqRendir"
-                                                     ValueChanged="@((bool v) => ToggleRequisito(mat.Id, "Rendir", v))"
-                                                     Label="Exigir para RENDIR FINAL"
-                                                     Color="Color.Warning" Dense="true" Size="Size.Small" />
+                                    <div class="d-flex gap-4 ml-2 flex-wrap">
+                                        <MudCheckBox T="bool" Value="@reqCursar" ValueChanged="@((bool v) => ToggleRequisito(mat.Id, "Cursar", v))"
+                                                     Label="Exigir Aprobar Cursada" Color="Color.Info" Dense="true" Size="Size.Small" Disabled="_procesando" />
+                                        <MudCheckBox T="bool" Value="@reqRendir" ValueChanged="@((bool v) => ToggleRequisito(mat.Id, "Rendir", v))"
+                                                     Label="Exigir Aprobar Materia" Color="Color.Warning" Dense="true" Size="Size.Small" Disabled="_procesando" />
                                     </div>
                                 </div>
                             </MudItem>
@@ -732,91 +585,115 @@ else
             }
             else
             {
-                <div class="d-flex justify-center pa-8" style="color:#94A3B8;">No hay materias previas disponibles en el plan.</div>
+                <div class="d-flex justify-center pa-8" style="color:#94A3B8;">No existen asignaturas de años anteriores para enlazar.</div>
             }
         </div>
-        <div class="d-flex justify-end gap-2 px-6 pb-6 pt-4" style="border-top: 1px solid #E5E7EB;">
-            <MudButton OnClick="CerrarModales" Variant="Variant.Text" Color="Color.Default">Cancelar</MudButton>
-            <MudButton OnClick="GuardarCorrelativas" Variant="Variant.Filled" Color="Color.Primary" Class="rounded-lg px-6">Guardar Reglas</MudButton>
+
+        <div class="actions-footer">
+            <MudButton OnClick="CerrarModales" Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg font-weight-bold" Disabled="_procesando">Cancelar</MudButton>
+            <MudButton OnClick="GuardarCorrelativas" Variant="Variant.Filled" Color="Color.Primary" Class="rounded-lg font-weight-bold px-6" Disabled="_procesando">
+                @(_procesando ? "Guardando..." : "Guardar Reglas")
+            </MudButton>
         </div>
     </DialogContent>
 </MudDialog>
 
-<MudDialog @bind-Visible="mostrarDialogoEliminar" Options="dialogOptionsEliminar" Class="unified-dialog-card">
+@* --- MODAL 3: ELIMINAR --- *@
+<MudDialog @bind-Visible="mostrarDialogoEliminar" Options="dialogOptionsEliminar" Class="unified-dialog-card pb-2">
     <DialogContent>
-        <div class="pa-4 text-center">
-            <MudIcon Icon="@Icons.Material.Filled.Warning" Color="Color.Warning" Size="Size.Large" Class="mb-2" />
-            <MudText Typo="Typo.h6">¿Eliminar Materia?</MudText>
-            <MudText Typo="Typo.body2" Class="mt-2">Se quitará <b>@materiaParaEliminar?.NombreMateria</b> del plan.</MudText>
+        <div class="pa-4 d-flex flex-column align-center text-center">
+            <div style="background-color: #fffbeb; padding: 16px; border-radius: 50%; margin-bottom: 16px;">
+                <MudIcon Icon="@Icons.Material.Filled.WarningAmber" Color="Color.Warning" Style="font-size: 3rem;" />
+            </div>
+            <MudText Typo="Typo.h5" Style="font-weight: 800; color: #d97706; letter-spacing: -0.5px;" Class="mb-2">Quitar Asignatura</MudText>
+            <MudText Typo="Typo.body1" Style="color: #334155; font-weight: 600;" Class="mb-2">
+                Se desvinculará <b>@materiaParaEliminar?.NombreMateria</b> del diseño curricular actual.
+            </MudText>
         </div>
     </DialogContent>
     <DialogActions>
-        <div class="d-flex justify-center w-100 pb-4 gap-2">
-            <MudButton OnClick="CerrarModales" Variant="Variant.Outlined">Cancelar</MudButton>
-            <MudButton OnClick="ConfirmarEliminar" Variant="Variant.Filled" Color="Color.Error">Eliminar</MudButton>
+        <div class="px-4 pb-4 d-flex justify-center gap-3 w-100">
+            <MudButton OnClick="CerrarModales" Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg font-weight-bold" Disabled="_procesando">Cancelar</MudButton>
+            <MudButton OnClick="ConfirmarEliminar" Variant="Variant.Filled" Color="Color.Error" Class="rounded-lg font-weight-bold px-6" Disabled="_procesando">
+                @(_procesando ? "Eliminando..." : "Confirmar")
+            </MudButton>
         </div>
     </DialogActions>
 </MudDialog>
 
 @code {
-    [Parameter] public int Id { get; set; }
+    [Parameter] public int PlanId { get; set; }
+
+    private MudForm _formMateria = null!;
+    private bool loading = true;
+    private bool _procesando = false;
+
+    private int indiceGlobalMaterias = 1;
 
     private PlanEstudioDTO plan = new PlanEstudioDTO { Nombre = "Cargando...", NombreCarrera = "" };
-    private List<PlanMateriaDTO> materiasDelPlan = new List<PlanMateriaDTO>();
-    private List<MateriaDTO> catalogoMaterias = new List<MateriaDTO>();
-    private List<RegimenDTO> listaRegimenes = new List<RegimenDTO>();
-    private List<EstadoMateriaDTO> listaEstados = new List<EstadoMateriaDTO>();
+    private List<PlanMateriaDTO> materiasDelPlan = new();
+    private List<MateriaDTO> catalogoMaterias = new();
+    private List<RegimenDTO> listaRegimenes = new();
+    private List<EstadoMateriaDTO> listaEstados = new();
 
-    private PlanMateriaDTO materiaModel = new PlanMateriaDTO();
-    private PlanMateriaDTO materiaParaEliminar;
-    private PlanMateriaDTO materiaEnEdicion;
+    private PlanMateriaDTO materiaModel = new();
+    private PlanMateriaDTO? materiaParaEliminar;
+    private PlanMateriaDTO? materiaEnEdicion;
 
-    private Dictionary<string, string> correlativasDict = new Dictionary<string, string>();
-    private List<PlanMateriaDTO> materiasCandidatas = new List<PlanMateriaDTO>();
+    private Dictionary<string, string> correlativasDict = new();
+    private List<PlanMateriaDTO> materiasCandidatas = new();
 
-    private bool loading = true;
     private bool mostrarModal = false;
     private bool mostrarModalCorrelativas = false;
     private bool mostrarDialogoEliminar = false;
     private bool esEdicion = false;
-    private DialogOptions dialogOptions = new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true, CloseButton = true };
-    private DialogOptions dialogOptionsEliminar = new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true, CloseButton = false };
 
-    protected override async Task OnInitializedAsync() { await CargarDatos(); }
+    private DialogOptions dialogOptions = new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true, BackdropClick = false, CloseButton = false, NoHeader = true };
+    private DialogOptions dialogOptionsEliminar = new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true, BackdropClick = false, CloseButton = false };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarDatos();
+    }
 
     private async Task CargarDatos()
     {
         loading = true;
+        StateHasChanged();
+
         try
         {
-            var t1 = PlanService.GetByIdAsync(Id);
-            var t2 = PlanService.GetMateriasByPlanAsync(Id);
+            var t1 = PlanService.GetByIdAsync(PlanId);
+            var t2 = PlanService.GetMateriasByPlanAsync(PlanId);
             var t3 = MateriaService.GetAllAsync();
             var t4 = RegimenService.GetAllAsync();
             var t5 = EstadoMateriaService.GetEstadosAsync();
 
             await Task.WhenAll(t1, t2, t3, t4, t5);
 
-            var p = await t1; if (p != null) plan = p;
-            materiasDelPlan = await t2 ?? new List<PlanMateriaDTO>();
-            catalogoMaterias = await t3 ?? new List<MateriaDTO>();
-            listaRegimenes = await t4 ?? new List<RegimenDTO>();
-            listaEstados = await t5 ?? new List<EstadoMateriaDTO>();
-        }
-        catch (Exception ex) { Snackbar.Add("Error al cargar datos.", Severity.Error); }
-        finally { loading = false; }
-    }
+            var p = await t1;
+            if (p != null) plan = p;
 
-    private string GetNombreMateria(int idReq)
-    {
-        var mat = materiasDelPlan.FirstOrDefault(m => m.Id == idReq);
-        return mat != null ? mat.NombreMateria : "Materia Previa";
+            materiasDelPlan = await t2 ?? new();
+            catalogoMaterias = await t3 ?? new();
+            listaRegimenes = await t4 ?? new();
+            listaEstados = await t5 ?? new();
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Error al cargar los datos de la malla curricular.", Severity.Error);
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
     }
 
     private void AbrirModalCorrelativas(PlanMateriaDTO item)
     {
         materiaEnEdicion = item;
-        materiasCandidatas = materiasDelPlan.Where(m => m.Id != item.Id && m.AnioCursada <= item.AnioCursada).ToList();
+        materiasCandidatas = materiasDelPlan.Where(m => m.Id != item.Id && m.AnioCursada < item.AnioCursada).ToList();
 
         correlativasDict.Clear();
 
@@ -842,140 +719,158 @@ else
     private void ToggleRequisito(int idMateria, string momento, bool check)
     {
         var key = $"{idMateria}_{momento}";
-        if (check) correlativasDict[key] = momento == "Cursar" ? "Regular" : "Aprobada";
-        else correlativasDict.Remove(key);
+        if (check)
+            correlativasDict[key] = momento == "Cursar" ? "Regular" : "Aprobada";
+        else
+            correlativasDict.Remove(key);
     }
 
     private async Task GuardarCorrelativas()
     {
-        var listaCorrelativas = new List<CorrelativaItemDTO>();
-        foreach (var kv in correlativasDict)
+        if (materiaEnEdicion == null) return;
+
+        _procesando = true;
+        StateHasChanged();
+
+        try
         {
-            var partesKey = kv.Key.Split('_');
-            int idRequisito = int.Parse(partesKey[0]);
-            string momento = partesKey[1];
-            string condicion = kv.Value;
+            var listaCorrelativas = new List<CorrelativaItemDTO>();
+            foreach (var kv in correlativasDict)
+            {
+                var partesKey = kv.Key.Split('_');
+                int idRequisito = int.Parse(partesKey[0]);
+                string momento = partesKey[1];
+                string condicion = kv.Value;
+                listaCorrelativas.Add(new CorrelativaItemDTO { IdPlanMateriaRequisito = idRequisito, TipoRequisito = $"{momento}-{condicion}" });
+            }
 
-            listaCorrelativas.Add(new CorrelativaItemDTO { IdPlanMateriaRequisito = idRequisito, TipoRequisito = $"{momento}-{condicion}" });
+            var exito = await PlanService.ActualizarCorrelativasAsync(materiaEnEdicion.Id, listaCorrelativas);
+
+            if (exito)
+            {
+                Snackbar.Add("Reglas de correlatividad guardadas correctamente.", Severity.Success);
+                mostrarModalCorrelativas = false;
+                await CargarDatos();
+            }
+            else
+            {
+                Snackbar.Add("Error del servidor al intentar guardar las reglas.", Severity.Error);
+            }
         }
-
-        var exito = await PlanService.ActualizarCorrelativasAsync(materiaEnEdicion.Id, listaCorrelativas);
-
-        if (exito) { Snackbar.Add("Reglas de correlatividad guardadas.", Severity.Success); mostrarModalCorrelativas = false; await CargarDatos(); }
-        else { Snackbar.Add("Error al guardar reglas.", Severity.Error); }
+        finally
+        {
+            _procesando = false;
+            StateHasChanged();
+        }
     }
 
     private void AbrirModalAgregar()
     {
         materiaModel = new PlanMateriaDTO
         {
-            IdPlan = Id,
-            AnioCursada = 1,
-            NotaMinimaAprobacion = 6,
-            CargaHorariaTotal = 64,
-            EsPromocionable = true,
-            PromedioMinimoAprobacion = 4,
-            CantidadParciales = 2,
-            CantidadAplazosParaLibre = 1,
-            PorcentajeAsistenciaRegularizar = 60,
-            EsLibre = false,
-            TieneFinalObligatorio = false,
-            ModoAprobacionCursada = 0,
-            ModoNotaRecuperatorio = 0,
-            TieneIntegrador = false
+            IdPlan = PlanId, AnioCursada = 1, Cuatrimestre = 0, NotaMinimaAprobacion = 6, CargaHorariaTotal = 64,
+            EsPromocionable = true, PromedioMinimoAprobacion = 4, CantidadParciales = 2, CantidadAplazosParaLibre = 1,
+            PorcentajeAsistenciaRegularizar = 60, EsLibre = false, TieneFinalObligatorio = false,
+            ModoAprobacionCursada = 0, ModoNotaRecuperatorio = 0, TieneIntegrador = false
         };
-        esEdicion = false; mostrarModal = true;
+        esEdicion = false;
+        mostrarModal = true;
     }
 
-    private void AbrirModalAgregarRapido(int anio)
-    {
-        materiaModel = new PlanMateriaDTO
-        {
-            IdPlan = Id,
-            AnioCursada = anio,
-            NotaMinimaAprobacion = 6,
-            CargaHorariaTotal = 64,
-            EsPromocionable = true,
-            PromedioMinimoAprobacion = 4,
-            CantidadParciales = 2,
-            CantidadAplazosParaLibre = 1,
-            PorcentajeAsistenciaRegularizar = 60,
-            EsLibre = false,
-            TieneFinalObligatorio = false,
-            ModoAprobacionCursada = 0,
-            ModoNotaRecuperatorio = 0,
-            TieneIntegrador = false
-        };
-        esEdicion = false; mostrarModal = true;
-    }
+    private void AbrirModalAgregarRapido(int anio) { AbrirModalAgregar(); materiaModel.AnioCursada = anio; }
 
     private void AbrirModalDetalle(PlanMateriaDTO item)
     {
         materiaModel = new PlanMateriaDTO
         {
-            Id = item.Id,
-            IdPlan = item.IdPlan,
-            IdMateria = item.IdMateria,
-            AnioCursada = item.AnioCursada,
-            IdRegimen = item.IdRegimen,
-            Cuatrimestre = item.Cuatrimestre,
-            CargaHorariaTotal = item.CargaHorariaTotal,
-            NotaMinimaAprobacion = item.NotaMinimaAprobacion,
-            EsPromocionable = item.EsPromocionable,
-            Objetivos = item.Objetivos,
-            ContenidosMinimos = item.ContenidosMinimos,
-            TieneProyecto = item.TieneProyecto,
-            DescripcionProyecto = item.DescripcionProyecto,
-            CondicionesCursada = item.CondicionesCursada,
-            CondicionesAprobacion = item.CondicionesAprobacion,
-            TipoCalificacion = item.TipoCalificacion,
-
-            ModoAprobacionCursada = item.ModoAprobacionCursada,
-            NotaEliminatoria = item.NotaEliminatoria,
+            Id = item.Id, IdPlan = item.IdPlan, IdMateria = item.IdMateria, AnioCursada = item.AnioCursada,
+            IdRegimen = item.IdRegimen, Cuatrimestre = item.Cuatrimestre, CargaHorariaTotal = item.CargaHorariaTotal,
+            NotaMinimaAprobacion = item.NotaMinimaAprobacion, EsPromocionable = item.EsPromocionable,
+            Objetivos = item.Objetivos, ContenidosMinimos = item.ContenidosMinimos, TieneProyecto = item.TieneProyecto,
+            DescripcionProyecto = item.DescripcionProyecto, CondicionesCursada = item.CondicionesCursada,
+            CondicionesAprobacion = item.CondicionesAprobacion, TipoCalificacion = item.TipoCalificacion,
+            ModoAprobacionCursada = item.ModoAprobacionCursada, NotaEliminatoria = item.NotaEliminatoria,
             PromedioMinimoAprobacion = item.PromedioMinimoAprobacion ?? item.NotaMinimaRegularizar,
-            CantidadAplazosParaLibre = item.CantidadAplazosParaLibre,
-            NotaMinimaRegularizar = item.NotaMinimaRegularizar,
-            NotaMinimaPromocion = item.NotaMinimaPromocion,
-            PorcentajeAsistenciaRegularizar = item.PorcentajeAsistenciaRegularizar,
-            PorcentajeAsistenciaPromocion = item.PorcentajeAsistenciaPromocion,
-            VigenciaCursadaAnios = item.VigenciaCursadaAnios,
-            CantidadParciales = item.CantidadParciales,
-            EsLibre = item.EsLibre,
-            TieneFinalObligatorio = item.TieneFinalObligatorio,
-
-            ModoNotaRecuperatorio = item.ModoNotaRecuperatorio,
-            TieneIntegrador = item.TieneIntegrador,
-            CondicionIntegradorParciales = item.CondicionIntegradorParciales,
-            NotaAprobacionIntegrador = item.NotaAprobacionIntegrador,
-            IntegradorPermitePromocion = item.IntegradorPermitePromocion,
-            NotaPromocionIntegrador = item.NotaPromocionIntegrador,
-
-            IdEstadoPromocion = item.IdEstadoPromocion,
-            IdEstadoRegular = item.IdEstadoRegular,
-            IdEstadoSiDesaprueba = item.IdEstadoSiDesaprueba,
-            IdEstadoSiFaltaAsistencia = item.IdEstadoSiFaltaAsistencia
+            CantidadAplazosParaLibre = item.CantidadAplazosParaLibre, NotaMinimaRegularizar = item.NotaMinimaRegularizar,
+            NotaMinimaPromocion = item.NotaMinimaPromocion, PorcentajeAsistenciaRegularizar = item.PorcentajeAsistenciaRegularizar,
+            PorcentajeAsistenciaPromocion = item.PorcentajeAsistenciaPromocion, VigenciaCursadaAnios = item.VigenciaCursadaAnios,
+            CantidadParciales = item.CantidadParciales, EsLibre = item.EsLibre, TieneFinalObligatorio = item.TieneFinalObligatorio,
+            ModoNotaRecuperatorio = item.ModoNotaRecuperatorio, TieneIntegrador = item.TieneIntegrador,
+            CondicionIntegradorParciales = item.CondicionIntegradorParciales, NotaAprobacionIntegrador = item.NotaAprobacionIntegrador,
+            IntegradorPermitePromocion = item.IntegradorPermitePromocion, NotaPromocionIntegrador = item.NotaPromocionIntegrador,
+            IdEstadoPromocion = item.IdEstadoPromocion, IdEstadoRegular = item.IdEstadoRegular,
+            IdEstadoSiDesaprueba = item.IdEstadoSiDesaprueba, IdEstadoSiFaltaAsistencia = item.IdEstadoSiFaltaAsistencia
         };
-        esEdicion = true; mostrarModal = true;
+        esEdicion = true;
+        mostrarModal = true;
     }
 
     private async Task GuardarMateria()
     {
-        if (materiaModel.IdMateria == 0 || materiaModel.IdRegimen == null) { Snackbar.Add("Complete campos obligatorios", Severity.Warning); return; }
-        bool exito = esEdicion ? await PlanService.EditarMateriaAsync(materiaModel) : await PlanService.AgregarMateriaAsync(materiaModel);
-        if (exito) { Snackbar.Add("Guardado correctamente", Severity.Success); mostrarModal = false; await CargarDatos(); }
-        else Snackbar.Add("Error al guardar.", Severity.Error);
+        await _formMateria.Validate();
+        if (!_formMateria.IsValid) return;
+
+        if (materiaModel.IdMateria == 0) { Snackbar.Add("Debe seleccionar una asignatura del catálogo central.", Severity.Warning); return; }
+        if (materiaModel.IdRegimen == null) { Snackbar.Add("Debe definir el Régimen de cursada.", Severity.Warning); return; }
+
+        _procesando = true;
+        StateHasChanged();
+
+        try
+        {
+            bool exito = esEdicion
+                ? await PlanService.EditarMateriaAsync(materiaModel)
+                : await PlanService.AgregarMateriaAsync(materiaModel);
+
+            if (exito) { Snackbar.Add("Configuración de asignatura guardada exitosamente.", Severity.Success); mostrarModal = false; await CargarDatos(); }
+            else { Snackbar.Add("Ocurrió un error al intentar guardar. Verifique los datos.", Severity.Error); }
+        }
+        catch (Exception) { Snackbar.Add("Error crítico de comunicación con el servidor.", Severity.Error); }
+        finally { _procesando = false; StateHasChanged(); }
     }
 
     private void AbrirModalEliminar(PlanMateriaDTO item) { materiaParaEliminar = item; mostrarDialogoEliminar = true; }
+
     private async Task ConfirmarEliminar()
     {
-        if (await PlanService.QuitarMateriaAsync(materiaParaEliminar.Id)) { Snackbar.Add("Eliminado", Severity.Success); await CargarDatos(); }
-        else Snackbar.Add("Error", Severity.Error);
-        mostrarDialogoEliminar = false;
+        if (materiaParaEliminar == null) return;
+        _procesando = true;
+        StateHasChanged();
+
+        try
+        {
+            if (await PlanService.QuitarMateriaAsync(materiaParaEliminar.Id))
+            { Snackbar.Add("Asignatura desvinculada del plan.", Severity.Success); await CargarDatos(); }
+            else
+            { Snackbar.Add("No se pudo eliminar. Compruebe que no esté atada a comisiones activas.", Severity.Error); }
+        }
+        catch (Exception) { Snackbar.Add("Ocurrió un error al intentar eliminar.", Severity.Error); }
+        finally { _procesando = false; mostrarDialogoEliminar = false; StateHasChanged(); }
     }
 
-    private void CerrarModales() { mostrarModal = false; mostrarDialogoEliminar = false; mostrarModalCorrelativas = false; }
-    private int ObtenerNumeroCodigo(string codigo) { if (string.IsNullOrEmpty(codigo)) return 999; if (codigo.Contains("-") && codigo.Split('-').Length > 1 && int.TryParse(codigo.Split('-')[1], out int num)) return num; if (int.TryParse(codigo, out int n)) return n; return 999; }
-    private int ObtenerMaximoAnio() => materiasDelPlan.Any() ? materiasDelPlan.Max(m => m.AnioCursada) : 3;
-    private string ObtenerNombreAnio(int anio, bool corto = false) => anio switch { 1 => corto ? "1º Año" : "PRIMER AÑO", 2 => corto ? "2º Año" : "SEGUNDO AÑO", 3 => corto ? "3º Año" : "TERCER AÑO", 4 => corto ? "4º Año" : "CUARTO AÑO", 5 => corto ? "5º Año" : "QUINTO AÑO", _ => $"{anio}º AÑO" };
+    private void CerrarModales()
+    {
+        if (!_procesando) { mostrarModal = false; mostrarDialogoEliminar = false; mostrarModalCorrelativas = false; }
+    }
+
+    private int ObtenerNumeroCodigo(string? codigo)
+    {
+        if (string.IsNullOrEmpty(codigo)) return 999;
+        if (codigo.Contains("-") && codigo.Split('-').Length > 1 && int.TryParse(codigo.Split('-')[1], out int num)) return num;
+        if (int.TryParse(codigo, out int n)) return n;
+        return 999;
+    }
+
+    private int ObtenerMaximoAnio() => materiasDelPlan.Any() ? materiasDelPlan.Max(m => m.AnioCursada) : 0;
+
+    private string ObtenerNombreAnio(int anio, bool corto = false) => anio switch
+    {
+        1 => corto ? "1º Año" : "PRIMER AÑO",
+        2 => corto ? "2º Año" : "SEGUNDO AÑO",
+        3 => corto ? "3º Año" : "TERCER AÑO",
+        4 => corto ? "4º Año" : "CUARTO AÑO",
+        5 => corto ? "5º Año" : "QUINTO AÑO",
+        6 => corto ? "6º Año" : "SEXTO AÑO",
+        _ => $"{anio}º AÑO"
+    };
 }

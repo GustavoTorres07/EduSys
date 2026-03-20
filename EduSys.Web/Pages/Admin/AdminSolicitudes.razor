@@ -1,36 +1,135 @@
 ﻿@page "/admin/solicitudes"
 @using EduSys.Shared.DTOs
 @using EduSys.Web.Services.Interfaces
+
 @inject ISolicitudService InscripcionService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
-    <div class="d-flex justify-space-between align-center mb-4">
+<style>
+    /* Estilos de tabla consistentes */
+    .table-header-custom .mud-table-head .mud-table-cell {
+        color: #456990 !important;
+        font-weight: 800 !important;
+        background-color: #f8fafc !important;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.5px;
+    }
+
+    .row-hover-effect:hover {
+        background-color: #f1f5f9 !important;
+    }
+
+    /* Buscador consistente */
+    .custom-filter-input .mud-input-outlined-border {
+        border-color: #cbd5e1 !important;
+        transition: border-color 0.2s;
+    }
+    
+    .custom-filter-input:hover .mud-input-outlined-border {
+        border-color: #456990 !important;
+    }
+
+    .custom-filter-input.mud-input-control.mud-input-focused .mud-input-outlined-border {
+        border-color: #456990 !important;
+        border-width: 2px !important;
+    }
+
+    /* ✅ FIX VISIBILIDAD: texto visible en el buscador */
+    .custom-filter-input input {
+        color: #1e293b !important;
+        font-weight: 600 !important;
+        -webkit-text-fill-color: #1e293b !important;
+    }
+
+    /* ✅ FIX: Visibilidad del icono de la lupa */
+    .custom-filter-input .mud-input-adornment .mud-icon-root {
+        color: #456990 !important;
+        opacity: 1 !important;
+    }
+
+    /* ✅ FIX VISIBILIDAD: Paginador (Filas por página y números) */
+    .mud-table-pager {
+        color: #1e293b !important;
+    }
+    
+        .mud-table-pager .mud-input-slot,
+        .mud-table-pager .mud-select-input {
+            color: #1e293b !important;
+            -webkit-text-fill-color: #1e293b !important;
+            font-weight: 600 !important;
+        }
+    
+        .mud-table-pager .mud-icon-root {
+            color: #456990 !important;
+        }
+</style>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-6 mb-10">
+    
+    @* --- ENCABEZADO Y ACCIONES --- *@
+    <div class="d-flex justify-space-between align-center mb-6 flex-wrap gap-4">
         <div>
-            <MudText Typo="Typo.h4" Color="Color.Primary" Style="font-weight: 700;">Gestión de Admisiones</MudText>
-            <MudText Typo="Typo.subtitle1" Class="mud-text-secondary">Listado de aspirantes pendientes de revisión.</MudText>
+            <MudText Typo="Typo.h4" Color="Color.Primary" Style="font-weight: 800; letter-spacing: -0.5px;">Gestión de Admisiones</MudText>
+            <MudText Typo="Typo.subtitle1" Class="mud-text-secondary">Listado de aspirantes pendientes de revisión para ingreso a la institución.</MudText>
         </div>
-        <MudButton Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Refresh" Color="Color.Primary" OnClick="CargarDatos">
-            Actualizar
-        </MudButton>
+        <div class="d-flex gap-2">
+            <MudButton Variant="Variant.Outlined"
+                       StartIcon="@Icons.Material.Filled.History"
+                       Color="Color.Default"
+                       OnClick='@(() => Navigation.NavigateTo("/admin/solicitudes-historial"))'>
+                Ver Historial
+            </MudButton>
+            <MudButton Variant="Variant.Filled"
+                       StartIcon="@Icons.Material.Filled.Refresh"
+                       Color="Color.Primary"
+                       OnClick="CargarDatos"
+                       Disabled="@cargando">
+                Actualizar
+            </MudButton>
+        </div>
     </div>
 
-    <MudTable Items="@listaSolicitudes" Hover="true" Striped="true" Loading="@cargando" Filter="new Func<SolicitudIngresoDTO, bool>(Filtrar)" Elevation="3">
+    @* --- TABLA DE DATOS --- *@
+    <MudTable Items="@listaSolicitudes"
+              Hover="true"
+              Striped="false"
+              Loading="@cargando"
+              LoadingProgressColor="Color.Primary"
+              Filter="new Func<SolicitudIngresoDTO, bool>(Filtrar)"
+              Elevation="2"
+              Class="rounded-lg overflow-hidden table-header-custom"
+              RowClass="row-hover-effect">
+        
         <ToolBarContent>
-            <MudText Typo="Typo.h6">Pendientes</MudText>
+            <MudIcon Icon="@Icons.Material.Filled.Inbox" Color="Color.Primary" Class="mr-2" />
+            <MudText Typo="Typo.h6" Style="font-weight: 700; color: #1e293b;">Bandeja de Entrada</MudText>
             <MudSpacer />
-            <MudTextField @bind-Value="textoBusqueda" Placeholder="Buscar por DNI o Apellido..." Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Class="mt-0"></MudTextField>
+            
+            @* BUSCADOR OPTIMIZADO (Debounce evita que la UI se congele al teclear) *@
+            <MudTextField @bind-Value="textoBusqueda"
+                          Placeholder="Buscar por DNI, Nombre o Apellido..."
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          IconSize="Size.Medium"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Class="custom-filter-input mt-0 bg-white"
+                          Immediate="true"
+                          DebounceInterval="300"
+                          Clearable="true"
+                          Style="max-width: 350px; border-radius: 8px;">
+            </MudTextField>
         </ToolBarContent>
 
         <HeaderContent>
             <MudTh>Perfil</MudTh>
             <MudTh>Aspirante</MudTh>
             <MudTh>DNI</MudTh>
-            <MudTh>Carrera</MudTh>
-            <MudTh><MudTableSortLabel SortBy="new Func<SolicitudIngresoDTO, object>(x => x.FechaSolicitud)">Fecha de Solicitud</MudTableSortLabel></MudTh>
-            <MudTh>Fecha de Procesamiento</MudTh>
-            <MudTh Style="text-align:center">Acciones</MudTh>
+            <MudTh>Carrera Solicitada</MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<SolicitudIngresoDTO, object>(x => x.FechaSolicitud)">Fecha Ingreso</MudTableSortLabel></MudTh>
+            <MudTh Style="text-align:center">Acción</MudTh>
         </HeaderContent>
 
         <RowTemplate>
@@ -39,44 +138,67 @@
                 {
                     <MudImage Src="@context.RutaFotoPerfil"
                               ObjectFit="ObjectFit.Cover"
-                              Style="width:40px; height:40px; border-radius:50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2);" />
+                              Style="width:45px; height:45px; border-radius:50%; border: 2px solid #e2e8f0;" />
                 }
                 else
                 {
-                    <MudAvatar Color="Color.Secondary" Size="Size.Medium">
-                        @(string.IsNullOrEmpty(context.Nombre) ? "?" : context.Nombre.Substring(0, 1))
+                    <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Size="Size.Medium" Style="font-weight: 600;">
+                        @(string.IsNullOrEmpty(context.Nombre) ? "?" : context.Nombre.Substring(0, 1).ToUpper())
                     </MudAvatar>
                 }
             </MudTd>
+            
             <MudTd DataLabel="Aspirante">
-                <MudText Typo="Typo.body2" Style="font-weight:bold">@context.Apellido, @context.Nombre</MudText>
-                <MudText Typo="Typo.caption">@context.Email</MudText>
+                <MudText Typo="Typo.body2" Style="font-weight: 700; color: #1e293b;">@context.Apellido, @context.Nombre</MudText>
+                <MudText Typo="Typo.caption" Style="color: #64748b;">@context.Email</MudText>
             </MudTd>
+            
             <MudTd DataLabel="DNI">
-                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text">@context.Dni</MudChip>
+                <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined" Style="font-weight: 600; color: #475569;">
+                    @context.Dni
+                </MudChip>
             </MudTd>
-            <MudTd DataLabel="Carrera">@context.NombreCarrera</MudTd>
-
-            <MudTd DataLabel="Fecha de Solicitud">@context.FechaSolicitud.ToString("dd/MM/yyyy HH:mm")</MudTd>
-
-            <MudTd DataLabel="Fecha de Procesamiento">
-                @(context.FechaProcesado.HasValue? context.FechaProcesado.Value.ToString("dd/MM/yyyy HH:mm") : "-")
+            
+            <MudTd DataLabel="Carrera Solicitada">
+                <MudText Typo="Typo.body2" Style="font-weight: 500;">@context.NombreCarrera</MudText>
             </MudTd>
 
-            <MudTd Style="text-align:center">
-                <MudButton Variant="Variant.Outlined" Color="Color.Info" Size="Size.Small" OnClick="@(() => IrADetalle(context.Id))">
-                    Revisar
+            <MudTd DataLabel="Fecha Ingreso">
+                <div class="d-flex flex-column">
+                    <MudText Typo="Typo.body2">@context.FechaSolicitud.ToString("dd/MM/yyyy")</MudText>
+                    <MudText Typo="Typo.caption" Style="color: #94a3b8;">@context.FechaSolicitud.ToString("HH:mm") hs</MudText>
+                </div>
+            </MudTd>
+
+            <MudTd Style="text-align:center" DataLabel="Acción">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           Size="Size.Small"
+                           EndIcon="@Icons.Material.Filled.ArrowForward"
+                           Style="font-weight: 600; border-radius: 6px; box-shadow: none;"
+                           OnClick="@(() => IrADetalle(context.Id))">
+                    Evaluar
                 </MudButton>
             </MudTd>
         </RowTemplate>
 
-        <PagerContent>
-            <MudTablePager />
-        </PagerContent>
+        <LoadingContent>
+            <MudText Typo="Typo.body1" Class="pa-4 text-center" Style="color: #64748b;">
+                Buscando solicitudes en el servidor...
+            </MudText>
+        </LoadingContent>
 
         <NoRecordsContent>
-            <MudText>No hay solicitudes pendientes.</MudText>
+            <div class="d-flex flex-column align-center justify-center pa-8">
+                <MudIcon Icon="@Icons.Material.Filled.Inbox" Style="font-size: 4rem; color: #cbd5e1;" Class="mb-3" />
+                <MudText Typo="Typo.h6" Style="font-weight: 700; color: #475569;">No hay solicitudes pendientes</MudText>
+                <MudText Typo="Typo.body2" Style="color: #94a3b8;">¡Excelente trabajo! Estás al día con todas las admisiones.</MudText>
+            </div>
         </NoRecordsContent>
+
+        <PagerContent>
+            <MudTablePager RowsPerPageString="Filas por página:" InfoFormat="{first_item}-{last_item} de {all_items}" />
+        </PagerContent>
     </MudTable>
 </MudContainer>
 
@@ -93,17 +215,25 @@
     private async Task CargarDatos()
     {
         cargando = true;
+        // Para asegurar que el indicador de carga se vea si la respuesta es muy rápida
+        StateHasChanged();
+
         try
         {
             listaSolicitudes = await InscripcionService.GetPendientesAsync();
         }
-        catch (Exception ex)
+        catch (ApplicationException ex)
         {
-            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            Snackbar.Add(ex.Message, Severity.Warning);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Ocurrió un error al intentar cargar la lista de solicitudes.", Severity.Error);
         }
         finally
         {
             cargando = false;
+            StateHasChanged();
         }
     }
 
@@ -112,9 +242,16 @@
         Navigation.NavigateTo($"/admin/solicitudes/{id}");
     }
 
-    private bool Filtrar(SolicitudIngresoDTO element) =>
-        string.IsNullOrWhiteSpace(textoBusqueda) ||
-        element.Nombre.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase) ||
-        element.Apellido.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase) ||
-        element.Dni.Contains(textoBusqueda);
+    // Filtro seguro y robusto
+    private bool Filtrar(SolicitudIngresoDTO element)
+    {
+        if (string.IsNullOrWhiteSpace(textoBusqueda)) return true;
+
+        var term = textoBusqueda.Trim().ToLower();
+
+        return (element.Nombre?.ToLower().Contains(term) ?? false) ||
+               (element.Apellido?.ToLower().Contains(term) ?? false) ||
+               (element.Dni?.Contains(term) ?? false) ||
+               (element.NombreCarrera?.ToLower().Contains(term) ?? false);
+    }
 }

@@ -16,16 +16,10 @@ public partial class Evaluacion
     public bool? RequiereConfirmacion { get; set; }
     public int? HorasAnticipacionConfirmar { get; set; }
     public int? HorasAnticipacionBaja { get; set; }
-
-    // ====== ESTO ES LO QUE TE DEBE FALTAR ======
     public int? IdEvaluacionPadre { get; set; }
     public virtual Evaluacion? IdEvaluacionPadreNavigation { get; set; }
-    public virtual ICollection<Evaluacion> InverseIdEvaluacionPadreNavigation { get; set; } = new List<Evaluacion>();
-    // ===========================================
-
-    public virtual Comision IdComisionNavigation { get; set; } = null!;
+    public virtual ICollection<Evaluacion> EvaluacionesHijas { get; set; } = new List<Evaluacion>(); public virtual Comision IdComisionNavigation { get; set; } = null!;
     public virtual ICollection<Nota> Nota { get; set; } = new List<Nota>();
-
     public bool EsIntegrador { get; set; }
 
 }

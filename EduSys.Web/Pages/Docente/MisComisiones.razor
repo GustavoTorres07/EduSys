@@ -10,147 +10,275 @@
 
 @attribute [Authorize(Roles = "Docente")]
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-8 mb-8">
-    <div class="d-flex align-center justify-space-between mb-6">
-        <div class="d-flex align-center gap-3">
-            <MudIcon Icon="@Icons.Material.Filled.Groups" Size="Size.Large" Color="Color.Primary" />
+<style>
+    /* --- SISTEMA DE DISEÑO EDUSYS --- */
+    :root {
+        --edusys-primary: #1e3a58;
+        --edusys-primary-light: #2c5282;
+        --edusys-accent: #49BEAA;
+        --edusys-text-primary: #1e293b;
+        --edusys-text-secondary: #64748b;
+        --edusys-border: #e2e8f0;
+        --edusys-bg: #f8fafc;
+    }
+
+    /* Selectores */
+    .custom-select .mud-input-outlined-border {
+        border-color: var(--edusys-border) !important;
+        transition: border-color 0.2s;
+    }
+    .custom-select:hover .mud-input-outlined-border {
+        border-color: var(--edusys-primary) !important;
+    }
+    .custom-select.mud-input-control.mud-input-focused .mud-input-outlined-border {
+        border-color: var(--edusys-primary) !important;
+        border-width: 2px !important;
+    }
+
+    /* Tarjetas de Comisión */
+    .comision-card {
+        border: 1px solid var(--edusys-border);
+        border-radius: 12px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        background-color: white;
+        overflow: hidden;
+    }
+
+    .comision-card:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 12px 20px -5px rgba(30, 58, 88, 0.15) !important;
+        border-color: var(--edusys-primary);
+    }
+
+    .comision-header {
+        background: linear-gradient(135deg, var(--edusys-bg) 0%, white 100%);
+        border-bottom: 1px solid var(--edusys-border);
+        padding: 1.25rem 1.5rem;
+    }
+
+    .comision-body {
+        padding: 1.5rem;
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .comision-footer {
+        background-color: var(--edusys-bg);
+        border-top: 1px dashed var(--edusys-border);
+        padding: 1rem 1.5rem;
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+    }
+
+    .info-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+
+    .info-icon {
+        color: var(--edusys-primary);
+        margin-top: 2px;
+        font-size: 1.1rem;
+    }
+
+    .info-text {
+        color: var(--edusys-text-primary);
+        font-size: 0.9rem;
+        font-weight: 500;
+        line-height: 1.4;
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        background: var(--edusys-bg);
+        border-radius: 16px;
+        border: 2px dashed var(--edusys-border);
+    }
+</style>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-6 mb-12">
+    
+    @* --- ENCABEZADO --- *@
+    <div class="d-flex align-center justify-space-between mb-8 flex-wrap gap-4">
+        <div class="d-flex align-center gap-4">
+            <div style="background-color: #e0f2fe; padding: 12px; border-radius: 12px;">
+                <MudIcon Icon="@Icons.Material.Filled.Groups" Size="Size.Large" Color="Color.Primary" />
+            </div>
             <div>
-                <MudText Typo="Typo.h4" Style="font-weight: 700; color: #1e3a58;">Mis Comisiones</MudText>
-                <MudText Typo="Typo.subtitle1" Class="mud-text-secondary">Gestión de cursos y carga de notas</MudText>
+                <MudText Typo="Typo.h4" Style="font-weight: 800; color: var(--edusys-primary); letter-spacing: -0.5px;">Mis Comisiones</MudText>
+                <MudText Typo="Typo.subtitle1" Class="mud-text-secondary">Gestión operativa de cursos, asistencias y calificaciones.</MudText>
             </div>
         </div>
 
         @* SELECTOR DE PERÍODOS *@
         @if (periodos != null && periodos.Any())
         {
-            <div style="width: 250px;">
-                <MudSelect T="int" Value="idPeriodoSeleccionado" ValueChanged="OnPeriodoChanged" Label="Período Académico" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Style="background: white;">
-                    @* Opción extra para ver todo el historial si el docente quiere *@
-                    <MudSelectItem Value="0">Todos los períodos</MudSelectItem>
-                    @foreach (var p in periodos)
-                    {
-                        <MudSelectItem Value="@p.Id">@p.Nombre</MudSelectItem>
-                    }
-                </MudSelect>
-            </div>
+            <MudSelect T="int" Value="idPeriodoSeleccionado" ValueChanged="OnPeriodoChanged" 
+                       Label="Filtrar por Período" Variant="Variant.Outlined" Margin="Margin.Dense" 
+                       Class="custom-select bg-white" Style="min-width: 250px;">
+                <MudSelectItem Value="0">Todos los períodos históricos</MudSelectItem>
+                @foreach (var p in periodos)
+                {
+                    <MudSelectItem Value="@p.Id">@p.Nombre</MudSelectItem>
+                }
+            </MudSelect>
         }
     </div>
 
+    @* --- CONTENIDO --- *@
     @if (cargando)
     {
-        <div class="d-flex justify-center mt-8">
-            <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
-        </div>
+        <MudGrid>
+            @for (int i = 0; i < 6; i++)
+            {
+                <MudItem xs="12" md="6" lg="4">
+                    <MudCard Elevation="0" Class="rounded-lg" Style="border: 1px solid #e2e8f0;">
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <MudSkeleton Width="70%" Height="30px" />
+                                <MudSkeleton Width="40%" Height="20px" Class="mt-2" />
+                            </CardHeaderContent>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            <MudSkeleton Width="100%" Height="20px" Class="mb-3" />
+                            <MudSkeleton Width="100%" Height="20px" Class="mb-3" />
+                            <MudSkeleton Width="60%" Height="20px" />
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
     }
     else if (comisionesFiltradas == null || !comisionesFiltradas.Any())
     {
-        <MudAlert Severity="Severity.Info" Variant="Variant.Filled" Class="mt-4">
-            No tienes comisiones asignadas para la vista actual.
-        </MudAlert>
+        <div class="empty-state animate__animated animate__fadeIn">
+            <MudIcon Icon="@Icons.Material.Filled.FolderOff" Style="font-size: 5rem; color: #cbd5e1;" Class="mb-4" />
+            <MudText Typo="Typo.h5" Style="font-weight: 800; color: #475569;">Sin asignaciones</MudText>
+            <MudText Typo="Typo.body1" Style="color: #64748b;" Class="mt-2">
+                No tienes comisiones asignadas para el período seleccionado.
+            </MudText>
+        </div>
     }
     else
     {
-        <MudGrid>
+        <MudGrid Spacing="4">
             @foreach (var comision in comisionesFiltradas)
             {
                 <MudItem xs="12" md="6" lg="4">
-                    <MudCard Elevation="3" Class="rounded-lg h-100 d-flex flex-column hover-card">
-                        <MudCardHeader Style="background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">
-                            <CardHeaderContent>
-                                <MudText Typo="Typo.h6" Style="font-weight: 800; color: #1e3a58; line-height: 1.2;">
-                                    @comision.Materia
+                    <div class="comision-card animate__animated animate__fadeInUp">
+                        
+                        <div class="comision-header">
+                            <div class="d-flex justify-space-between align-start mb-2">
+                                <MudText Typo="Typo.h6" Style="font-weight: 800; color: var(--edusys-primary); line-height: 1.2;" Class="pr-2">
+                                    @comision.Materia.ToUpper()
                                 </MudText>
-                                <MudText Typo="Typo.caption" Style="color: #64748b;">
-                                    @comision.Carrera
-                                </MudText>
-                            </CardHeaderContent>
-                            <CardHeaderActions>
-                                <MudChip T="string" Color="Color.Primary" Size="Size.Small" Variant="Variant.Filled">@comision.CodigoComision</MudChip>
-                            </CardHeaderActions>
-                        </MudCardHeader>
-
-                        <MudCardContent Class="flex-grow-1">
-                            <div class="d-flex align-center gap-2 mb-2">
-                                <MudIcon Icon="@Icons.Material.Filled.AccessTime" Size="Size.Small" Color="Color.Default" />
-                                <MudText Typo="Typo.body2">@comision.Horario</MudText>
+                                <MudChip T="string" Color="Color.Primary" Size="Size.Small" Variant="Variant.Filled" Style="font-weight: 700;">
+                                    @comision.CodigoComision
+                                </MudChip>
                             </div>
-                            <div class="d-flex align-center gap-2 mb-2">
-                                <MudIcon Icon="@Icons.Material.Filled.Room" Size="Size.Small" Color="Color.Default" />
-                                <MudText Typo="Typo.body2">@comision.Sede - @comision.Aula</MudText>
-                            </div>
-                            <div class="d-flex align-center gap-2">
-                                <MudIcon Icon="@Icons.Material.Filled.Group" Size="Size.Small" Color="Color.Default" />
-                                <MudText Typo="Typo.body2"><b>@comision.CantidadAlumnos</b> Alumnos</MudText>
-                            </div>
-
-                            <MudDivider Class="my-3" />
-
-                            <MudText Typo="Typo.caption" Class="mud-text-secondary">
-                                Rol: <b>@comision.Rol</b>
+                            <MudText Typo="Typo.caption" Style="color: var(--edusys-text-secondary); font-weight: 600; text-transform: uppercase;">
+                                @comision.Carrera
                             </MudText>
-                        </MudCardContent>
+                        </div>
 
-                        <MudCardActions Class="d-flex justify-end gap-2 pa-3" Style="background-color: #f8fafc;">
-                            <MudTooltip Text="Tomar Asistencia">
-                                <MudIconButton Icon="@Icons.Material.Filled.FactCheck" Color="Color.Secondary" Variant="Variant.Outlined"
+                        <div class="comision-body">
+                            <div class="info-row">
+                                <MudIcon Icon="@Icons.Material.Filled.AccessTime" Class="info-icon" />
+                                <span class="info-text">
+                                    @(string.IsNullOrWhiteSpace(comision.Horario) ? "Horario a confirmar" : comision.Horario)
+                                </span>
+                            </div>
+                            
+                            <div class="info-row">
+                                <MudIcon Icon="@Icons.Material.Filled.LocationOn" Class="info-icon" />
+                                <span class="info-text">
+                                    @comision.Sede - @(string.IsNullOrWhiteSpace(comision.Aula) ? "Aula a definir" : comision.Aula)
+                                </span>
+                            </div>
+                            
+                            <div class="info-row">
+                                <MudIcon Icon="@Icons.Material.Filled.People" Class="info-icon" />
+                                <span class="info-text">
+                                    <b>@comision.CantidadAlumnos</b> alumnos inscritos
+                                </span>
+                            </div>
+
+                            <MudSpacer />
+                            
+                            <div class="d-flex align-center gap-2 mt-2" style="background: #f1f5f9; padding: 8px 12px; border-radius: 8px;">
+                                <MudIcon Icon="@Icons.Material.Filled.AssignmentInd" Size="Size.Small" Style="color: #64748b;" />
+                                <MudText Typo="Typo.caption" Style="color: #475569;">
+                                    Rol asignado: <b>@comision.Rol</b>
+                                </MudText>
+                            </div>
+                        </div>
+
+                        <div class="comision-footer">
+                            <MudTooltip Text="Registro de Asistencia">
+                                <MudIconButton Icon="@Icons.Material.Filled.FactCheck" 
+                                               Color="Color.Secondary" 
+                                               Variant="Variant.Outlined"
+                                               Style="border-radius: 8px;"
                                                OnClick="@(() => Navegar($"/docente/asistencia/{comision.IdComision}"))" />
                             </MudTooltip>
-                            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Grade"
-                                       OnClick="@(() => Navegar($"/docente/notas/{comision.IdComision}"))">
-                                Cargar Notas
+                            
+                            <MudButton Variant="Variant.Filled" 
+                                       Color="Color.Primary" 
+                                       StartIcon="@Icons.Material.Filled.Grading"
+                                       Style="border-radius: 8px; font-weight: 700; letter-spacing: 0.5px;"
+                                       OnClick="@(() => Navegar($"/docente/calificaciones/{comision.IdComision}"))">
+                                CALIFICACIONES
                             </MudButton>
-                        </MudCardActions>
-                    </MudCard>
+                        </div>
+                    </div>
                 </MudItem>
             }
         </MudGrid>
     }
 </MudContainer>
 
-<style>
-    .hover-card {
-        transition: transform 0.2s ease-in-out;
-    }
-
-        .hover-card:hover {
-            transform: translateY(-5px);
-        }
-</style>
-
 @code {
     private bool cargando = true;
-
-    // Todas las comisiones del docente (el historial completo)
     private List<ComisionDocenteDTO> todasLasComisiones = new();
-
-    // Las que se muestran en pantalla actualmente
     private List<ComisionDocenteDTO> comisionesFiltradas = new();
-
-    // Variables para el selector
+    
     private List<PeriodoAcademicoDTO> periodos = new();
     private int idPeriodoSeleccionado;
 
     protected override async Task OnInitializedAsync()
     {
+        cargando = true;
         try
         {
-            // 1. Cargamos períodos y definimos el activo
-            periodos = await PeriodoService.GetAllAsync();
+            // Ejecutamos ambas peticiones en paralelo para mayor velocidad
+            var tPeriodos = PeriodoService.GetAllAsync();
+            var tComisiones = DocenteService.GetMisComisionesAsync();
+
+            await Task.WhenAll(tPeriodos, tComisiones);
+
+            periodos = tPeriodos.Result ?? new();
+            todasLasComisiones = tComisiones.Result ?? new();
+
             var periodoActivo = periodos.FirstOrDefault(p => p.Activo);
             if (periodoActivo != null)
             {
                 idPeriodoSeleccionado = periodoActivo.Id;
             }
 
-            // 2. Traemos TODAS las comisiones del docente
-            todasLasComisiones = await DocenteService.GetMisComisionesAsync();
-
-            // 3. Filtramos
             AplicarFiltro();
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            Snackbar.Add("Error al cargar comisiones", Severity.Error);
+            Snackbar.Add("No se pudieron cargar tus comisiones. Verifica tu conexión.", Severity.Error);
         }
         finally
         {
@@ -166,10 +294,11 @@
 
     private void AplicarFiltro()
     {
-        // Si eligió "Todos los períodos" (0), mostramos todo. Si no, filtramos.
-        // Como el DTO no tiene el IdPeriodo, asumimos que si funciona tu flujo, la API ya le mandaba las correctas,
-        // pero para evitar errores lo asignamos directamente a todas (puedes ajustarlo si agregas IdPeriodo al DTO)
-
+        // 💡 NOTA ARQUITECTÓNICA:
+        // Si a futuro agregas 'IdPeriodo' al 'ComisionDocenteDTO', puedes activar este filtro real:
+        // if (idPeriodoSeleccionado == 0) { comisionesFiltradas = todasLasComisiones; }
+        // else { comisionesFiltradas = todasLasComisiones.Where(c => c.IdPeriodo == idPeriodoSeleccionado).ToList(); }
+        
         comisionesFiltradas = todasLasComisiones;
     }
 

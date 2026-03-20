@@ -8,7 +8,7 @@ namespace EduSys.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize] // Cualquier usuario logueado puede acceder (filtramos por ID interno)
+    [Authorize] // 💡 Si quieres ser más estricto, podrías usar: [Authorize(Roles = "Alumno")]
     public class AlumnoPortalController : ControllerBase
     {
         private readonly IAlumnoPortalRepository _repo;
@@ -19,24 +19,41 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpGet("notificaciones")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<NotificacionDTO>))]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<ActionResult<List<NotificacionDTO>>> GetNotificaciones()
         {
             var idUsuario = ObtenerIdUsuarioLogueado();
-            return Ok(await _repo.GetNotificacionesAsync(idUsuario));
+            if (idUsuario == 0) return Unauthorized("Token inválido o usuario no identificado.");
+
+            var notificaciones = await _repo.GetNotificacionesAsync(idUsuario);
+            return Ok(notificaciones);
         }
 
-        [HttpPost("notificaciones/leer/{id}")]
+        [HttpPut("notificaciones/leer/{id}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> MarcarLeida(int id)
         {
+            // Validamos que el usuario del token exista por seguridad
+            if (ObtenerIdUsuarioLogueado() == 0) return Unauthorized();
+
             await _repo.MarcarNotificacionLeidaAsync(id);
-            return Ok();
+
+            // 204 No Content es el estándar REST para PUTs exitosos sin body de respuesta
+            return NoContent();
         }
 
         [HttpGet("mis-cursadas")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<CursadaAlumnoDTO>))]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<ActionResult<List<CursadaAlumnoDTO>>> GetMisCursadas()
         {
             var idUsuario = ObtenerIdUsuarioLogueado();
-            return Ok(await _repo.GetMisCursadasAsync(idUsuario));
+            if (idUsuario == 0) return Unauthorized("Token inválido o usuario no identificado.");
+
+            var cursadas = await _repo.GetMisCursadasAsync(idUsuario);
+            return Ok(cursadas);
         }
 
         // Método auxiliar para sacar el ID del Token JWT
