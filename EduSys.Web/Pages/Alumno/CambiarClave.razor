@@ -25,7 +25,7 @@
     }
 
     .change-pass-wrapper {
-        height: 100vh;
+        min-height: 100vh;
         display: flex;
         justify-content: center;
         align-items: center;
@@ -47,9 +47,11 @@
         margin-bottom: 1.25rem;
     }
 
-    .custom-input input {
+    /* 🚀 FIX: Forzar que el texto escrito dentro del input sea oscuro SIEMPRE */
+    .custom-input .mud-input-slot {
         color: var(--color-text-dark) !important;
         font-weight: 600 !important;
+        -webkit-text-fill-color: var(--color-text-dark) !important;
     }
 
     .custom-input .mud-input-label {
@@ -64,6 +66,15 @@
 
     .custom-input:hover .mud-input-outlined-border {
         border-color: var(--color-steel-blue) !important;
+    }
+
+    /* Evitar que el autofill del navegador cambie el color del texto a blanco */
+    .custom-input input:-webkit-autofill,
+    .custom-input input:-webkit-autofill:hover, 
+    .custom-input input:-webkit-autofill:focus, 
+    .custom-input input:-webkit-autofill:active {
+        -webkit-box-shadow: 0 0 0 30px white inset !important;
+        -webkit-text-fill-color: var(--color-text-dark) !important;
     }
 
     /* --- BOTÓN PREMIUM --- */
@@ -100,7 +111,7 @@
             </div>
             <MudText Typo="Typo.h5" Align="Align.Center" Style="font-weight: 900; color: #1e3a58;">Seguridad Obligatoria</MudText>
             <MudText Typo="Typo.body2" Align="Align.Center" Style="color: #64748b; line-height: 1.6;" Class="mt-2">
-                Detectamos que estás usando una clave temporal. <br /><b>Crea una nueva contraseña</b> para proteger tu legajo.
+                Detectamos que estás usando una clave temporal. <br /><b>Crea una nueva contraseña</b> para proteger tu cuenta.
             </MudText>
         </div>
 
