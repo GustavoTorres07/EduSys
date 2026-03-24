@@ -90,6 +90,8 @@ builder.Services.AddScoped<IVentanaOperativaRepository, VentanaOperativaReposito
 builder.Services.AddScoped<IInfrastructureRepository, InfrastructureRepository>();
 builder.Services.AddScoped<IAulaRepository, AulaRepository>();
 
+builder.Services.AddScoped<IAsistenciaRepository, AsistenciaRepository>();
+
 builder.Services.AddControllers();
 
 // ==================================================================

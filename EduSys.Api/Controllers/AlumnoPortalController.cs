@@ -56,6 +56,28 @@ namespace EduSys.Api.Controllers
             return Ok(cursadas);
         }
 
+        [HttpGet("mis-asistencias")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<AsistenciaMateriaDTO>))]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult<List<AsistenciaMateriaDTO>>> GetMisAsistencias()
+        {
+            try
+            {
+                // Usamos tu método auxiliar para mantener el código limpio
+                var idUsuario = ObtenerIdUsuarioLogueado();
+                if (idUsuario == 0) return Unauthorized("Token inválido o usuario no identificado.");
+
+                // 🚀 AQUÍ ESTÁ LA CORRECCIÓN: Usamos _repo en lugar de _repository
+                var asistencias = await _repo.GetMisAsistenciasAsync(idUsuario);
+
+                return Ok(asistencias);
+            }
+            catch (System.Exception ex)
+            {
+                return StatusCode(500, "Ocurrió un error al procesar las asistencias: " + ex.Message);
+            }
+        }
+
         // Método auxiliar para sacar el ID del Token JWT
         private int ObtenerIdUsuarioLogueado()
         {

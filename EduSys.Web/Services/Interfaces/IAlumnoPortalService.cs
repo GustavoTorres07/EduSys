@@ -8,5 +8,8 @@ namespace EduSys.Web.Services.Interfaces
         Task MarcarLeidaAsync(int id);
         Task<List<CursadaAlumnoDTO>> GetMisCursadasAsync();
         Task<AlumnoDTO> GetPerfilAsync();
+
+        // 🚀 CORRECCIÓN: Le quitamos el "int idUsuario" porque el Backend lo saca del Token
+        Task<List<AsistenciaMateriaDTO>> GetMisAsistenciasAsync();
     }
 }

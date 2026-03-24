@@ -1,0 +1,742 @@
+﻿@page "/docente/tomar-asistencia"
+@page "/docente/asistencia/{IdComisionParam:int}"
+
+@using Microsoft.AspNetCore.Components.Forms
+@using EduSys.Shared.DTOs
+@using EduSys.Web.Services.Interfaces
+@using Microsoft.AspNetCore.Authorization
+
+@inject IDocenteService DocenteService
+@inject IAsistenciaService AsistenciaService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+@attribute [Authorize(Roles = "Docente")]
+
+<style>
+    :root {
+        --edusys-blue: #456990;
+        --edusys-blue-dark: #344f6e;
+        --edusys-blue-pale: #edf2f7;
+        --edusys-teal: #49BEAA;
+        --edusys-coral: #EF767A;
+        --edusys-purple: #9c27b0;
+        --edusys-bg: #f8fafc;
+        --edusys-border: #e2e8f0;
+        --edusys-text: #1e293b;
+        --edusys-text-muted: #64748b;
+    }
+
+    .header-institucional {
+        background: linear-gradient(135deg, var(--edusys-blue) 0%, #1e3a58 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 16px;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 25px rgba(30,58,88,0.15);
+    }
+
+    .control-panel {
+        background: white;
+        border: 1px solid var(--edusys-border);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+    }
+
+    /* --- GRILLA MATRICIAL --- */
+    .matrix-container {
+        background: white;
+        border: 1px solid var(--edusys-border);
+        border-radius: 12px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+        max-width: 100%;
+        min-height: 400px; 
+    }
+
+    .matrix-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 800px;
+    }
+
+    .matrix-table th, .matrix-table td {
+        border: 1px solid var(--edusys-border);
+        padding: 0; 
+        text-align: center;
+        vertical-align: middle;
+    }
+
+    .matrix-table th {
+        background-color: var(--edusys-blue-pale);
+        color: var(--edusys-blue);
+        font-weight: 800;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 12px 8px;
+    }
+
+    .sticky-col {
+        position: sticky;
+        left: 0;
+        background-color: white;
+        z-index: 10;
+        text-align: left !important;
+        padding: 12px 16px !important;
+        min-width: 250px;
+        border-right: 2px solid var(--edusys-border) !important;
+    }
+    .sticky-header {
+        z-index: 11 !important;
+        background-color: var(--edusys-blue-pale) !important;
+    }
+
+    .alumno-name { font-weight: 700; color: var(--edusys-text); font-size: 0.9rem; margin-bottom: 2px; }
+    .alumno-legajo { font-size: 0.75rem; color: var(--edusys-text-muted); font-weight: 600; }
+
+    .cell-attendance {
+        height: 60px;
+        width: 90px;
+        min-width: 90px;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        position: relative;
+    }
+    
+    .cell-attendance:hover { background-color: #f1f5f9; }
+
+    .state-icon { font-size: 1.5rem; transition: transform 0.2s; }
+    .cell-attendance:active .state-icon { transform: scale(0.8); }
+
+    .state-presente { color: var(--edusys-teal); }
+    .state-ausente { color: var(--edusys-coral); }
+    .state-justificado { color: var(--edusys-purple); }
+    .state-vacio { color: #cbd5e1; }
+
+    .justificar-btn {
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        background: white;
+        border-radius: 50%;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    /* --- ESTILOS UNIFICADOS DE MODAL --- */
+    .mud-dialog-close-icon { display: none !important; }
+    .mud-dialog-content { padding: 0 !important; }
+
+    .dialog-container {
+        display: flex;
+        flex-direction: column;
+        background-color: white;
+        min-width: 450px;
+    }
+
+    .dialog-header-integrated {
+        background: var(--edusys-blue);
+        color: white;
+        padding: 16px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-shrink: 0;
+    }
+
+    .dialog-body {
+        padding: 24px;
+        overflow-y: auto;
+        flex-grow: 1;
+    }
+
+    .actions-footer {
+        padding: 16px 24px;
+        border-top: 1px solid var(--edusys-border);
+        background-color: var(--edusys-bg);
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        flex-shrink: 0;
+    }
+
+    .force-black-text input,
+    .force-black-text .mud-input-slot {
+        color: #1e293b !important;
+        font-weight: 600 !important;
+        -webkit-text-fill-color: #1e293b !important;
+    }
+
+    .force-black-text .mud-input-label {
+        color: var(--edusys-blue) !important;
+        background-color: white !important;
+        padding: 0 5px;
+        font-weight: 600;
+    }
+
+    .force-black-text .mud-input-outlined-border {
+        border-color: #cbd5e1 !important;
+        transition: border-color 0.2s;
+    }
+
+    .force-black-text:hover .mud-input-outlined-border {
+        border-color: var(--edusys-blue) !important;
+    }
+
+    .force-black-text.mud-input-control.mud-input-focused .mud-input-outlined-border {
+        border-color: var(--edusys-blue) !important;
+        border-width: 2px !important;
+    }
+</style>
+
+<MudOverlay Visible="procesando" DarkBackground="true" Absolute="false" ZIndex="9999">
+    <MudStack AlignItems="AlignItems.Center">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+        <MudText Typo="Typo.h6" Style="color: white; font-weight: 600;">Guardando registros...</MudText>
+    </MudStack>
+</MudOverlay>
+
+<div class="pa-4">
+    
+    @* HEADER *@
+    <div class="header-institucional">
+        <MudText Typo="Typo.h3" Style="font-weight: 800; letter-spacing: -1px;">Control de Asistencia</MudText>
+        <MudText Typo="Typo.h6" Style="font-weight: 400; opacity: 0.9;" Class="mt-2">
+            Gestiona la asistencia de tus comisiones y justifica faltas con certificado.
+        </MudText>
+    </div>
+
+    @* PANEL DE CONTROL *@
+    <div class="control-panel d-flex flex-wrap align-center justify-space-between gap-4">
+        <div class="d-flex align-center gap-4 flex-grow-1" style="max-width: 600px;">
+            <MudSelect T="int" Value="idComisionSeleccionada" ValueChanged="OnComisionChanged" 
+                       Label="Seleccione una Comisión" Variant="Variant.Outlined" Margin="Margin.Dense" 
+                       Class="force-black-text bg-white" AdornmentColor="Color.Primary">
+                <MudSelectItem Value="0" Disabled="true">Seleccione...</MudSelectItem>
+                
+                @foreach (var c in misComisiones)
+                {
+                    <MudSelectItem Value="@c.IdComision">@c.Materia - Com. @c.CodigoComision</MudSelectItem>
+                }
+            </MudSelect>
+        </div>
+
+        @if (idComisionSeleccionada > 0 && !cargandoGrilla)
+        {
+            <div class="d-flex gap-3">
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" 
+                           StartIcon="@Icons.Material.Filled.Add" Style="font-weight: 700; border-radius: 8px;"
+                           OnClick="AbrirModalNuevaClase">
+                    NUEVA CLASE
+                </MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" 
+                           StartIcon="@Icons.Material.Filled.Save" Style="font-weight: 700; border-radius: 8px;"
+                           OnClick="GuardarCambiosBD">
+                    GUARDAR CAMBIOS
+                </MudButton>
+            </div>
+        }
+    </div>
+
+    @* GRILLA MATRICIAL *@
+    @if (cargandoGrilla)
+    {
+        <div class="d-flex justify-center pa-8">
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+        </div>
+    }
+    else if (idComisionSeleccionada > 0)
+    {
+        <div class="matrix-container animate__animated animate__fadeIn">
+            <table class="matrix-table">
+                <thead>
+                    <tr>
+                        <th class="sticky-col sticky-header">
+                            <div class="d-flex align-center gap-2">
+                                <MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Small" />
+                                <span>ALUMNO / LEGAJO</span>
+                            </div>
+                        </th>
+                        <th style="min-width: 80px; font-weight: 800; color: #475569; background-color: #f1f5f9;">
+                            % ASIST.
+                        </th>
+                        @foreach (var fecha in fechasClase.OrderBy(f => f))
+                        {
+                            <th style="min-width: 100px;">
+                                <div class="d-flex flex-column align-center justify-center">
+                                    <span style="font-size: 0.85rem;">@fecha.ToString("dd/MM")</span>
+                                    <span style="font-size: 0.6rem; opacity: 0.7;">@fecha.ToString("ddd").ToUpper()</span>
+                                    
+                                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true" Color="Color.Primary">
+                                        <MudMenuItem OnClick="@(() => AccionMasiva(fecha, 1))">
+                                            <div class="d-flex align-center gap-2 text-success">
+                                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small"/> Marcar Todos Presentes
+                                            </div>
+                                        </MudMenuItem>
+                                        <MudMenuItem OnClick="@(() => AccionMasiva(fecha, 2))">
+                                            <div class="d-flex align-center gap-2 text-error">
+                                                <MudIcon Icon="@Icons.Material.Filled.Cancel" Size="Size.Small"/> Marcar Todos Ausentes
+                                            </div>
+                                        </MudMenuItem>
+                                        <MudDivider />
+                                        <MudMenuItem OnClick="@(() => EliminarFecha(fecha))">
+                                            <div class="d-flex align-center gap-2 text-muted">
+                                                <MudIcon Icon="@Icons.Material.Filled.Delete" Size="Size.Small"/> Eliminar Columna
+                                            </div>
+                                        </MudMenuItem>
+                                    </MudMenu>
+                                </div>
+                            </th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var alumno in alumnos)
+                    {
+                        <tr>
+                            <td class="sticky-col">
+                                <div class="alumno-name">@alumno.NombreCompleto</div>
+                                <div class="alumno-legajo">Leg: @alumno.Legajo</div>
+                            </td>
+                            
+                            <td style="background-color: #f8fafc; font-weight: 800; color: @(CalcularPorcentaje(alumno.IdInscripcionCursada) >= 60 ? "#49BEAA" : "#EF767A")">
+                                @CalcularPorcentaje(alumno.IdInscripcionCursada).ToString("0")%
+                            </td>
+
+                            @foreach (var fecha in fechasClase.OrderBy(f => f))
+                            {
+                                var estado = ObtenerEstado(alumno.IdInscripcionCursada, fecha);
+                                
+                                <td>
+                                    <div class="cell-attendance" @onclick="() => ToggleAsistencia(alumno.IdInscripcionCursada, fecha)">
+                                        @if (estado.EstaPresente)
+                                        {
+                                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Class="state-icon state-presente" />
+                                        }
+                                        else if (estado.EsJustificado)
+                                        {
+                                            <MudIcon Icon="@Icons.Material.Filled.Shield" Class="state-icon state-justificado" />
+                                            <MudText Style="font-size: 0.55rem; font-weight: 800; color: var(--edusys-purple); margin-top: 2px;">JUSTIFICADO</MudText>
+                                        }
+                                        else if (estado.Registrado) 
+                                        {
+                                            <MudIcon Icon="@Icons.Material.Filled.Cancel" Class="state-icon state-ausente" />
+                                        }
+                                        else
+                                        {
+                                            <MudIcon Icon="@Icons.Material.Filled.Remove" Class="state-icon state-vacio" />
+                                        }
+
+                                        @if (!estado.EstaPresente && !estado.EsJustificado && estado.Registrado)
+                                        {
+                                            <div class="justificar-btn" @onclick:stopPropagation="true">
+                                                <MudTooltip Text="Justificar Falta (Adjuntar PDF)">
+                                                    <MudIconButton Icon="@Icons.Material.Filled.UploadFile" 
+                                                                   Color="Color.Warning" 
+                                                                   Size="Size.Small" 
+                                                                   Style="padding: 4px;"
+                                                                   OnClick="@(() => AbrirModalJustificar(alumno, fecha, estado))"/>
+                                                </MudTooltip>
+                                            </div>
+                                        }
+                                    </div>
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else
+    {
+        <div class="d-flex flex-column align-center justify-center pa-10 animate__animated animate__fadeIn" style="background: white; border-radius: 12px; border: 1px solid var(--edusys-border);">
+            <MudIcon Icon="@Icons.Material.Filled.TableChart" Style="font-size: 4rem; color: #cbd5e1;" Class="mb-4" />
+            <MudText Typo="Typo.h5" Style="font-weight: 700; color: #334155;">Seleccione una comisión</MudText>
+            <MudText Typo="Typo.body1" Style="color: #64748b;" Class="mt-2">
+                Para comenzar a tomar asistencia o ver la grilla, elija una de las comisiones asignadas.
+            </MudText>
+        </div>
+    }
+</div>
+
+@* --- MODAL: AGREGAR NUEVA CLASE --- *@
+<MudDialog @bind-Visible="mostrarModalClase" Options="dialogOptions" DisableSidePadding="true" Class="rounded-lg overflow-hidden">
+    <DialogContent>
+        <div class="dialog-container">
+            <div class="dialog-header-integrated">
+                <div class="d-flex align-center">
+                    <MudIcon Icon="@Icons.Material.Filled.Event" Class="mr-3" />
+                    <div>
+                        <MudText Typo="Typo.h6" Style="font-weight: 700; line-height: 1.2; letter-spacing: -0.5px;">
+                            Crear Nueva Clase
+                        </MudText>
+                        <MudText Typo="Typo.caption" Style="opacity: 0.9;">
+                            Añade una columna al registro
+                        </MudText>
+                    </div>
+                </div>
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" OnClick="() => mostrarModalClase = false" Size="Size.Small" />
+            </div>
+
+            <div class="dialog-body">
+                <MudDatePicker @bind-Date="nuevaFechaSeleccionada" Label="Fecha de la clase dictada" Variant="Variant.Outlined" 
+                               Required="true" Color="Color.Primary" Class="force-black-text mt-2" Margin="Margin.Dense" />
+            </div>
+
+            <div class="actions-footer">
+                <MudButton OnClick="() => mostrarModalClase = false" Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg font-weight-bold">
+                    Cancelar
+                </MudButton>
+                <MudButton OnClick="ConfirmarNuevaClase" Variant="Variant.Filled" Color="Color.Primary" Class="rounded-lg font-weight-bold px-6">
+                    Agregar Columna
+                </MudButton>
+            </div>
+        </div>
+    </DialogContent>
+</MudDialog>
+
+@* --- MODAL: JUSTIFICAR FALTA --- *@
+<MudDialog @bind-Visible="mostrarModalJustificar" Options="dialogOptions" DisableSidePadding="true" Class="rounded-lg overflow-hidden">
+    <DialogContent>
+        <div class="dialog-container">
+            <div class="dialog-header-integrated" style="background: #9c27b0;">
+                <div class="d-flex align-center">
+                    <MudIcon Icon="@Icons.Material.Filled.VerifiedUser" Class="mr-3" />
+                    <div>
+                        <MudText Typo="Typo.h6" Style="font-weight: 700; line-height: 1.2; letter-spacing: -0.5px;">
+                            Justificar Inasistencia
+                        </MudText>
+                        <MudText Typo="Typo.caption" Style="opacity: 0.9;">
+                            Anexar certificado médico o excusa
+                        </MudText>
+                    </div>
+                </div>
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" OnClick="() => mostrarModalJustificar = false" Size="Size.Small" />
+            </div>
+
+            <div class="dialog-body">
+                @if(alumnoParaJustificar != null)
+                {
+                    <div class="pa-4 mb-4 rounded-lg" style="background-color: #fdf4ff; border: 1px solid #f5d0fe;">
+                        <MudText Typo="Typo.body2" Style="color: var(--edusys-purple); font-weight: 600;">
+                            Alumno: @alumnoParaJustificar.NombreCompleto
+                        </MudText>
+                        <MudText Typo="Typo.caption" Style="color: #86198f;">
+                            Fecha de inasistencia: @fechaParaJustificar.ToString("dd/MM/yyyy")
+                        </MudText>
+                    </div>
+
+                    <MudTextField @bind-Value="observacionJustificacion" Label="Motivo / Observaciones" 
+                                  Variant="Variant.Outlined" Lines="2" Class="force-black-text mb-4" Margin="Margin.Dense" />
+
+                    <MudFileUpload T="IBrowserFile" FilesChanged="UploadFiles">
+                        <ActivatorContent>
+                            <MudButton HtmlTag="label"
+                                       Variant="Variant.Filled"
+                                       Color="Color.Secondary"
+                                       StartIcon="@Icons.Material.Filled.CloudUpload"
+                                       Style="font-weight: 700; width: 100%;">
+                                Adjuntar Certificado (PDF/JPG)
+                            </MudButton>
+                        </ActivatorContent>
+                    </MudFileUpload>
+
+                    @if (archivoCertificado != null)
+                    {
+                        <div class="mt-3 pa-2 d-flex align-center gap-2" style="background: #f1f5f9; border-radius: 8px; border: 1px dashed #cbd5e1;">
+                            <MudIcon Icon="@Icons.Material.Filled.AttachFile" Size="Size.Small" Style="color: #64748b;" />
+                            <MudText Typo="Typo.body2" Style="color: #475569; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                @archivoCertificado.Name
+                            </MudText>
+                        </div>
+                    }
+                }
+            </div>
+
+            <div class="actions-footer">
+                <MudButton OnClick="() => mostrarModalJustificar = false" Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg font-weight-bold">
+                    Cancelar
+                </MudButton>
+                <MudButton OnClick="ConfirmarJustificacion" Variant="Variant.Filled" Color="Color.Secondary" Class="rounded-lg font-weight-bold px-6" Disabled="archivoCertificado == null">
+                    Justificar Falta
+                </MudButton>
+            </div>
+        </div>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [Parameter] public int? IdComisionParam { get; set; }
+
+    private bool procesando = false;
+    private bool cargandoGrilla = false;
+    private int idComisionSeleccionada = 0;
+    
+    // Al usar el diseño integrado, evitamos que MudDialog dibuje padding o header nativo
+    private DialogOptions dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true, NoHeader = true, CloseOnEscapeKey = true };
+
+    private List<ComisionDocenteDTO> misComisiones = new();
+    private List<DateTime> fechasClase = new();
+    private List<AlumnoAsistenciaFilaDTO> alumnos = new();
+    private Dictionary<int, Dictionary<DateTime, AsistenciaDetalleDTO>> matrizAsistencia = new();
+
+    private bool mostrarModalClase = false;
+    private DateTime? nuevaFechaSeleccionada = DateTime.Today;
+
+    private bool mostrarModalJustificar = false;
+    private AlumnoAsistenciaFilaDTO? alumnoParaJustificar;
+    private DateTime fechaParaJustificar;
+    private AsistenciaDetalleDTO? estadoParaJustificar;
+    private string observacionJustificacion = "";
+    private IBrowserFile? archivoCertificado;
+
+    protected override async Task OnInitializedAsync()
+    {
+        misComisiones = await DocenteService.GetMisComisionesAsync() ?? new();
+
+        if (IdComisionParam.HasValue && IdComisionParam.Value > 0)
+        {
+            idComisionSeleccionada = IdComisionParam.Value;
+            await CargarGrillaReal();
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IdComisionParam.HasValue && IdComisionParam.Value != idComisionSeleccionada)
+        {
+            idComisionSeleccionada = IdComisionParam.Value;
+            await CargarGrillaReal();
+        }
+    }
+
+    private async Task OnComisionChanged(int value)
+    {
+        idComisionSeleccionada = value;
+        if(value > 0) await CargarGrillaReal(); 
+    }
+
+    private async Task CargarGrillaReal()
+    {
+        cargandoGrilla = true;
+        StateHasChanged();
+
+        try
+        {
+            var grilla = await AsistenciaService.GetGrillaByComisionAsync(idComisionSeleccionada);
+            
+            fechasClase = grilla.Fechas ?? new List<DateTime>();
+            alumnos = grilla.Alumnos ?? new List<AlumnoAsistenciaFilaDTO>();
+
+            matrizAsistencia.Clear();
+            foreach (var alu in alumnos)
+            {
+                matrizAsistencia[alu.IdInscripcionCursada] = new Dictionary<DateTime, AsistenciaDetalleDTO>();
+                
+                foreach (var f in fechasClase)
+                {
+                    var registroExistente = alu.Asistencias?.FirstOrDefault(a => a.Fecha.Date == f.Date);
+                    
+                    if (registroExistente != null)
+                    {
+                        registroExistente.Registrado = true;
+                        matrizAsistencia[alu.IdInscripcionCursada][f] = registroExistente;
+                    }
+                    else
+                    {
+                        matrizAsistencia[alu.IdInscripcionCursada][f] = new AsistenciaDetalleDTO 
+                        { 
+                            IdInscripcionCursada = alu.IdInscripcionCursada,
+                            Fecha = f,
+                            Registrado = false, 
+                            EstaPresente = false, 
+                            EsJustificado = false 
+                        };
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Error al cargar asistencias: " + ex.Message, Severity.Error);
+        }
+        finally
+        {
+            cargandoGrilla = false;
+            StateHasChanged();
+        }
+    }
+
+    private AsistenciaDetalleDTO ObtenerEstado(int idInscripcion, DateTime fecha)
+    {
+        if (matrizAsistencia.ContainsKey(idInscripcion) && matrizAsistencia[idInscripcion].ContainsKey(fecha))
+            return matrizAsistencia[idInscripcion][fecha];
+            
+        return new AsistenciaDetalleDTO();
+    }
+
+    private double CalcularPorcentaje(int idInscripcion)
+    {
+        if (fechasClase.Count == 0) return 100;
+        
+        int clasesTomadas = 0;
+        int clasesAsistidas = 0;
+
+        foreach (var f in fechasClase)
+        {
+            var estado = ObtenerEstado(idInscripcion, f);
+            if (estado.Registrado) 
+            {
+                clasesTomadas++;
+                if (estado.EstaPresente || estado.EsJustificado) clasesAsistidas++;
+            }
+        }
+
+        if (clasesTomadas == 0) return 100; 
+        return ((double)clasesAsistidas / clasesTomadas) * 100;
+    }
+
+    private void ToggleAsistencia(int idInscripcion, DateTime fecha)
+    {
+        var estado = matrizAsistencia[idInscripcion][fecha];
+        
+        if(estado.EsJustificado)
+        {
+            estado.EsJustificado = false;
+            estado.EstaPresente = true;
+            estado.Registrado = true;
+            return;
+        }
+
+        if (!estado.Registrado)
+        {
+            estado.Registrado = true;
+            estado.EstaPresente = true;
+        }
+        else
+        {
+            estado.EstaPresente = !estado.EstaPresente;
+        }
+    }
+
+    private void AccionMasiva(DateTime fecha, int accion)
+    {
+        foreach (var alu in alumnos)
+        {
+            var estado = matrizAsistencia[alu.IdInscripcionCursada][fecha];
+            estado.Registrado = true;
+            estado.EsJustificado = false; 
+            
+            if (accion == 1) estado.EstaPresente = true;  
+            if (accion == 2) estado.EstaPresente = false; 
+        }
+        Snackbar.Add(accion == 1 ? "Todos marcados como Presente" : "Todos marcados como Ausente", Severity.Info);
+    }
+
+    private void EliminarFecha(DateTime fecha)
+    {
+        fechasClase.Remove(fecha);
+        foreach (var alu in alumnos) matrizAsistencia[alu.IdInscripcionCursada].Remove(fecha);
+        Snackbar.Add("Columna eliminada de la vista.", Severity.Normal);
+    }
+
+    private void AbrirModalNuevaClase() { nuevaFechaSeleccionada = DateTime.Today; mostrarModalClase = true; }
+    
+    private void ConfirmarNuevaClase()
+    {
+        if (nuevaFechaSeleccionada.HasValue && !fechasClase.Contains(nuevaFechaSeleccionada.Value))
+        {
+            DateTime f = nuevaFechaSeleccionada.Value;
+            fechasClase.Add(f);
+            foreach (var alu in alumnos)
+            {
+                matrizAsistencia[alu.IdInscripcionCursada][f] = new AsistenciaDetalleDTO 
+                { 
+                    IdInscripcionCursada = alu.IdInscripcionCursada,
+                    Fecha = f,
+                    Registrado = false, 
+                    EstaPresente = false 
+                };
+            }
+            mostrarModalClase = false;
+            Snackbar.Add("Nueva clase agregada a la grilla.", Severity.Success);
+        }
+    }
+
+    private void AbrirModalJustificar(AlumnoAsistenciaFilaDTO alu, DateTime fecha, AsistenciaDetalleDTO estado)
+    {
+        alumnoParaJustificar = alu;
+        fechaParaJustificar = fecha;
+        estadoParaJustificar = estado;
+        archivoCertificado = null;
+        observacionJustificacion = estado.Observacion ?? "";
+        mostrarModalJustificar = true;
+    }
+
+    private void UploadFiles(IBrowserFile file)
+    {
+        archivoCertificado = file;
+    }
+
+    private async Task ConfirmarJustificacion()
+    {
+        if (estadoParaJustificar != null)
+        {
+            estadoParaJustificar.EsJustificado = true;
+            estadoParaJustificar.Observacion = observacionJustificacion;
+            estadoParaJustificar.UrlCertificado = "certificado_subido.pdf"; 
+        }
+
+        mostrarModalJustificar = false;
+        Snackbar.Add("Falta justificada exitosamente.", Severity.Success);
+    }
+
+    private async Task GuardarCambiosBD()
+    {
+        procesando = true;
+        StateHasChanged();
+
+        try
+        {
+            var request = new GuardarAsistenciaRequestDTO { IdComision = idComisionSeleccionada };
+            
+            foreach (var fila in matrizAsistencia.Values)
+            {
+                foreach (var asistencia in fila.Values)
+                {
+                    if (asistencia.Registrado)
+                    {
+                        request.Asistencias.Add(asistencia);
+                    }
+                }
+            }
+
+            var exito = await AsistenciaService.GuardarGrillaAsync(request);
+            if(exito)
+            {
+                Snackbar.Add("Asistencia guardada correctamente.", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("Hubo un problema al guardar la asistencia.", Severity.Error);
+            }
+        }
+        catch(Exception)
+        {
+            Snackbar.Add("Error al comunicarse con el servidor.", Severity.Error);
+        }
+        finally
+        {
+            procesando = false;
+            StateHasChanged();
+        }
+    }
+}

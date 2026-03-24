@@ -107,6 +107,7 @@ namespace EduSys.Web.Services
 
         public async Task<byte[]> DescargarAnaliticoProvisorioAsync()
         {
+            // Llamamos a la API sin query string, ya que el Backend usa el Token
             return await ProcesarDescargaPdfAsync("api/Reportes/analitico-provisorio", "el analítico provisorio");
         }
 

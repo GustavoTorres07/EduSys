@@ -1,7 +1,7 @@
 ﻿using System.Net.Http.Json;
 using EduSys.Shared.DTOs;
 using EduSys.Web.Services.Interfaces;
-using Microsoft.Extensions.Logging; // ✅ Importante para ver errores en la consola web
+using Microsoft.Extensions.Logging;
 
 namespace EduSys.Web.Services
 {
@@ -25,13 +25,11 @@ namespace EduSys.Web.Services
             }
             catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
             {
-                // ✅ Tu lógica original: Si es 401, el token venció. Devolvemos lista vacía pacíficamente.
                 _logger.LogWarning("Acceso no autorizado (401) al buscar notificaciones. Posible token expirado.");
                 return new List<NotificacionDTO>();
             }
             catch (Exception ex)
             {
-                // 💡 Ahora el error quedará registrado en la consola F12 del navegador
                 _logger.LogError(ex, "Error al obtener las notificaciones del alumno.");
                 return new List<NotificacionDTO>();
             }
@@ -56,8 +54,6 @@ namespace EduSys.Web.Services
             try
             {
                 var response = await _http.PostAsync($"api/AlumnoPortal/notificaciones/leer/{id}", null);
-
-                // 💡 Asegura que si la API devuelve un 400 o 500, se lance una excepción y caiga en el catch
                 response.EnsureSuccessStatusCode();
             }
             catch (Exception ex)
@@ -77,6 +73,21 @@ namespace EduSys.Web.Services
             {
                 _logger.LogError(ex, "Error al obtener la lista de cursadas del alumno.");
                 return new List<CursadaAlumnoDTO>();
+            }
+        }
+
+        // 🚀 NUEVO MÉTODO PARA ASISTENCIAS
+        public async Task<List<AsistenciaMateriaDTO>> GetMisAsistenciasAsync()
+        {
+            try
+            {
+                var resultado = await _http.GetFromJsonAsync<List<AsistenciaMateriaDTO>>("api/AlumnoPortal/mis-asistencias");
+                return resultado ?? new List<AsistenciaMateriaDTO>();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al obtener la lista de asistencias del alumno.");
+                return new List<AsistenciaMateriaDTO>();
             }
         }
     }

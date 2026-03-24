@@ -5,7 +5,7 @@
         public string Nombre { get; set; } = string.Empty;
         public DateTime Fecha { get; set; }
         public decimal? Nota { get; set; }
-        public string EstadoActa { get; set; } = "Abierta"; 
-        public bool EsOficial => EstadoActa == "Cerrada";
+        public string EstadoActa { get; set; } = "Abierta";
+        public bool EsOficial { get; set; }
     }
 }

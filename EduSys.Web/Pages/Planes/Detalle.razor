@@ -199,7 +199,7 @@
 
                                                             var grupoRendir = porMateria
                                                                 .Where(g => !g.Any(x => x.TipoRequisito.StartsWith("Cursar"))
-                                                                          && g.Any(x => x.TipoRequisito.StartsWith("Rendir")))
+                                                                         && g.Any(x => x.TipoRequisito.StartsWith("Rendir")))
                                                                 .ToList();
 
                                                             @* Grupo: Cursada + Materia aprobada *@
@@ -480,6 +480,16 @@
                                     {
                                         <MudItem xs="6"><MudNumericField Label="Nota Mínima General" @bind-Value="materiaModel.NotaMinimaPromocion" Min="1" Max="10" Step="0.5M" Variant="Variant.Outlined" Margin="Margin.Dense" Class="custom-input bg-white" Disabled="_procesando" /></MudItem>
                                         <MudItem xs="6"><MudNumericField Label="% Asistencia Exigido" @bind-Value="materiaModel.PorcentajeAsistenciaPromocion" Min="0" Max="100" Variant="Variant.Outlined" Margin="Margin.Dense" Class="custom-input bg-white" Adornment="Adornment.End" AdornmentText="%" Disabled="_procesando" /></MudItem>
+                                        
+                                        @* 🚀 NUEVO: Mantiene Promoción en Recuperatorio *@
+                                        <MudItem xs="12">
+                                            <div class="d-flex align-center gap-2 pa-2 rounded" style="background: #f0fdf4; border: 1px dashed #bbf7d0;">
+                                                <MudSwitch @bind-Value="materiaModel.MantienePromocionRecuperatorio" Color="Color.Success" 
+                                                           Label="Permitir alcanzar nota de promoción en instancia de recuperatorio" 
+                                                           Class="font-weight-bold" Disabled="_procesando" />
+                                            </div>
+                                        </MudItem>
+
                                         <MudItem xs="12">
                                             <MudSelect T="int?" Label="Estado otorgado" @bind-Value="materiaModel.IdEstadoPromocion" Variant="Variant.Outlined" Margin="Margin.Dense" AnchorOrigin="Origin.BottomCenter" Class="custom-input bg-white" Disabled="_procesando">
                                                 <MudSelectItem T="int?" Value="null">-- Por Defecto (Promocionado) --</MudSelectItem>
@@ -771,7 +781,8 @@
             IdPlan = PlanId, AnioCursada = 1, Cuatrimestre = 0, NotaMinimaAprobacion = 6, CargaHorariaTotal = 64,
             EsPromocionable = true, PromedioMinimoAprobacion = 4, CantidadParciales = 2, CantidadAplazosParaLibre = 1,
             PorcentajeAsistenciaRegularizar = 60, EsLibre = false, TieneFinalObligatorio = false,
-            ModoAprobacionCursada = 0, ModoNotaRecuperatorio = 0, TieneIntegrador = false
+            ModoAprobacionCursada = 0, ModoNotaRecuperatorio = 0, TieneIntegrador = false,
+            MantienePromocionRecuperatorio = false // Inicializado por defecto
         };
         esEdicion = false;
         mostrarModal = true;
@@ -798,6 +809,7 @@
             ModoNotaRecuperatorio = item.ModoNotaRecuperatorio, TieneIntegrador = item.TieneIntegrador,
             CondicionIntegradorParciales = item.CondicionIntegradorParciales, NotaAprobacionIntegrador = item.NotaAprobacionIntegrador,
             IntegradorPermitePromocion = item.IntegradorPermitePromocion, NotaPromocionIntegrador = item.NotaPromocionIntegrador,
+            MantienePromocionRecuperatorio = item.MantienePromocionRecuperatorio, // Mapeado correctamente
             IdEstadoPromocion = item.IdEstadoPromocion, IdEstadoRegular = item.IdEstadoRegular,
             IdEstadoSiDesaprueba = item.IdEstadoSiDesaprueba, IdEstadoSiFaltaAsistencia = item.IdEstadoSiFaltaAsistencia
         };

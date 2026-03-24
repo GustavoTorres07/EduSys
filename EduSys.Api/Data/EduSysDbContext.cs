@@ -115,7 +115,7 @@ public partial class EduSysDbContext : DbContext
             // ✅ AQUÍ AGREGAS TUS NUEVAS LÍNEAS:
             entity.HasOne(d => d.IdEstadoSiDesapruebaNavigation).WithMany().HasForeignKey(d => d.IdEstadoSiDesaprueba);
             entity.HasOne(d => d.IdEstadoSiFaltaAsistenciaNavigation).WithMany().HasForeignKey(d => d.IdEstadoSiFaltaAsistencia);
-
+            entity.Property(e => e.MantienePromocionRecuperatorio).HasDefaultValue(false);
 
             entity.HasOne(d => d.IdMateriaNavigation).WithMany(p => p.PlanMateria)
                 .HasForeignKey(d => d.IdMateria)
@@ -137,6 +137,10 @@ public partial class EduSysDbContext : DbContext
         {
             entity.HasKey(e => e.Id).HasName("PK__Asistenc__3214EC0775A00304");
             entity.Property(e => e.Observacion).HasMaxLength(200);
+
+            entity.Property(e => e.EsJustificado).HasDefaultValue(false);
+            entity.Property(e => e.UrlCertificado).HasMaxLength(500);
+            // ---------------------------------
 
             entity.HasOne(d => d.IdInscripcionCursadaNavigation).WithMany(p => p.Asistencia)
                 .HasForeignKey(d => d.IdInscripcionCursada)

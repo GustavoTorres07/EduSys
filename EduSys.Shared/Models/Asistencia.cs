@@ -8,4 +8,6 @@ public partial class Asistencia
     public bool EstaPresente { get; set; }
     public string? Observacion { get; set; }
     public virtual InscripcionCursada IdInscripcionCursadaNavigation { get; set; } = null!;
+    public bool EsJustificado { get; set; }
+    public string? UrlCertificado { get; set; }
 }

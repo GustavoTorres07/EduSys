@@ -282,6 +282,63 @@ namespace EduSys.Api.Repositories
             };
         }
 
+        public async Task<List<AsistenciaMateriaDTO>> GetMisAsistenciasAsync(int idUsuario)
+        {
+            // 1. Extraemos los datos crudos desde la BD proyectando en un tipo anónimo para ser rápidos
+            var cursadasDb = await _context.InscripcionCursada
+                .AsNoTracking()
+                .Where(i => i.IdAlumnoNavigation.IdUsuario == idUsuario && i.Estado != "Baja")
+                .Select(i => new
+                {
+                    MateriaNombre = i.IdComisionNavigation.IdPlanMateriaNavigation.IdMateriaNavigation.Nombre,
+                    ComisionCodigo = i.IdComisionNavigation.Codigo,
+                    // Extraemos el año de la fecha de inicio del período. ToDateTime es necesario si la fecha es DateOnly.
+                    CicloLectivo = i.IdComisionNavigation.IdPeriodoNavigation.FechaInicio.Year,
+                    PorcentajeRequerido = i.IdComisionNavigation.IdPlanMateriaNavigation.PorcentajeAsistenciaRegularizar ?? 0,
+                    AsistenciasDb = i.Asistencia.Select(a => new
+                    {
+                        Fecha = a.Fecha, // Es DateOnly en BD
+                        EstaPresente = a.EstaPresente,
+                        EsJustificado = a.EsJustificado,
+                        Observacion = a.Observacion
+                    }).ToList()
+                })
+                .ToListAsync();
+
+            // 2. Mapeamos la data cruda a los DTOs que espera el Frontend
+            var resultado = new List<AsistenciaMateriaDTO>();
+
+            foreach (var cursada in cursadasDb)
+            {
+                var materiaDto = new AsistenciaMateriaDTO
+                {
+                    Materia = cursada.MateriaNombre ?? "Sin Nombre",
+                    Comision = cursada.ComisionCodigo ?? "S/C",
+                    CicloLectivo = cursada.CicloLectivo,
+                    PorcentajeRequerido = cursada.PorcentajeRequerido,
+                    Registros = new List<AsistenciaRegistroDTO>()
+                };
+
+                foreach (var asist in cursada.AsistenciasDb)
+                {
+                    string estadoTexto = "Ausente";
+                    if (asist.EsJustificado) estadoTexto = "Justificado";
+                    else if (asist.EstaPresente) estadoTexto = "Presente";
+
+                    materiaDto.Registros.Add(new AsistenciaRegistroDTO
+                    {
+                        // 🚀 AQUÍ HACEMOS EL CASTEO A DATETIME 🚀
+                        Fecha = asist.Fecha.ToDateTime(TimeOnly.MinValue),
+                        Estado = estadoTexto,
+                        Observacion = asist.Observacion
+                    });
+                }
+
+                resultado.Add(materiaDto);
+            }
+
+            return resultado.OrderByDescending(a => a.CicloLectivo).ThenBy(a => a.Materia).ToList();
+        }
         public async Task<Alumno> CrearAsync(Alumno alumno)
         {
             _context.Alumnos.Add(alumno);

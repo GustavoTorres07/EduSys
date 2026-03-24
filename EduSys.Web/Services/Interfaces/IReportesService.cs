@@ -14,7 +14,6 @@ namespace EduSys.Web.Services.Interfaces
         Task<byte[]> DescargarCertificadoRegularPdfAsync(int idAlumno, int idPeriodo);
         Task<byte[]> DescargarConstanciaFinalAsync(int idInscripcion);
         Task<byte[]> DescargarAnaliticoProvisorioAsync();
-
         // Consultas Generales
         Task<List<HorarioVisualizacionDTO>> GetHorariosCursandoAsync(int idPeriodo, int idAlumno);
         Task<HistoriaAcademicaDTO?> GetHistoriaAcademicaAsync(int idAlumno); // ✅ Nulable para mayor seguridad

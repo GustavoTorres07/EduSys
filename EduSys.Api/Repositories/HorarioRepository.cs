@@ -17,7 +17,7 @@ namespace EduSys.Api.Repositories
 
         public async Task<List<HorarioVisualizacionDTO>> GetHorariosByCarreraAndPeriodoAsync(int idPeriodo, int idCarrera, int idSede)
         {
-            // 🚀 OPTIMIZADO: AsNoTracking y Proyección directa a SQL. No usamos Includes pesados.
+            // 🚀 OPTIMIZADO: Proyección directa incluyendo Profesor y Código de Materia
             return await _context.HorarioComisions
                 .AsNoTracking()
                 .Where(h => h.IdComisionNavigation != null &&
@@ -30,6 +30,8 @@ namespace EduSys.Api.Repositories
                     Id = h.Id,
                     IdComision = h.IdComision,
                     Materia = h.IdComisionNavigation.IdPlanMateriaNavigation.IdMateriaNavigation.Nombre ?? "Materia sin nombre",
+                    // Buscamos el código de la materia
+                    Codigo = h.IdComisionNavigation.IdPlanMateriaNavigation.IdMateriaNavigation.Codigo ?? "",
                     Curso = h.IdComisionNavigation.Codigo ?? "S/C",
                     ComisionCodigo = h.IdComisionNavigation.Codigo ?? "S/C",
                     AnioCursada = h.IdComisionNavigation.IdPlanMateriaNavigation.AnioCursada,
@@ -38,7 +40,12 @@ namespace EduSys.Api.Repositories
                     HoraInicio = h.HoraInicio,
                     HoraFin = h.HoraFin,
                     Aula = h.IdAulaNavigation != null ? h.IdAulaNavigation.Nombre : "Sin Aula",
-                    Sede = h.IdComisionNavigation.IdSedeNavigation != null ? h.IdComisionNavigation.IdSedeNavigation.Nombre : "Sin Sede"
+                    Sede = h.IdComisionNavigation.IdSedeNavigation != null ? h.IdComisionNavigation.IdSedeNavigation.Nombre : "Sin Sede",
+                    // Buscamos el apellido y nombre del primer docente activo asignado a la comisión
+                    Profesor = h.IdComisionNavigation.DocenteComisions
+                                .Where(dc => dc.Activo)
+                                .Select(dc => dc.IdDocenteNavigation.IdUsuarioNavigation.Apellido + ", " + dc.IdDocenteNavigation.IdUsuarioNavigation.Nombre)
+                                .FirstOrDefault() ?? ""
                 })
                 .OrderBy(x => x.AnioCursada)
                     .ThenBy(x => x.Curso)
@@ -50,7 +57,7 @@ namespace EduSys.Api.Repositories
         public async Task<List<HorarioComision>> GetByComisionAsync(int idComision)
         {
             return await _context.HorarioComisions
-                .AsNoTracking() // 🚀 OPTIMIZADO
+                .AsNoTracking()
                 .Include(h => h.IdAulaNavigation)
                     .ThenInclude(a => a.IdSedeNavigation)
                 .Where(h => h.IdComision == idComision)
@@ -85,7 +92,7 @@ namespace EduSys.Api.Repositories
         public async Task<bool> ValidarSuperposicionAsync(int idAula, string dia, TimeSpan inicio, TimeSpan fin)
         {
             return await _context.HorarioComisions
-                .AsNoTracking() // 🚀 OPTIMIZADO
+                .AsNoTracking()
                 .AnyAsync(h => h.IdAula == idAula
                             && h.DiaSemana == dia
                             && inicio < h.HoraFin
@@ -94,7 +101,7 @@ namespace EduSys.Api.Repositories
 
         public async Task<List<HorarioVisualizacionDTO>> GetHorariosCursandoAsync(int idPeriodo, int idAlumno)
         {
-            // 🚀 OPTIMIZADO: AsNoTracking y Proyección directa a SQL
+            // 🚀 OPTIMIZADO: Proyección directa a SQL incluyendo Profesor y Código
             return await _context.HorarioComisions
                 .AsNoTracking()
                 .Where(h => h.IdComisionNavigation.IdPeriodo == idPeriodo
@@ -104,11 +111,16 @@ namespace EduSys.Api.Repositories
                     Id = h.Id,
                     IdComision = h.IdComision,
                     Materia = h.IdComisionNavigation.IdPlanMateriaNavigation.IdMateriaNavigation.Nombre ?? "Desconocida",
+                    Codigo = h.IdComisionNavigation.IdPlanMateriaNavigation.IdMateriaNavigation.Codigo ?? "",
                     Curso = h.IdComisionNavigation.Codigo ?? "S/C",
                     Dia = h.DiaSemana,
                     HoraInicio = h.HoraInicio,
                     HoraFin = h.HoraFin,
-                    Aula = h.IdAulaNavigation != null ? h.IdAulaNavigation.Nombre : "Sin Aula Asignada"
+                    Aula = h.IdAulaNavigation != null ? h.IdAulaNavigation.Nombre : "Sin Aula Asignada",
+                    Profesor = h.IdComisionNavigation.DocenteComisions
+                                .Where(dc => dc.Activo)
+                                .Select(dc => dc.IdDocenteNavigation.IdUsuarioNavigation.Apellido + ", " + dc.IdDocenteNavigation.IdUsuarioNavigation.Nombre)
+                                .FirstOrDefault() ?? ""
                 })
                 .OrderBy(x => x.HoraInicio)
                 .ToListAsync();

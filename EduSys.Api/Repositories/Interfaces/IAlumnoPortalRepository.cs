@@ -7,5 +7,6 @@ namespace EduSys.Api.Repositories.Interfaces
         Task<List<NotificacionDTO>> GetNotificacionesAsync(int idUsuario);
         Task<bool> MarcarNotificacionLeidaAsync(int idNotificacion);
         Task<List<CursadaAlumnoDTO>> GetMisCursadasAsync(int idUsuario);
+        Task<List<AsistenciaMateriaDTO>> GetMisAsistenciasAsync(int idUsuario);
     }
 }

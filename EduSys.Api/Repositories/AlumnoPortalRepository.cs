@@ -17,10 +17,10 @@ namespace EduSys.Api.Repositories
         public async Task<List<NotificacionDTO>> GetNotificacionesAsync(int idUsuario)
         {
             return await _context.Notificacions
-                .AsNoTracking() // 🚀 OPTIMIZACIÓN: Evita el consumo de memoria caché de EF Core
+                .AsNoTracking()
                 .Where(n => n.IdUsuario == idUsuario)
                 .OrderByDescending(n => n.Fecha)
-                .Take(50) // Traemos las últimas 50
+                .Take(50)
                 .Select(n => new NotificacionDTO
                 {
                     Id = n.Id,
@@ -35,7 +35,6 @@ namespace EduSys.Api.Repositories
 
         public async Task<bool> MarcarNotificacionLeidaAsync(int idNotificacion)
         {
-            // Este SÍ requiere Tracking porque vamos a modificar y guardar (Update)
             var notif = await _context.Notificacions.FindAsync(idNotificacion);
             if (notif == null) return false;
 
@@ -45,46 +44,133 @@ namespace EduSys.Api.Repositories
 
         public async Task<List<CursadaAlumnoDTO>> GetMisCursadasAsync(int idUsuario)
         {
-            // 🚀 OPTIMIZACIÓN EXTREMA: Proyección directa en SQL. 
-            // En lugar de traer toda la entidad y luego mapear en C#, 
-            // le decimos a SQL que construya el DTO directamente. Es 10 veces más rápido.
-
-            var resultado = await _context.InscripcionCursada
+            var datosDb = await _context.InscripcionCursada
                 .AsNoTracking()
                 .Where(i => i.IdAlumnoNavigation.IdUsuario == idUsuario && i.Estado != "Baja")
-                .Select(ins => new CursadaAlumnoDTO
+                .Select(ins => new
                 {
                     IdInscripcion = ins.Id,
                     Materia = ins.IdComisionNavigation.IdPlanMateriaNavigation.IdMateriaNavigation.Nombre,
                     Comision = ins.IdComisionNavigation.Codigo,
                     EstadoCursada = ins.CondicionFinal ?? ins.Estado,
-
-                    Examenes = ins.IdComisionNavigation.Evaluacions
-                        .OrderBy(e => e.Fecha)
-                        .Select(eval => new ExamenAlumnoDTO
+                    ModoNotaRecuperatorio = ins.IdComisionNavigation.IdPlanMateriaNavigation.ModoNotaRecuperatorio,
+                    ExamenesDB = ins.IdComisionNavigation.Evaluacions
+                        .Select(eval => new
                         {
+                            Id = eval.Id,
+                            IdEvaluacionPadre = eval.IdEvaluacionPadre,
+                            EsRecuperatorio = eval.EsRecuperatorio ?? false,
                             Nombre = eval.Nombre,
-                            // Manejo seguro de DateOnly a DateTime
-                            Fecha = eval.Fecha.ToDateTime(TimeOnly.MinValue),
-                            EstadoActa = eval.EstadoActa ?? "Abierta",
-
-                            // Extraemos la nota que corresponda a esta evaluación y a este alumno en particular
+                            Fecha = eval.Fecha,
+                            EstadoActa = eval.EstadoActa,
                             Nota = ins.Nota.Where(n => n.IdEvaluacion == eval.Id).Select(n => (decimal?)n.Valor).FirstOrDefault()
                         }).ToList()
                 })
                 .ToListAsync();
 
-            // Calculamos el promedio en memoria solo para los DTOs resultantes
-            foreach (var dto in resultado)
+            var resultado = new List<CursadaAlumnoDTO>();
+
+            foreach (var item in datosDb)
             {
-                var notasConValor = dto.Examenes.Where(e => e.Nota.HasValue).Select(e => e.Nota!.Value).ToList();
-                if (notasConValor.Any())
+                var dto = new CursadaAlumnoDTO
                 {
-                    dto.Promedio = Math.Round(notasConValor.Average(), 2);
+                    IdInscripcion = item.IdInscripcion,
+                    Materia = item.Materia ?? "S/N",
+                    Comision = item.Comision ?? "S/C",
+                    EstadoCursada = item.EstadoCursada,
+                    Examenes = new List<ExamenAlumnoDTO>()
+                };
+
+                var notasEfectivasParaPromedio = new List<decimal>();
+                var regulares = item.ExamenesDB.Where(e => !e.EsRecuperatorio).ToList();
+                var recuperatorios = item.ExamenesDB.Where(e => e.EsRecuperatorio).ToList();
+
+                foreach (var reg in regulares)
+                {
+                    decimal? notaEfectiva = reg.Nota;
+                    var recup = recuperatorios.FirstOrDefault(r => r.IdEvaluacionPadre == reg.Id);
+
+                    if (recup != null && recup.Nota.HasValue)
+                    {
+                        if (item.ModoNotaRecuperatorio == 1)
+                            notaEfectiva = recup.Nota.Value;
+                        else
+                        {
+                            if (reg.Nota.HasValue)
+                                notaEfectiva = Math.Max(reg.Nota.Value, recup.Nota.Value);
+                            else
+                                notaEfectiva = recup.Nota.Value;
+                        }
+                    }
+
+                    if (notaEfectiva.HasValue)
+                        notasEfectivasParaPromedio.Add(notaEfectiva.Value);
                 }
+
+                foreach (var eval in item.ExamenesDB.OrderBy(e => e.Fecha))
+                {
+                    dto.Examenes.Add(new ExamenAlumnoDTO
+                    {
+                        Nombre = eval.Nombre,
+                        Fecha = eval.Fecha.ToDateTime(TimeOnly.MinValue),
+                        Nota = eval.Nota,
+                        EsOficial = eval.EstadoActa == "Cerrada"
+                    });
+                }
+
+                if (notasEfectivasParaPromedio.Any())
+                    dto.Promedio = Math.Round(notasEfectivasParaPromedio.Average(), 2);
+
+                resultado.Add(dto);
             }
 
             return resultado;
+        }
+
+        // 🚀 NUEVO: IMPLEMENTACIÓN DE ASISTENCIAS REALES
+        public async Task<List<AsistenciaMateriaDTO>> GetMisAsistenciasAsync(int idUsuario)
+        {
+            var cursadasDb = await _context.InscripcionCursada
+                .AsNoTracking()
+                .Where(i => i.IdAlumnoNavigation.IdUsuario == idUsuario && i.Estado != "Baja")
+                .Select(i => new
+                {
+                    MateriaNombre = i.IdComisionNavigation.IdPlanMateriaNavigation.IdMateriaNavigation.Nombre,
+                    ComisionCodigo = i.IdComisionNavigation.Codigo,
+                    CicloLectivo = i.IdComisionNavigation.IdPeriodoNavigation.FechaInicio.Year,
+                    PorcentajeRequerido = i.IdComisionNavigation.IdPlanMateriaNavigation.PorcentajeAsistenciaRegularizar ?? 0,
+                    AsistenciasDb = i.Asistencia.Select(a => new
+                    {
+                        Fecha = a.Fecha, // Es DateOnly en BD
+                        EstaPresente = a.EstaPresente,
+                        EsJustificado = a.EsJustificado,
+                        Observacion = a.Observacion
+                    }).ToList()
+                })
+                .ToListAsync();
+
+            var resultado = new List<AsistenciaMateriaDTO>();
+
+            foreach (var cursada in cursadasDb)
+            {
+                var materiaDto = new AsistenciaMateriaDTO
+                {
+                    Materia = cursada.MateriaNombre ?? "Sin Nombre",
+                    Comision = cursada.ComisionCodigo ?? "S/C",
+                    CicloLectivo = cursada.CicloLectivo,
+                    PorcentajeRequerido = (decimal)cursada.PorcentajeRequerido,
+                    Registros = cursada.AsistenciasDb.Select(asist => new AsistenciaRegistroDTO
+                    {
+                        Fecha = asist.Fecha.ToDateTime(TimeOnly.MinValue), // Conversión de DateOnly a DateTime
+                        Estado = asist.EsJustificado ? "Justificado" : (asist.EstaPresente ? "Presente" : "Ausente"),
+                        Observacion = asist.Observacion
+                    }).ToList()
+                };
+
+                resultado.Add(materiaDto);
+            }
+
+            return resultado.OrderByDescending(a => a.CicloLectivo).ThenBy(a => a.Materia).ToList();
         }
     }
 }

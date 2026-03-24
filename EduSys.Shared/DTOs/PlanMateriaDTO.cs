@@ -46,5 +46,6 @@
         public string CorrelativasTexto { get; set; } = "";
         public List<int> IdsCorrelativas { get; set; } = new List<int>();
         public List<CorrelativaItemDTO> CorrelativasDetalle { get; set; } = new List<CorrelativaItemDTO>();
+        public bool MantienePromocionRecuperatorio { get; set; }
     }
 }

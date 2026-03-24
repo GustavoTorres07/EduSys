@@ -81,6 +81,7 @@ builder.Services.AddScoped<IReportesService, ReportesService>();
 builder.Services.AddScoped<IHistorialService, HistorialService>();
 builder.Services.AddScoped<HorarioPdfService>(); // (Este es una clase concreta, sin interfaz)
 
+builder.Services.AddScoped<IAsistenciaService, AsistenciaService>();
 
 builder.Services.AddScoped<IUsuarioService, UsuarioService>();
 // ==================================================================

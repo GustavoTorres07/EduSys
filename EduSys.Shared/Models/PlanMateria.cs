@@ -51,4 +51,5 @@ public partial class PlanMateria
     public decimal? NotaAprobacionIntegrador { get; set; }
     public bool IntegradorPermitePromocion { get; set; } = false;
     public decimal? NotaPromocionIntegrador { get; set; }
+    public bool MantienePromocionRecuperatorio { get; set; }
 }

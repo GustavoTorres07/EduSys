@@ -1,0 +1,679 @@
+﻿@page "/alumno/asistencias"
+@using EduSys.Shared.DTOs
+@using EduSys.Web.Services.Interfaces
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Alumno")]
+
+@inject IAlumnoPortalService AlumnoPortalService
+@inject ISnackbar Snackbar
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+    --blue:        #456990;
+    --blue-dark:   #344f6e;
+    --blue-mid:    #5a7fa8;
+    --blue-pale:   #edf2f7;
+    --teal:        #49BEAA;
+    --teal-pale:   #e8faf6;
+    --coral:       #EF767A;
+    --coral-pale:  #fff1f2;
+    --amber:       #f59e0b;
+    --amber-pale:  #fffbeb;
+    --purple:      #7c3aed;
+    --purple-pale: #f5f3ff;
+    --bg:          #f7f9fc;
+    --surface:     #ffffff;
+    --border:      #dde3ea;
+    --text:        #1a2733;
+    --text-mid:    #4a5568;
+    --text-soft:   #8a9ab0;
+    --radius:      10px;
+    --shadow:      0 1px 4px rgba(69,105,144,0.10);
+    --shadow-md:   0 4px 16px rgba(69,105,144,0.13);
+    --shadow-lg:   0 8px 32px rgba(69,105,144,0.16);
+    --font-serif:  'Source Serif 4', Georgia, serif;
+    --font-ui:     'Inter', system-ui, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+.page-wrap {
+    font-family: var(--font-ui);
+    background: var(--bg);
+    min-height: 100vh;
+    padding: 28px;
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ── HEADER ─────────────────────────────────────────────────── */
+.page-header {
+    background: linear-gradient(135deg, var(--blue-dark) 0%, var(--blue) 60%, var(--blue-mid) 100%);
+    border-radius: 14px;
+    padding: 28px 32px;
+    margin-bottom: 24px;
+    box-shadow: var(--shadow-lg);
+    position: relative;
+    overflow: hidden;
+}
+.page-header::before {
+    content: '';
+    position: absolute;
+    top: -50px; right: -50px;
+    width: 220px; height: 220px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.04);
+    pointer-events: none;
+}
+.page-header::after {
+    content: '';
+    position: absolute;
+    bottom: -70px; right: 100px;
+    width: 320px; height: 320px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.03);
+    pointer-events: none;
+}
+.header-eyebrow {
+    font-size: 0.65rem; font-weight: 700; letter-spacing: 2.5px;
+    text-transform: uppercase; color: rgba(255,255,255,0.5); margin-bottom: 6px;
+}
+.header-title {
+    font-family: var(--font-serif); font-size: 1.85rem; font-weight: 700;
+    color: #fff; letter-spacing: -0.5px; line-height: 1.15;
+}
+.header-subtitle { font-size: 0.83rem; color: rgba(255,255,255,0.6); margin-top: 5px; }
+
+/* KPI chips en header */
+.header-kpis { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
+.kpi-chip {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px;
+    padding: 8px 16px;
+    display: flex; align-items: center; gap: 10px;
+    backdrop-filter: blur(4px);
+}
+.kpi-chip-val { font-size: 1.2rem; font-weight: 800; color: #fff; line-height: 1; }
+.kpi-chip-lbl { font-size: 0.62rem; font-weight: 600; color: rgba(255,255,255,0.55); letter-spacing: 0.5px; text-transform: uppercase; margin-top: 1px; }
+
+/* ── BARRA FILTRO ────────────────────────────────────────────── */
+.filter-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 20px;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    margin-bottom: 24px;
+    box-shadow: var(--shadow);
+}
+.filter-label {
+    font-size: 0.65rem; font-weight: 700; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--text-soft); white-space: nowrap;
+}
+.filter-sel-wrap { position: relative; }
+.filter-sel {
+    appearance: none;
+    background: var(--bg);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 36px 9px 14px;
+    font-family: var(--font-ui); font-size: 0.875rem; font-weight: 600;
+    color: var(--text); cursor: pointer; outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    min-width: 200px;
+}
+.filter-sel:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(69,105,144,0.12); }
+.filter-chev { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--text-soft); pointer-events: none; }
+
+/* Alerta global de riesgo */
+.risk-alert {
+    background: var(--coral-pale);
+    border: 1.5px solid #fecdd3;
+    border-left: 4px solid var(--coral);
+    border-radius: var(--radius);
+    padding: 12px 18px;
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 20px;
+    font-size: 0.82rem; font-weight: 600; color: #991b1b;
+}
+
+/* ── GRID DE CARDS ───────────────────────────────────────────── */
+.cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+}
+
+/* ── CARD ────────────────────────────────────────────────────── */
+.mat-card {
+    background: var(--surface);
+    border-radius: 12px;
+    border: 1.5px solid var(--border);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    box-shadow: var(--shadow);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s;
+    animation: fadeUp 0.35s ease forwards;
+    opacity: 0;
+}
+.mat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--blue);
+}
+@@keyframes fadeUp {
+    from { opacity:0; transform:translateY(12px); }
+    to   { opacity:1; transform:translateY(0); }
+}
+@for (int i = 1; i <= 12; i++) {
+    <text>.mat-card:nth-child(@i) { animation-delay: @(i * 0.04)s; }</text>
+}
+
+/* Franja de estado lateral */
+.card-accent-bar { height: 4px; flex-shrink: 0; }
+
+/* Header de card */
+.card-head {
+    padding: 16px 18px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;
+}
+.card-materia {
+    font-family: var(--font-serif);
+    font-size: 0.95rem; font-weight: 700; color: var(--text);
+    line-height: 1.3; flex: 1;
+}
+.card-comision {
+    font-size: 0.65rem; font-weight: 700; color: var(--text-soft);
+    letter-spacing: 0.5px; text-transform: uppercase; margin-top: 3px;
+}
+.status-pill {
+    padding: 3px 10px; border-radius: 20px;
+    font-size: 0.62rem; font-weight: 800; letter-spacing: 0.5px;
+    text-transform: uppercase; white-space: nowrap; flex-shrink: 0;
+}
+.pill-ok     { background: var(--teal-pale); color: #065f46; }
+.pill-risk   { background: var(--coral-pale); color: #991b1b; }
+.pill-warn   { background: var(--amber-pale); color: #92400e; }
+
+/* Zona del donut + stats */
+.card-body { padding: 20px 18px 16px; }
+
+/* Donut SVG */
+.donut-wrap {
+    display: flex; align-items: center; gap: 20px;
+}
+.donut-svg { flex-shrink: 0; }
+.donut-track { fill: none; stroke: var(--border); stroke-width: 8; }
+.donut-prog  { fill: none; stroke-width: 8; stroke-linecap: round; transform: rotate(-90deg); transform-origin: 50% 50%; transition: stroke-dashoffset 0.6s ease; }
+.donut-text-pct  { font-family: var(--font-serif); font-size: 13px; font-weight: 700; fill: var(--text); }
+.donut-text-sub  { font-size: 6px; font-weight: 600; fill: var(--text-soft); }
+
+/* Stats a la derecha del donut */
+.stats-col { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.stat-row { display: flex; align-items: center; justify-content: space-between; }
+.stat-key {
+    font-size: 0.68rem; font-weight: 600; color: var(--text-soft);
+    display: flex; align-items: center; gap: 5px;
+}
+.stat-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.stat-val { font-size: 0.82rem; font-weight: 800; color: var(--text); }
+
+/* Barra de progreso lineal */
+.prog-bar-wrap {
+    margin: 12px 0 0;
+    padding: 0 18px 16px;
+}
+.prog-bar-labels {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 5px;
+}
+.prog-bar-lbl { font-size: 0.62rem; font-weight: 600; color: var(--text-soft); }
+.prog-bar-val { font-size: 0.7rem; font-weight: 800; }
+.prog-bar-track {
+    height: 6px; background: var(--border); border-radius: 3px; overflow: hidden;
+    position: relative;
+}
+.prog-bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+/* Marker del mínimo requerido */
+.prog-bar-marker {
+    position: absolute; top: -2px;
+    width: 2px; height: 10px; border-radius: 1px;
+    background: var(--text-mid);
+    opacity: 0.5;
+}
+
+/* Historial expandible */
+.historial-toggle {
+    width: 100%; background: var(--bg); border: none; border-top: 1px solid var(--border);
+    padding: 10px 18px;
+    display: flex; align-items: center; justify-content: space-between;
+    font-family: var(--font-ui); font-size: 0.73rem; font-weight: 700;
+    color: var(--text-mid); cursor: pointer; transition: background 0.15s;
+    text-transform: uppercase; letter-spacing: 0.5px;
+}
+.historial-toggle:hover { background: var(--blue-pale); color: var(--blue); }
+.historial-toggle.open  { background: var(--blue-pale); color: var(--blue); }
+.hist-chevron { transition: transform 0.2s; font-size: 16px; }
+.hist-chevron.open { transform: rotate(180deg); }
+
+.historial-body {
+    max-height: 320px;
+    overflow-y: auto;
+    border-top: 1px solid var(--border);
+    /* Scroll suave y barra discreta */
+    scroll-behavior: smooth;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+}
+.historial-body::-webkit-scrollbar { width: 4px; }
+.historial-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* Separador de mes */
+.hist-month-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 7px 18px 5px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 2;
+}
+.hist-month-label {
+    font-size: 0.65rem; font-weight: 800; letter-spacing: 1.5px;
+    text-transform: uppercase; color: var(--blue);
+}
+.hist-month-pills { display: flex; gap: 6px; }
+.hist-mpill {
+    font-size: 0.58rem; font-weight: 700; padding: 2px 7px; border-radius: 10px;
+}
+.hist-mpill-p { background: var(--teal-pale);   color: #065f46; }
+.hist-mpill-a { background: var(--coral-pale);  color: #991b1b; }
+.hist-mpill-j { background: var(--purple-pale); color: #5b21b6; }
+
+.hist-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 18px;
+    border-bottom: 1px solid var(--bg);
+    transition: background 0.1s;
+}
+.hist-row:last-child { border-bottom: none; }
+.hist-row:hover { background: var(--bg); }
+.hist-date { font-size: 0.78rem; font-weight: 700; color: var(--text); }
+.hist-dow  { font-size: 0.65rem; color: var(--text-soft); margin-left: 5px; }
+.hist-obs  { font-size: 0.67rem; color: var(--text-soft); margin-top: 1px; font-style: italic; }
+.hist-ico-presente  { color: var(--teal); }
+.hist-ico-ausente   { color: var(--coral); }
+.hist-ico-justif    { color: var(--purple); }
+
+/* ── EMPTY ───────────────────────────────────────────────────── */
+.empty-state {
+    background: var(--surface); border: 1px dashed var(--border-dark, #c4cdd8);
+    border-radius: 12px; padding: 64px 24px; text-align: center;
+}
+.empty-ico   { font-size: 3.5rem; color: var(--border); margin-bottom: 16px; }
+.empty-title { font-family: var(--font-serif); font-size: 1.2rem; font-weight: 600; color: var(--text-mid); margin-bottom: 8px; }
+.empty-body  { font-size: 0.83rem; color: var(--text-soft); line-height: 1.6; }
+
+/* ── SKELETON ────────────────────────────────────────────────── */
+@@keyframes sk { 0%{background-position:-600px 0} 100%{background-position:600px 0} }
+.sk { background: linear-gradient(90deg,#eaedf1 25%,#f4f6f9 50%,#eaedf1 75%); background-size:1200px 100%; animation:sk 1.4s infinite linear; border-radius:var(--radius); }
+</style>
+
+<div class="page-wrap">
+
+    <!-- ── HEADER ────────────────────────────────────────────── -->
+    <div class="page-header">
+        <div class="header-eyebrow">Portal Alumno · EduSys</div>
+        <div class="header-title">Mis Asistencias</div>
+        <div class="header-subtitle">Controlá tu presentismo por materia y evitá quedar libre.</div>
+
+        @if (!cargando && asistenciasFiltradas.Any())
+        {
+            int enRiesgo  = asistenciasFiltradas.Count(m => m.EnRiesgo);
+            int regulares = asistenciasFiltradas.Count(m => !m.EnRiesgo);
+            double promedio = asistenciasFiltradas.Any()
+                ? (double)asistenciasFiltradas.Average(m => m.PorcentajeActual) : 0;
+
+            <div class="header-kpis">
+                <div class="kpi-chip">
+                    <div>
+                        <div class="kpi-chip-val">@asistenciasFiltradas.Count</div>
+                        <div class="kpi-chip-lbl">Materias</div>
+                    </div>
+                </div>
+                <div class="kpi-chip">
+                    <div>
+                        <div class="kpi-chip-val" style="color:#49BEAA;">@regulares</div>
+                        <div class="kpi-chip-lbl">Regular</div>
+                    </div>
+                </div>
+                @if (enRiesgo > 0)
+                {
+                    <div class="kpi-chip" style="border-color:rgba(239,118,122,0.4);background:rgba(239,118,122,0.12);">
+                        <div>
+                            <div class="kpi-chip-val" style="color:#EF767A;">@enRiesgo</div>
+                            <div class="kpi-chip-lbl">En riesgo</div>
+                        </div>
+                    </div>
+                }
+                <div class="kpi-chip">
+                    <div>
+                        <div class="kpi-chip-val">@promedio.ToString("0")%</div>
+                        <div class="kpi-chip-lbl">Promedio</div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- ── FILTRO ─────────────────────────────────────────────── -->
+    <div class="filter-bar">
+        <span class="filter-label">Ciclo Lectivo</span>
+        <div class="filter-sel-wrap">
+            <select class="filter-sel"
+                    value="@cicloSeleccionado"
+                    @onchange="OnCicloChanged">
+                @foreach (var anio in ciclosDisponibles)
+                {
+                    <option value="@anio">Año Lectivo @anio</option>
+                }
+            </select>
+            <MudIcon Icon="@Icons.Material.Filled.UnfoldMore" Class="filter-chev" Style="font-size:18px;" />
+        </div>
+        <span style="font-size:0.72rem;color:var(--text-soft);margin-left:auto;">
+            @asistenciasFiltradas.Count materia(s) encontrada(s)
+        </span>
+    </div>
+
+    <!-- Alerta global si hay materias en riesgo -->
+    @if (!cargando && asistenciasFiltradas.Any(m => m.EnRiesgo))
+    {
+        int nRiesgo = asistenciasFiltradas.Count(m => m.EnRiesgo);
+        <div class="risk-alert">
+            <MudIcon Icon="@Icons.Material.Filled.Warning" Style="font-size:1.2rem;color:var(--coral);flex-shrink:0;" />
+            <span>
+                Tenés <strong>@nRiesgo materia@(nRiesgo > 1 ? "s" : "")</strong> en riesgo de quedar libre.
+                Revisá las marcadas en rojo y regularizá tu asistencia.
+            </span>
+        </div>
+    }
+
+    <!-- ── CONTENIDO ─────────────────────────────────────────── -->
+    @if (cargando)
+    {
+        <div class="cards-grid">
+            @for (int i = 0; i < 6; i++) {
+                <div>
+                    <div class="sk" style="height:4px;border-radius:0 0 0 0;"></div>
+                    <div class="sk" style="height:260px;margin-top:2px;border-radius:0 0 10px 10px;"></div>
+                </div>
+            }
+        </div>
+    }
+    else if (!asistenciasFiltradas.Any())
+    {
+        <div class="empty-state">
+            <div class="empty-ico"><MudIcon Icon="@Icons.Material.Filled.FactCheck" Style="font-size:inherit;color:inherit;" /></div>
+            <div class="empty-title">Sin registros para @cicloSeleccionado</div>
+            <p class="empty-body">No se han registrado asistencias para el ciclo lectivo seleccionado.</p>
+        </div>
+    }
+    else
+    {
+        <div class="cards-grid">
+            @foreach (var mat in asistenciasFiltradas)
+            {
+                double pct     = (double)mat.PorcentajeActual;
+                double req     = (double)mat.PorcentajeRequerido;
+                bool   enRiesg = mat.EnRiesgo;
+                bool   enAviso = !enRiesg && pct < req + 10;
+
+                string accentColor = enRiesg ? "var(--coral)" : enAviso ? "var(--amber)" : "var(--teal)";
+                string pillClass   = enRiesg ? "pill-risk"    : enAviso ? "pill-warn"    : "pill-ok";
+                string pillText    = enRiesg ? "En riesgo"    : enAviso ? "Atención"     : "Regular";
+
+                // Donut SVG
+                double r = 36; double circ = 2 * Math.PI * r;
+                double offset = circ * (1 - Math.Min(pct, 100) / 100.0);
+
+                bool expandido = historialExpandido.Contains(mat.Materia);
+
+                <div class="mat-card">
+                    <!-- Franja de color -->
+                    <div class="card-accent-bar" style="background:@accentColor;"></div>
+
+                    <!-- Header -->
+                    <div class="card-head">
+                        <div>
+                            <div class="card-materia">@mat.Materia</div>
+                            <div class="card-comision">Comisión @mat.Comision</div>
+                        </div>
+                        <span class="status-pill @pillClass">@pillText</span>
+                    </div>
+
+                    <!-- Body: donut + stats -->
+                    <div class="card-body">
+                        <div class="donut-wrap">
+
+                            <!-- Donut SVG puro -->
+                            <svg class="donut-svg" width="90" height="90" viewBox="0 0 90 90">
+                                <circle class="donut-track" cx="45" cy="45" r="@r" />
+                                <circle class="donut-prog"
+                                        cx="45" cy="45" r="@r"
+                                        stroke="@accentColor"
+                                        stroke-dasharray="@circ.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)"
+                                        stroke-dashoffset="@offset.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)" />
+                                <text class="donut-text-pct" x="45" y="43" text-anchor="middle" dominant-baseline="middle">
+                                    @pct.ToString("0")%
+                                </text>
+                                <text class="donut-text-sub" x="45" y="54" text-anchor="middle">
+                                    ASISTENCIA
+                                </text>
+                            </svg>
+
+                            <!-- Stats -->
+                            <div class="stats-col">
+                                <div class="stat-row">
+                                    <span class="stat-key">
+                                        <span class="stat-dot" style="background:var(--text-soft);"></span>
+                                        Total clases
+                                    </span>
+                                    <span class="stat-val">@mat.TotalClases</span>
+                                </div>
+                                <div class="stat-row">
+                                    <span class="stat-key">
+                                        <span class="stat-dot" style="background:var(--teal);"></span>
+                                        Presentes
+                                    </span>
+                                    <span class="stat-val" style="color:var(--teal);">@mat.Presentes</span>
+                                </div>
+                                <div class="stat-row">
+                                    <span class="stat-key">
+                                        <span class="stat-dot" style="background:var(--coral);"></span>
+                                        Ausentes
+                                    </span>
+                                    <span class="stat-val" style="color:var(--coral);">@mat.Ausentes</span>
+                                </div>
+                                <div class="stat-row">
+                                    <span class="stat-key">
+                                        <span class="stat-dot" style="background:var(--purple);"></span>
+                                        Justificados
+                                    </span>
+                                    <span class="stat-val" style="color:var(--purple);">@mat.Justificados</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Barra lineal con mínimo requerido -->
+                    <div class="prog-bar-wrap">
+                        <div class="prog-bar-labels">
+                            <span class="prog-bar-lbl">0%</span>
+                            <span class="prog-bar-lbl" style="color:var(--text-mid);">
+                                Mínimo: <strong>@req.ToString("0")%</strong>
+                            </span>
+                            <span class="prog-bar-lbl">100%</span>
+                        </div>
+                        <div class="prog-bar-track">
+                            <div class="prog-bar-fill"
+                                 style="width:@(Math.Min(pct,100).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture))%;background:@accentColor;">
+                            </div>
+                            <!-- Marca del mínimo requerido -->
+                            <div class="prog-bar-marker"
+                                 style="left:@(req.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture))%;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Toggle historial -->
+                    @{
+                        string toggleClass  = expandido ? "historial-toggle open" : "historial-toggle";
+                        string chevronClass = expandido ? "hist-chevron open"     : "hist-chevron";
+                    }
+                    <button class="@toggleClass"
+                            @onclick="() => ToggleHistorial(mat.Materia)">
+                        <span>Ver historial de clases (@(mat.Registros?.Count ?? 0))</span>
+                        <MudIcon Icon="@Icons.Material.Filled.ExpandMore"
+                                 Class="@chevronClass"
+                                 Style="font-size:16px;" />
+                    </button>
+
+                    @if (expandido && mat.Registros != null && mat.Registros.Any())
+                    {
+                        <div class="historial-body">
+                            @foreach (var grupo in mat.Registros
+                                .OrderByDescending(r => r.Fecha)
+                                .GroupBy(r => new { r.Fecha.Year, r.Fecha.Month })
+                                .OrderByDescending(g => g.Key.Year).ThenByDescending(g => g.Key.Month))
+                            {
+                                int mPresentes  = grupo.Count(r => r.Estado == "Presente");
+                                int mAusentes   = grupo.Count(r => r.Estado == "Ausente");
+                                int mJustif     = grupo.Count(r => r.Estado == "Justificado");
+                                string mesLabel = new DateTime(grupo.Key.Year, grupo.Key.Month, 1)
+                                                    .ToString("MMMM yyyy").ToUpper();
+
+                                <!-- Cabecera de mes (sticky) -->
+                                <div class="hist-month-header">
+                                    <span class="hist-month-label">@mesLabel</span>
+                                    <div class="hist-month-pills">
+                                        @if (mPresentes > 0)
+                                        {
+                                            <span class="hist-mpill hist-mpill-p">@mPresentes P</span>
+                                        }
+                                        @if (mAusentes > 0)
+                                        {
+                                            <span class="hist-mpill hist-mpill-a">@mAusentes A</span>
+                                        }
+                                        @if (mJustif > 0)
+                                        {
+                                            <span class="hist-mpill hist-mpill-j">@mJustif J</span>
+                                        }
+                                    </div>
+                                </div>
+
+                                <!-- Filas del mes -->
+                                @foreach (var reg in grupo.OrderByDescending(r => r.Fecha))
+                                {
+                                    <div class="hist-row">
+                                        <div>
+                                            <span class="hist-date">@reg.Fecha.ToString("dd MMM")</span>
+                                            <span class="hist-dow">@reg.Fecha.ToString("ddd").ToUpper()</span>
+                                            @if (!string.IsNullOrWhiteSpace(reg.Observacion))
+                                            {
+                                                <div class="hist-obs">@reg.Observacion</div>
+                                            }
+                                        </div>
+                                        @if (reg.Estado == "Presente")
+                                        {
+                                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle"
+                                                     Class="hist-ico-presente" Style="font-size:1.15rem;" />
+                                        }
+                                        else if (reg.Estado == "Justificado")
+                                        {
+                                            <MudIcon Icon="@Icons.Material.Filled.Shield"
+                                                     Class="hist-ico-justif" Style="font-size:1.15rem;" />
+                                        }
+                                        else
+                                        {
+                                            <MudIcon Icon="@Icons.Material.Filled.Cancel"
+                                                     Class="hist-ico-ausente" Style="font-size:1.15rem;" />
+                                        }
+                                    </div>
+                                }
+                            }
+                        </div>
+                    }
+                    else if (expandido)
+                    {
+                        <div style="padding:16px 18px;font-size:0.78rem;color:var(--text-soft);text-align:center;border-top:1px solid var(--border);">
+                            No hay clases registradas aún.
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<AsistenciaMateriaDTO> todasLasAsistencias  = new();
+    private List<AsistenciaMateriaDTO> asistenciasFiltradas = new();
+    private List<int>                  ciclosDisponibles    = new();
+    private int                        cicloSeleccionado;
+    private bool                       cargando = true;
+
+    // Historial expandido por materia
+    private HashSet<string> historialExpandido = new();
+
+    protected override async Task OnInitializedAsync() => await CargarDatos();
+
+    private async Task CargarDatos()
+    {
+        cargando = true;
+        try
+        {
+            todasLasAsistencias = await AlumnoPortalService.GetMisAsistenciasAsync() ?? new();
+
+            ciclosDisponibles = todasLasAsistencias
+                .Select(a => a.CicloLectivo)
+                .Concat(new[] { DateTime.Now.Year })
+                .Distinct()
+                .OrderByDescending(x => x)
+                .ToList();
+
+            cicloSeleccionado = ciclosDisponibles.FirstOrDefault(DateTime.Now.Year);
+            FiltrarAsistencias();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Error al sincronizar: " + ex.Message, Severity.Error);
+        }
+        finally { cargando = false; }
+    }
+
+    private void FiltrarAsistencias()
+    {
+        asistenciasFiltradas = todasLasAsistencias
+            .Where(a => a.CicloLectivo == cicloSeleccionado)
+            .ToList();
+        historialExpandido.Clear();
+    }
+
+    private void OnCicloChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int val))
+        {
+            cicloSeleccionado = val;
+            FiltrarAsistencias();
+        }
+    }
+
+    private void ToggleHistorial(string materia)
+    {
+        if (historialExpandido.Contains(materia)) historialExpandido.Remove(materia);
+        else historialExpandido.Add(materia);
+    }
+}

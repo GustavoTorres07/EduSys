@@ -14,7 +14,7 @@ namespace EduSys.Api.Repositories
         {
             _context = context;
         }
-
+        
         public async Task<List<PlanEstudioDTO>> GetAllAsync()
         {
             // 🚀 OPTIMIZADO: Proyección directa en SQL para evitar carga de objetos pesados
@@ -140,6 +140,7 @@ namespace EduSys.Api.Repositories
                     NotaAprobacionIntegrador = pm.NotaAprobacionIntegrador,
                     IntegradorPermitePromocion = pm.IntegradorPermitePromocion,
                     NotaPromocionIntegrador = pm.NotaPromocionIntegrador,
+                    MantienePromocionRecuperatorio = pm.MantienePromocionRecuperatorio,
                     IdEstadoPromocion = pm.IdEstadoPromocion,
                     IdEstadoRegular = pm.IdEstadoRegular,
                     IdEstadoSiDesaprueba = pm.IdEstadoSiDesaprueba,

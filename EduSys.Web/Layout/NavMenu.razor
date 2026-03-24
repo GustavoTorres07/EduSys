@@ -7,7 +7,6 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager NavManager
 @inject IJSRuntime JS
-@* 💡 Recuerda ajustar "AuthService" si descubriste que tu método se llamaba diferente (ej: IUsuarioService) *@
 @inject IAuthService AuthService 
 
 @implements IDisposable
@@ -347,11 +346,10 @@
                 <div class="nav-section-header">Autogestión</div>
                 @RenderNavLink("/inscripcion-materias", "Cursar Materias", Icons.Material.Filled.Class)
                 @RenderNavLink("/alumno/inscripcion-finales", "Rendir Finales", Icons.Material.Filled.AssignmentTurnedIn)
-                @RenderNavLink("/alumno/mis-inscripciones", "Comprobantes", Icons.Material.Filled.ListAlt)
 
                 <div class="nav-section-header">Trámites</div>
                 @RenderNavLink("/historia-academica", "Historia Académica", Icons.Material.Filled.HistoryEdu)
-                @RenderNavLink("/tramites", "Solicitar Trámites", Icons.Material.Filled.Description)
+                @RenderNavLink("/tramites", "Trámites y Certificados", Icons.Material.Filled.Description)
                 @RenderNavLink("/alumno/analitico", "Analítico", Icons.Material.Filled.MenuBook)
 
                 <div class="nav-section-header">Ayuda</div>
@@ -385,9 +383,9 @@
 
     @* 4. FOOTER *@
     <div class="nav-footer">
-<MudButton FullWidth="true" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Person" OnClick="AbrirPerfil" Style="justify-content:flex-start; color:#475569;">
-    Mi Perfil
-</MudButton>
+        <MudButton FullWidth="true" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Person" OnClick="AbrirPerfil" Style="justify-content:flex-start; color:#475569;">
+            Mi Perfil
+        </MudButton>
         <MudButton FullWidth="true" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Logout" OnClick="CerrarSesion" Style="justify-content:flex-start; color:#ef4444;">
             Cerrar Sesión
         </MudButton>
@@ -450,7 +448,6 @@
     private List<NavPage> favoritePages = new();
     private string FavoritesKey => string.IsNullOrEmpty(UserId) ? "edusys_favorites_guest" : $"edusys_favorites_{UserId}";
 
-    // ✅ HELPER: MUCHO MÁS LIMPIO QUE USAR RenderTreeBuilder manual
     private RenderFragment RenderNavLink(string href, string title, string icon, bool matchAll = false) => __builder =>
     {
         <div class="nav-link-wrapper">
@@ -466,7 +463,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _dotNetRef = DotNetObjectReference.Create(this); // Instanciamos la referencia para JS
+        _dotNetRef = DotNetObjectReference.Create(this); 
 
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
@@ -520,12 +517,8 @@
     }
 
     [JSInvokable] 
-    public void OpenCommandPaletteInstance() 
-    { 
-        OpenCommandPalette(); 
-    }
+    public void OpenCommandPaletteInstance() => OpenCommandPalette(); 
 
-    // --- Helpers de Usuario ---
     private string GetFullUserName(ClaimsPrincipal user)
     {
         var nombre = user.FindFirst("Nombre")?.Value ?? user.FindFirst(ClaimTypes.GivenName)?.Value;
@@ -543,10 +536,11 @@
     private async Task CerrarSesion()
     {
         try { await AuthService.LogoutAsync(); } catch { }
-        NavManager.NavigateTo("/");
+        
+        // Se fuerza la recarga (forceLoad: true) para limpiar la memoria de la SPA al cambiar de usuario
+        NavManager.NavigateTo("/", forceLoad: true);
     }
 
-    // --- Favoritos ---
     private async Task LoadFavorites()
     {
         try
@@ -568,11 +562,10 @@
 
     private bool IsFavorite(string url) => favoritePages.Any(f => f.Url == url);
 
-    // --- Lógica Command Palette ---
     private void InitializeCommands(ClaimsPrincipal user)
     {
         allCommands.Clear();
-        // ✅ CORRECCIÓN RUTA PERFIL PALETA DE COMANDOS (Opcional, pero bueno tenerlo consistente)
+        
         if (user.IsInRole("Docente"))
             allCommands.Add(new CommandItem { Title = "Mi Perfil", Category = "Cuenta", Url = "/docente/mi-perfil", Icon = Icons.Material.Filled.Person });
         else if (user.IsInRole("Alumno"))
@@ -634,16 +627,12 @@
         commandSearch = e.Value?.ToString() ?? "";
         
         if (string.IsNullOrWhiteSpace(commandSearch)) 
-        {
             filteredCommands = allCommands.ToList();
-        }
         else 
-        {
             filteredCommands = allCommands
                 .Where(c => c.Title.Contains(commandSearch, StringComparison.OrdinalIgnoreCase) || 
                             c.Category.Contains(commandSearch, StringComparison.OrdinalIgnoreCase))
                 .ToList();
-        }
         selectedCommandIndex = 0;
     }
 
@@ -669,14 +658,9 @@
         var user = authState.User;
         
         if (user.IsInRole("Docente"))
-        {
-            // ✅ CORRECCIÓN RUTA OFICIAL PERFIL DOCENTE
             NavManager.NavigateTo("/docente/mi-perfil");
-        }
         else if (user.IsInRole("Alumno"))
-        {
             NavManager.NavigateTo("/alumno/perfil");
-        }
         else
         {
             var options = new DialogOptions 
@@ -687,10 +671,8 @@
                 CloseButton = false,
                 BackdropClick = true 
             };
-            
             DialogService.Show<DialogoPerfil>("", options);
         }
-        
         CloseCommandPalette();
     }
 
