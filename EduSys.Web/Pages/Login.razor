@@ -201,7 +201,7 @@
 </div>
 
 @code {
-    // ✅ CAPTURAMOS EL RETURN URL DE LA BARRA DE DIRECCIONES
+    // Capturamos el returnUrl de la query string (ej: /?returnUrl=alumno/mis-notas)
     [SupplyParameterFromQuery(Name = "returnUrl")]
     public string? ReturnUrl { get; set; }
 
@@ -254,8 +254,6 @@
 
             if (sesion != null)
             {
-                // ❌ SE ELIMINÓ EL SNACKBAR DE AQUÍ PARA PASARLO AL DASHBOARD
-
                 if (_recordarCorreo) await LocalStorage.SetItemAsync(KEY_EMAIL, loginModel.Email);
                 else await LocalStorage.RemoveItemAsync(KEY_EMAIL);
 
@@ -266,33 +264,14 @@
                     sesion.Token,
                     sesion.Nombre,
                     sesion.Apellido,
-                    sesion.FotoPerfilUrl 
+                    sesion.FotoPerfilUrl
                 );
 
                 await Task.Delay(500);
 
-                // ✅ REDIRECCIÓN INTELIGENTE (Agregamos ?login=exito a todas las rutas base)
-                if (!string.IsNullOrWhiteSpace(ReturnUrl))
-                {
-                    Navigation.NavigateTo(ReturnUrl, forceLoad: true);
-                }
-                else if (sesion.DebeCambiarPass)
-                {
-                    Navigation.NavigateTo("/cambiar-clave", forceLoad: true);
-                }
-                else if (sesion.Rol == "Alumno")
-                {
-                    Navigation.NavigateTo("/dashboard-alumno?login=exito", forceLoad: true);
-                }
-                else if (sesion.Rol == "Docente")
-                {
-                    Navigation.NavigateTo("/dashboard-docente?login=exito", forceLoad: true);
-                }
-                else
-                {
-                    // Para Administradores y otros roles
-                    Navigation.NavigateTo("/Home?login=exito", forceLoad: true);
-                }
+                // ✅ Redirección segura: valida el returnUrl contra el rol del usuario
+                var destino = ResolverDestino(sesion.Rol, sesion.DebeCambiarPass, ReturnUrl);
+                Navigation.NavigateTo(destino, forceLoad: true);
             }
             else
             {
@@ -310,6 +289,88 @@
             procesando = false;
             StateHasChanged();
         }
+    }
+
+    /// <summary>
+    /// Determina a dónde redirigir al usuario tras el login.
+    /// Si hay un returnUrl válido Y el rol tiene acceso a esa ruta → lo usa.
+    /// De lo contrario → redirige al dashboard propio del rol.
+    /// </summary>
+    private string ResolverDestino(string rol, bool debeCambiarPass, string? returnUrl)
+    {
+        // 1. Cambio de contraseña obligatorio tiene prioridad absoluta
+        if (debeCambiarPass)
+            return "/cambiar-clave";
+
+        // 2. Rutas permitidas por rol (prefijos en minúsculas)
+        var rutasPermitidas = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Alumno"] = new[]
+            {
+                "alumno", "inscripcion-materias", "historia-academica",
+                "tramites", "dashboard-alumno", "soporte"
+            },
+            ["Docente"] = new[]
+            {
+                "docente", "mis-comisiones", "dashboard-docente",
+                "soporte", "asistencia"
+            },
+            ["Administrador"] = new[]
+            {
+                "home", "admin", "carreras", "planes", "materias", "sedes",
+                "comisiones", "alumnos", "docentes", "periodos", "horarios",
+                "evaluaciones", "notas", "reportes", "emails", "usuarios",
+                "modalidades", "regimenes", "calendario", "mesas-finales",
+                "resultados-finales", "soporte", "institucion", "asistencia"
+            },
+            ["Secretaria Academica"] = new[]
+            {
+                "home", "admin", "carreras", "planes", "materias", "sedes",
+                "comisiones", "alumnos", "docentes", "periodos", "horarios",
+                "evaluaciones", "notas", "reportes", "emails", "soporte",
+                "mesas-finales", "resultados-finales", "asistencia"
+            },
+            ["Coordinador"] = new[]
+            {
+                "home", "comisiones", "horarios", "evaluaciones", "notas", "soporte"
+            }
+        };
+
+        // 3. Dashboard por defecto para cada rol
+        var dashboards = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Alumno"]               = "/dashboard-alumno?login=exito",
+            ["Docente"]              = "/dashboard-docente?login=exito",
+            ["Administrador"]        = "/Home?login=exito",
+            ["Secretaria Academica"] = "/Home?login=exito",
+            ["Coordinador"]          = "/Home?login=exito"
+        };
+
+        var dashboardDefault = dashboards.TryGetValue(rol, out var db) ? db : "/";
+
+        // 4. Si no hay returnUrl → ir directo al dashboard del rol
+        if (string.IsNullOrWhiteSpace(returnUrl))
+            return dashboardDefault;
+
+        // 5. Decodificar y limpiar el returnUrl
+        var rutaLimpia = Uri.UnescapeDataString(returnUrl)
+                            .TrimStart('/')
+                            .ToLowerInvariant();
+
+        // 6. Verificar si el rol tiene acceso al primer segmento de la ruta
+        if (rutasPermitidas.TryGetValue(rol, out var permitidas))
+        {
+            bool tieneAcceso = permitidas.Any(prefijo =>
+                rutaLimpia.Equals(prefijo, StringComparison.OrdinalIgnoreCase) ||
+                rutaLimpia.StartsWith(prefijo + "/", StringComparison.OrdinalIgnoreCase) ||
+                rutaLimpia.StartsWith(prefijo + "?", StringComparison.OrdinalIgnoreCase));
+
+            if (tieneAcceso)
+                return "/" + rutaLimpia;
+        }
+
+        // 7. Sin acceso → dashboard del rol (sin parámetro login=exito para no confundir)
+        return dashboardDefault;
     }
 
     private async Task EnviarCorreoRecuperacion()

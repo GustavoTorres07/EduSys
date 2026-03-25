@@ -11,7 +11,9 @@ public partial class Usuario
     public string? Direccion { get; set; }
     public string Email { get; set; } = null!;
     public string ClaveHash { get; set; } = null!;
-    public int IdRol { get; set; }
+
+    // ❌ ELIMINADO: public int IdRol { get; set; }
+
     public int IdNacionalidad { get; set; }
     public bool? Activo { get; set; }
     public DateTime? FechaRegistro { get; set; }
@@ -23,9 +25,15 @@ public partial class Usuario
     public string? NombreContactoEmergencia { get; set; }
     public string? TelefonoContactoEmergencia { get; set; }
     public bool DebeCambiarPass { get; set; } = false;
+
     public virtual Nacionalidad IdNacionalidadNavigation { get; set; } = null!;
-    public virtual Rol IdRolNavigation { get; set; } = null!;
+
+    // ❌ ELIMINADO: public virtual Rol IdRolNavigation { get; set; } = null!;
+
     public virtual Alumno? Alumno { get; set; }
     public virtual Docente? Docente { get; set; }
     public virtual ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
+
+    // ✅ COLECCIÓN MUCHOS A MUCHOS (Mantenida)
+    public virtual ICollection<Rol> IdRols { get; set; } = new List<Rol>();
 }

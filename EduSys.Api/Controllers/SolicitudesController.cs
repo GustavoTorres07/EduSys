@@ -15,7 +15,7 @@ namespace EduSys.Api.Controllers
         private readonly ISolicitudIngresoRepository _solicitudRepo;
         private readonly ICarreraRepository _carreraRepo;
         private readonly IUsuarioRepository _usuarioRepo;
-        private readonly IAlumnoRepository _alumnoRepo; // ✅ Reemplaza a EduSysDbContext
+        private readonly IAlumnoRepository _alumnoRepo;
         private readonly FileStorageHelper _fileHelper;
         private readonly IEmailService _emailService;
 
@@ -233,10 +233,9 @@ namespace EduSys.Api.Controllers
                     return BadRequest(new { message = "El email del aspirante ya está registrado como usuario en el sistema." });
 
                 string nuevoLegajo = $"{DateTime.Now.Year}-{solicitud.Dni}";
-                DateOnly? fechaNacimientoDateOnly = solicitud.FechaNacimiento.HasValue ? DateOnly.FromDateTime(solicitud.FechaNacimiento.Value) : null;
 
-                // 1. CREAR USUARIO
-                var nuevoUsuario = new Usuario
+                // 🚀 CORRECCIÓN CLAVE: Eliminamos '.ToDateTime()' de FechaNacimiento
+                var alumnoRequest = new AlumnoRequestDTO
                 {
                     Nombre = solicitud.Nombre,
                     Apellido = solicitud.Apellido,
@@ -244,39 +243,29 @@ namespace EduSys.Api.Controllers
                     Email = solicitud.Email,
                     Telefono = solicitud.Telefono,
                     Direccion = solicitud.Direccion,
-                    FechaNacimiento = fechaNacimientoDateOnly,
+
+                    FechaNacimiento = solicitud.FechaNacimiento, // ✅ LÍNEA CORREGIDA
+
                     FotoPerfilUrl = solicitud.RutaFotoPerfil,
-                    ClaveHash = BCrypt.Net.BCrypt.HashPassword(solicitud.Dni),
-                    IdRol = 5, // 5 = Alumno
                     IdNacionalidad = 1,
                     Activo = true,
-                    FechaRegistro = DateTime.Now,
-                    DebeCambiarPass = true
-                };
 
-                var usuarioCreado = await _usuarioRepo.CrearAsync(nuevoUsuario);
-
-                // 2. CREAR ALUMNO (Usando el Repositorio, NO el DbContext)
-                var nuevoAlumno = new Alumno
-                {
-                    IdUsuario = usuarioCreado.Id,
                     Legajo = nuevoLegajo,
-                    IdPlanActual = 1,
-                    EstadoAcademico = "Activo",
-                    Activo = true,
-                    EstaBloqueado = false,
+                    IdPlanActual = 1, // Por defecto al plan 1. (Idealmente esto lo elige secretaría)
+                    IdSede = solicitud.IdSede ?? 0,
                     TituloSecundarioEntregado = !string.IsNullOrEmpty(solicitud.RutaTituloSecundario),
                     Observaciones = "Alta automática desde web.",
-                    FechaIngreso = DateOnly.FromDateTime(DateTime.Now),
+                    FechaIngreso = DateTime.Now,
+
                     UrlDniFrente = solicitud.RutaFotoDniFrente,
                     UrlDniDorso = solicitud.RutaFotoDniDorso,
                     UrlTituloSecundario = solicitud.RutaTituloSecundario,
                     UrlAntecedentesPenales = solicitud.RutaAntecedentesPenales,
-                    UrlValidacionIdentidad = solicitud.RutaFotoSosteniendoDNI,
-                    IdSede = solicitud.IdSede
+                    UrlValidacionIdentidad = solicitud.RutaFotoSosteniendoDNI
                 };
 
-                await _alumnoRepo.CrearAsync(nuevoAlumno); // ✅ USO DEL REPOSITORIO
+                // Esto internamente crea el Usuario, aplica el HASH, añade el Rol '5' y crea el Alumno en la DB
+                await _alumnoRepo.CrearAsync(alumnoRequest);
 
                 // 3. ACTUALIZAR SOLICITUD
                 solicitud.Estado = "Aprobada";

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace EduSys.Shared.DTOs
 {
@@ -25,12 +26,12 @@ namespace EduSys.Shared.DTOs
         public string? NombreContactoEmergencia { get; set; }
         public string? TelefonoContactoEmergencia { get; set; }
 
-        // --- Configuración y Estado ---
-        public int IdRol { get; set; }
-        public string? NombreRol { get; set; } // Opcional: Útil para mostrar en la interfaz sin hacer peticiones extra
+        // 🚀 MODIFICADO: Colecciones para soportar Multirrol
+        public List<int> IdRoles { get; set; } = new List<int>();
+        public List<string> NombresRoles { get; set; } = new List<string>();
 
         public int IdNacionalidad { get; set; }
-        public string? NombreNacionalidad { get; set; } // Opcional: Útil para mostrar en combos o tablas
+        public string? NombreNacionalidad { get; set; }
 
         public bool? Activo { get; set; }
         public DateTime? FechaRegistro { get; set; }

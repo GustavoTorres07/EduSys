@@ -16,7 +16,7 @@ public partial class EduSysDbContext : DbContext
 
     // --- DBSETS ---
     public virtual DbSet<Alumno> Alumnos { get; set; }
-    public virtual DbSet<Asistencia> Asistencia { get; set; }
+    public virtual DbSet<Asistencia> Asistencia { get; set; } // Restaurado a singular como lo tenías
     public virtual DbSet<Aula> Aulas { get; set; }
     public virtual DbSet<Carrera> Carreras { get; set; }
     public virtual DbSet<CarreraSede> CarreraSedes { get; set; }
@@ -82,10 +82,10 @@ public partial class EduSysDbContext : DbContext
                 .HasConstraintName("FK_Alumno_Usuario");
 
             entity.HasOne(d => d.IdSedeNavigation)
-        .WithMany() // Una sede tiene muchos alumnos
-        .HasForeignKey(d => d.IdSede)
-        .OnDelete(DeleteBehavior.ClientSetNull)
-        .HasConstraintName("FK_Alumno_Sede");
+                .WithMany() // Una sede tiene muchos alumnos
+                .HasForeignKey(d => d.IdSede)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Alumno_Sede");
         });
 
         modelBuilder.Entity<Regimen>(entity =>
@@ -112,7 +112,8 @@ public partial class EduSysDbContext : DbContext
 
             entity.HasOne(d => d.IdEstadoPromocionNavigation).WithMany().HasForeignKey(d => d.IdEstadoPromocion);
             entity.HasOne(d => d.IdEstadoRegularNavigation).WithMany().HasForeignKey(d => d.IdEstadoRegular);
-            // ✅ AQUÍ AGREGAS TUS NUEVAS LÍNEAS:
+
+            // ✅ NUEVAS LÍNEAS
             entity.HasOne(d => d.IdEstadoSiDesapruebaNavigation).WithMany().HasForeignKey(d => d.IdEstadoSiDesaprueba);
             entity.HasOne(d => d.IdEstadoSiFaltaAsistenciaNavigation).WithMany().HasForeignKey(d => d.IdEstadoSiFaltaAsistencia);
             entity.Property(e => e.MantienePromocionRecuperatorio).HasDefaultValue(false);
@@ -133,6 +134,7 @@ public partial class EduSysDbContext : DbContext
                   .HasConstraintName("FK_PlanMateria_Regimen");
         });
 
+        // ✅ RESTAURADO: Configuración de Asistencia
         modelBuilder.Entity<Asistencia>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PK__Asistenc__3214EC0775A00304");
@@ -218,7 +220,6 @@ public partial class EduSysDbContext : DbContext
             entity.ToTable("Correlatividad");
             entity.Property(e => e.TipoRequisito).HasMaxLength(20);
 
-            // ✅ ANTES: .WithMany()  ← EF creaba relaciones shadow duplicadas
             // ✅ AHORA: referenciar las colecciones reales del modelo PlanMateria
             entity.HasOne(d => d.IdPlanMateriaOrigenNavigation)
                 .WithMany(p => p.CorrelativasComoOrigen)
@@ -284,10 +285,10 @@ public partial class EduSysDbContext : DbContext
             entity.Property(e => e.HorasAnticipacionBaja).HasDefaultValue(48);
 
             // ==============================================================
-            // ✅ AQUÍ ESTÁ LA SOLUCIÓN: MAPEO DE LA RELACIÓN PADRE-HIJO
+            // ✅ SOLUCIÓN: MAPEO DE LA RELACIÓN PADRE-HIJO
             // ==============================================================
             entity.HasOne(d => d.IdEvaluacionPadreNavigation)
-                            .WithMany(e => e.EvaluacionesHijas)   // ← reemplazá el WithMany() vacío por esto
+                            .WithMany(e => e.EvaluacionesHijas)
                             .HasForeignKey(d => d.IdEvaluacionPadre)
                             .HasConstraintName("FK_Evaluacion_Padre");
 
@@ -481,6 +482,7 @@ public partial class EduSysDbContext : DbContext
                 .HasConstraintName("FK_RefreshToken_Usuario");
         });
 
+        // ✅ APLICADO: Configuración Muchos a Muchos para Rol y Permiso
         modelBuilder.Entity<Rol>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PK__Rol__3214EC0712833D5A");
@@ -497,10 +499,11 @@ public partial class EduSysDbContext : DbContext
                     l => l.HasOne<Rol>().WithMany().HasForeignKey("IdRol").OnDelete(DeleteBehavior.ClientSetNull).HasConstraintName("FK_RolPermiso_Rol"),
                     j =>
                     {
-                        j.HasKey("IdRol", "IdPermiso").HasName("PK__RolPermi__BA9F7EA0C12890AA");
+                        j.HasKey("IdRol", "IdPermiso").HasName("PK_RolPermiso");
                         j.ToTable("RolPermiso");
                     });
         });
+
         modelBuilder.Entity<PlanEstudioSede>(entity =>
         {
             entity.ToTable("PlanEstudioSede");
@@ -518,6 +521,7 @@ public partial class EduSysDbContext : DbContext
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_PlanSede_Sede");
         });
+
         modelBuilder.Entity<Sede>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PK__Sede__3214EC07274AAA10");
@@ -570,12 +574,18 @@ public partial class EduSysDbContext : DbContext
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_Usuario_Nacionalidad");
 
-            entity.HasOne(d => d.IdRolNavigation).WithMany(p => p.Usuarios)
-                .HasForeignKey(d => d.IdRol)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_Usuario_Rol");
+            // 🚀 APLICADO: NUEVA RELACIÓN MUCHOS A MUCHOS (Usuario <-> Rol)
+            entity.HasMany(d => d.IdRols).WithMany(p => p.IdUsuarios)
+                .UsingEntity<Dictionary<string, object>>(
+                    "UsuarioRol",
+                    r => r.HasOne<Rol>().WithMany().HasForeignKey("IdRol").OnDelete(DeleteBehavior.ClientSetNull).HasConstraintName("FK_UsuarioRol_Rol"),
+                    l => l.HasOne<Usuario>().WithMany().HasForeignKey("IdUsuario").OnDelete(DeleteBehavior.ClientSetNull).HasConstraintName("FK_UsuarioRol_Usuario"),
+                    j =>
+                    {
+                        j.HasKey("IdUsuario", "IdRol").HasName("PK_UsuarioRol");
+                        j.ToTable("UsuarioRol");
+                    });
         });
-
 
         modelBuilder.Entity<VentanaOperativa>(entity =>
         {
@@ -589,6 +599,7 @@ public partial class EduSysDbContext : DbContext
                 .HasForeignKey(d => d.IdPeriodo)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_Ventana_Periodo");
+
             // Relación Carrera (Opcional)
             entity.HasOne(d => d.IdCarreraNavigation)
                       .WithMany()

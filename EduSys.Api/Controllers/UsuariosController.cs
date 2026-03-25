@@ -69,8 +69,17 @@ namespace EduSys.Api.Controllers
                 Direccion = usuario.Direccion,
                 Localidad = usuario.Localidad,
                 FechaNacimiento = usuario.FechaNacimiento,
-                IdRol = usuario.IdRol,
-                NombreRol = usuario.IdRolNavigation?.Nombre
+
+                // 🚀 MODIFICADO: Mapeamos las colecciones de roles en lugar de un solo rol
+                IdRoles = usuario.IdRols.Select(r => r.Id).ToList(),
+                NombresRoles = usuario.IdRols.Select(r => r.Nombre).ToList(),
+
+                IdNacionalidad = usuario.IdNacionalidad,
+                NombreNacionalidad = usuario.IdNacionalidadNavigation?.Nombre,
+                Activo = usuario.Activo,
+                FechaRegistro = usuario.FechaRegistro,
+                FotoPerfilUrl = usuario.FotoPerfilUrl,
+                DebeCambiarPass = usuario.DebeCambiarPass
             };
 
             return Ok(dto);

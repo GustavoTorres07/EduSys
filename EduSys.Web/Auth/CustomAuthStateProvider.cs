@@ -9,7 +9,6 @@ namespace EduSys.Web.Auth
     {
         private readonly ILocalStorageService _localStorage;
 
-        // ✅ Uso de constantes para evitar "Magic Strings" propensos a errores de tipeo
         public const string AuthTokenKey = "authToken";
         public const string UserNombreKey = "UserNombre";
         public const string UserApellidoKey = "UserApellido";
@@ -31,12 +30,10 @@ namespace EduSys.Web.Auth
 
             var claims = ParseClaimsFromJwt(token).ToList();
 
-            // ✅ Recuperar datos visuales del LocalStorage (Para sobrevivir al F5)
             var nombre = await _localStorage.GetItemAsync<string>(UserNombreKey);
             var apellido = await _localStorage.GetItemAsync<string>(UserApellidoKey);
             var foto = await _localStorage.GetItemAsync<string>(UserFotoKey);
 
-            // Aseguramos no duplicar claims si el JWT ya los trajera en un futuro
             if (!string.IsNullOrEmpty(nombre) && !claims.Any(c => c.Type == "Nombre"))
                 claims.Add(new Claim("Nombre", nombre));
 
@@ -82,6 +79,7 @@ namespace EduSys.Web.Auth
             await _localStorage.RemoveItemAsync(UserNombreKey);
             await _localStorage.RemoveItemAsync(UserApellidoKey);
             await _localStorage.RemoveItemAsync(UserFotoKey);
+            await _localStorage.RemoveItemAsync("returnUrl");
 
             var anonymousUser = new ClaimsPrincipal(new ClaimsIdentity());
             var authState = Task.FromResult(new AuthenticationState(anonymousUser));
@@ -89,38 +87,42 @@ namespace EduSys.Web.Auth
             NotifyAuthenticationStateChanged(authState);
         }
 
+        // 🚀 MODIFICADO: Parser robusto para soportar Arrays (Múltiples Roles y Permisos)
         private IEnumerable<Claim> ParseClaimsFromJwt(string jwt)
         {
             var claims = new List<Claim>();
             var payload = jwt.Split('.')[1];
             var jsonBytes = ParseBase64WithoutPadding(payload);
-            var keyValuePairs = JsonSerializer.Deserialize<Dictionary<string, object>>(jsonBytes);
+
+            // Leemos el payload como JsonElement para poder identificar arrays
+            var keyValuePairs = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(jsonBytes);
 
             if (keyValuePairs == null) return claims;
 
             foreach (var kvp in keyValuePairs)
             {
-                if (kvp.Key == "role" || kvp.Key == ClaimTypes.Role)
+                // Normalizar claves de claims
+                string claimType = kvp.Key switch
                 {
-                    if (kvp.Value.ToString()!.Trim().StartsWith("["))
-                    {
-                        var parsedRoles = JsonSerializer.Deserialize<string[]>(kvp.Value.ToString()!);
-                        if (parsedRoles != null)
-                            foreach (var parsedRole in parsedRoles)
-                                claims.Add(new Claim(ClaimTypes.Role, parsedRole));
-                    }
-                    else
-                    {
-                        claims.Add(new Claim(ClaimTypes.Role, kvp.Value.ToString()!));
-                    }
-                }
-                else if (kvp.Key == "nameid" || kvp.Key == "sub")
+                    "role" => ClaimTypes.Role,
+                    "nameid" => ClaimTypes.NameIdentifier,
+                    "sub" => ClaimTypes.NameIdentifier,
+                    "email" => ClaimTypes.Email,
+                    "unique_name" => ClaimTypes.Name,
+                    _ => kvp.Key
+                };
+
+                // Si el valor es un array (ej: varios Permisos o Roles)
+                if (kvp.Value.ValueKind == JsonValueKind.Array)
                 {
-                    claims.Add(new Claim(ClaimTypes.NameIdentifier, kvp.Value.ToString()!));
+                    foreach (var item in kvp.Value.EnumerateArray())
+                    {
+                        claims.Add(new Claim(claimType, item.ToString() ?? string.Empty));
+                    }
                 }
                 else
                 {
-                    claims.Add(new Claim(kvp.Key, kvp.Value.ToString()!));
+                    claims.Add(new Claim(claimType, kvp.Value.ToString() ?? string.Empty));
                 }
             }
             return claims;

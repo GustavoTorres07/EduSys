@@ -3,6 +3,7 @@
 @using System.Security.Claims
 @using EduSys.Web.Auth
 @using Microsoft.AspNetCore.Components.Authorization
+@using MudBlazor
 
 @inject IAuthService AuthService
 @inject NavigationManager Navigation
@@ -172,7 +173,7 @@
         try
         {
             await AuthService.LogoutAsync();
-            Navigation.NavigateTo("/");
+            Navigation.NavigateTo("/", forceLoad: true);
         }
         catch (Exception)
         {
@@ -187,7 +188,6 @@
         
         if (user.IsInRole("Docente"))
         {
-            // ✅ CORRECCIÓN RUTA OFICIAL PERFIL DOCENTE
             Navigation.NavigateTo("/docente/mi-perfil");
         }
         else if (user.IsInRole("Alumno"))
@@ -229,18 +229,27 @@
         return foto;
     }
 
+    // 🚀 MODIFICADO: Determina color en base a multirroles
     private Color GetAvatarColor(ClaimsPrincipal user)
     {
+        if (user.FindAll(ClaimTypes.Role).Count() > 1) return Color.Dark;
         if (user.IsInRole("Docente")) return Color.Tertiary;
         if (user.IsInRole("Alumno")) return Color.Secondary;
         return Color.Primary;
     }
 
+    // 🚀 MODIFICADO: Genera etiqueta para Multirroles
     private string GetRoleLabel(ClaimsPrincipal user)
     {
+        var rolesCount = user.FindAll(ClaimTypes.Role).Count();
+        if (rolesCount > 1) return "MULTIRROL";
+
         if (user.IsInRole("Docente")) return "DOCENTE";
         if (user.IsInRole("Alumno")) return "ALUMNO REGULAR";
         if (user.IsInRole("Administrador")) return "ADMINISTRADOR";
+        if (user.IsInRole("Secretaria Academica")) return "SECRETARÍA";
+        if (user.IsInRole("Coordinador")) return "COORDINADOR";
+        
         return "USUARIO";
     }
 }

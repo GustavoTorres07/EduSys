@@ -25,8 +25,6 @@ namespace EduSys.Api.Repositories
                 .Where(a => a.Activo == true)
                 .Select(a => new AlumnoListadoDTO
                 {
-                    // Al mapear directamente aquí, EF Core traduce esto a un "SELECT a.Id, u.Dni..." 
-                    // en SQL y no trae las columnas pesadas (como Urls o Hash de claves).
                     IdAlumno = a.Id,
                     Legajo = a.Legajo,
                     Activo = a.Activo ?? true,
@@ -36,7 +34,6 @@ namespace EduSys.Api.Repositories
                     Email = a.IdUsuarioNavigation.Email,
                     FotoPerfilUrl = a.IdUsuarioNavigation.FotoPerfilUrl,
 
-                    // Mapeo seguro con chequeo de nulos
                     NombreCarrera = a.IdPlanActualNavigation != null
                                     ? a.IdPlanActualNavigation.IdCarreraNavigation.Nombre
                                     : "Sin Carrera Asignada",
@@ -122,7 +119,6 @@ namespace EduSys.Api.Repositories
                     Dni = dto.Dni,
                     Email = dto.Email,
                     ClaveHash = BCrypt.Net.BCrypt.HashPassword(dto.Dni),
-                    IdRol = 5,
                     IdNacionalidad = dto.IdNacionalidad,
                     Activo = dto.Activo,
                     FechaRegistro = DateTime.Now,
@@ -137,6 +133,13 @@ namespace EduSys.Api.Repositories
                     LugarNacimiento = dto.LugarNacimiento,
                     FechaNacimiento = dto.FechaNacimiento.HasValue ? DateOnly.FromDateTime(dto.FechaNacimiento.Value) : null
                 };
+
+                // 🚀 CORRECCIÓN: Asignamos el rol a la nueva colección IdRols
+                var rolAlumno = await _context.Rols.FindAsync(5);
+                if (rolAlumno != null)
+                {
+                    usuario.IdRols.Add(rolAlumno);
+                }
 
                 _context.Usuarios.Add(usuario);
                 await _context.SaveChangesAsync();
@@ -251,7 +254,6 @@ namespace EduSys.Api.Repositories
             return true;
         }
 
-        // Agrégalo dentro de la clase AlumnoRepository
         public async Task<AlumnoDTO?> GetByUsuarioAsync(int idUsuario)
         {
             var alumno = await _context.Alumnos
@@ -284,7 +286,6 @@ namespace EduSys.Api.Repositories
 
         public async Task<List<AsistenciaMateriaDTO>> GetMisAsistenciasAsync(int idUsuario)
         {
-            // 1. Extraemos los datos crudos desde la BD proyectando en un tipo anónimo para ser rápidos
             var cursadasDb = await _context.InscripcionCursada
                 .AsNoTracking()
                 .Where(i => i.IdAlumnoNavigation.IdUsuario == idUsuario && i.Estado != "Baja")
@@ -292,12 +293,11 @@ namespace EduSys.Api.Repositories
                 {
                     MateriaNombre = i.IdComisionNavigation.IdPlanMateriaNavigation.IdMateriaNavigation.Nombre,
                     ComisionCodigo = i.IdComisionNavigation.Codigo,
-                    // Extraemos el año de la fecha de inicio del período. ToDateTime es necesario si la fecha es DateOnly.
                     CicloLectivo = i.IdComisionNavigation.IdPeriodoNavigation.FechaInicio.Year,
                     PorcentajeRequerido = i.IdComisionNavigation.IdPlanMateriaNavigation.PorcentajeAsistenciaRegularizar ?? 0,
                     AsistenciasDb = i.Asistencia.Select(a => new
                     {
-                        Fecha = a.Fecha, // Es DateOnly en BD
+                        Fecha = a.Fecha,
                         EstaPresente = a.EstaPresente,
                         EsJustificado = a.EsJustificado,
                         Observacion = a.Observacion
@@ -305,7 +305,6 @@ namespace EduSys.Api.Repositories
                 })
                 .ToListAsync();
 
-            // 2. Mapeamos la data cruda a los DTOs que espera el Frontend
             var resultado = new List<AsistenciaMateriaDTO>();
 
             foreach (var cursada in cursadasDb)
@@ -327,7 +326,6 @@ namespace EduSys.Api.Repositories
 
                     materiaDto.Registros.Add(new AsistenciaRegistroDTO
                     {
-                        // 🚀 AQUÍ HACEMOS EL CASTEO A DATETIME 🚀
                         Fecha = asist.Fecha.ToDateTime(TimeOnly.MinValue),
                         Estado = estadoTexto,
                         Observacion = asist.Observacion
@@ -339,6 +337,7 @@ namespace EduSys.Api.Repositories
 
             return resultado.OrderByDescending(a => a.CicloLectivo).ThenBy(a => a.Materia).ToList();
         }
+
         public async Task<Alumno> CrearAsync(Alumno alumno)
         {
             _context.Alumnos.Add(alumno);

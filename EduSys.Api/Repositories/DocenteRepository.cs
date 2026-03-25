@@ -21,7 +21,6 @@ namespace EduSys.Api.Repositories
 
         public async Task<List<DocenteListadoDTO>> GetAllAsync()
         {
-            // 🚀 OPTIMIZADO: Proyección directa y AsNoTracking implícito
             return await _context.Docentes
                 .Where(d => d.Activo == true)
                 .Select(d => new DocenteListadoDTO
@@ -39,7 +38,6 @@ namespace EduSys.Api.Repositories
 
         public async Task<DocenteRequestDTO?> GetByIdAsync(int id)
         {
-            // 🚀 OPTIMIZADO: AsNoTracking para lectura
             var docente = await _context.Docentes
                 .AsNoTracking()
                 .Include(d => d.IdUsuarioNavigation)
@@ -57,7 +55,6 @@ namespace EduSys.Api.Repositories
                 Telefono = docente.IdUsuarioNavigation.Telefono,
                 Direccion = docente.IdUsuarioNavigation.Direccion,
                 Localidad = docente.IdUsuarioNavigation.Localidad,
-                FechaNacimiento = docente.IdUsuarioNavigation.FechaNacimiento?.ToDateTime(TimeOnly.MinValue),
                 Sexo = docente.IdUsuarioNavigation.Sexo,
                 EstadoCivil = docente.IdUsuarioNavigation.EstadoCivil,
                 IdNacionalidad = docente.IdUsuarioNavigation.IdNacionalidad,
@@ -66,11 +63,13 @@ namespace EduSys.Api.Repositories
                 TelefonoContactoEmergencia = docente.IdUsuarioNavigation.TelefonoContactoEmergencia,
                 Legajo = docente.Legajo,
                 TituloAcademico = docente.TituloAcademico ?? "",
-                Activo = docente.Activo ?? true
+                Activo = docente.Activo ?? true,
+
+                // 🚀 CORRECCIÓN
+                FechaNacimiento = docente.IdUsuarioNavigation.FechaNacimiento.HasValue ? docente.IdUsuarioNavigation.FechaNacimiento.Value.ToDateTime(TimeOnly.MinValue) : null
             };
         }
 
-        // ✅ NUEVA IMPLEMENTACIÓN: Dashboard Docente - 🚀 OPTIMIZACIÓN EXTREMA DE CONSULTA (Proyección en BD)
         public async Task<List<ComisionDocenteDTO>> GetMisComisionesAsync(int idUsuario)
         {
             var docenteId = await _context.Docentes
@@ -81,7 +80,6 @@ namespace EduSys.Api.Repositories
 
             if (docenteId == 0) return new List<ComisionDocenteDTO>();
 
-            // Al usar Select directo, evitamos los 7 .Include() pesados en memoria
             var comisionesDocente = await _context.DocenteComisions
                 .AsNoTracking()
                 .Where(dc => dc.IdDocente == docenteId && dc.Activo)
@@ -93,20 +91,14 @@ namespace EduSys.Api.Repositories
                     Carrera = dc.IdComisionNavigation.IdPlanMateriaNavigation.IdPlanNavigation.IdCarreraNavigation.Nombre,
                     Sede = dc.IdComisionNavigation.IdSedeNavigation.Nombre,
                     Rol = dc.RolDocente,
-
-                    // Contamos directo en BD
                     CantidadAlumnos = dc.IdComisionNavigation.InscripcionCursada.Count(i => i.Estado != "Baja"),
-
-                    // Evaluamos los horarios seguros
                     Horario = dc.IdComisionNavigation.HorarioComisions.Any()
                         ? string.Join(", ", dc.IdComisionNavigation.HorarioComisions.Select(h => h.DiaSemana + " " + h.HoraInicio.ToString(@"hh\:mm") + "-" + h.HoraFin.ToString(@"hh\:mm")))
                         : "Sin asignar",
-
                     Aula = dc.IdComisionNavigation.HorarioComisions.FirstOrDefault() != null &&
                            dc.IdComisionNavigation.HorarioComisions.FirstOrDefault()!.IdAulaNavigation != null
                            ? dc.IdComisionNavigation.HorarioComisions.FirstOrDefault()!.IdAulaNavigation!.Nombre
                            : "Sin asignar",
-
                     Estado = dc.IdComisionNavigation.Estado ?? "Desconocido"
                 })
                 .OrderBy(c => c.Carrera)
@@ -128,7 +120,6 @@ namespace EduSys.Api.Repositories
                     Dni = dto.Dni,
                     Email = dto.Email,
                     ClaveHash = BCrypt.Net.BCrypt.HashPassword(dto.Dni),
-                    IdRol = 4, // Docente
                     IdNacionalidad = dto.IdNacionalidad,
                     Activo = dto.Activo,
                     FechaRegistro = DateTime.Now,
@@ -141,8 +132,16 @@ namespace EduSys.Api.Repositories
                     LugarNacimiento = dto.LugarNacimiento,
                     NombreContactoEmergencia = dto.NombreContactoEmergencia,
                     TelefonoContactoEmergencia = dto.TelefonoContactoEmergencia,
+
+                    // 🚀 CORRECCIÓN
                     FechaNacimiento = dto.FechaNacimiento.HasValue ? DateOnly.FromDateTime(dto.FechaNacimiento.Value) : null
                 };
+
+                var rolDocente = await _context.Rols.FindAsync(4);
+                if (rolDocente != null)
+                {
+                    usuario.IdRols.Add(rolDocente);
+                }
 
                 _context.Usuarios.Add(usuario);
                 await _context.SaveChangesAsync();
@@ -192,8 +191,8 @@ namespace EduSys.Api.Repositories
             u.NombreContactoEmergencia = dto.NombreContactoEmergencia;
             u.TelefonoContactoEmergencia = dto.TelefonoContactoEmergencia;
 
-            if (dto.FechaNacimiento.HasValue)
-                u.FechaNacimiento = DateOnly.FromDateTime(dto.FechaNacimiento.Value);
+            // 🚀 CORRECCIÓN
+            u.FechaNacimiento = dto.FechaNacimiento.HasValue ? DateOnly.FromDateTime(dto.FechaNacimiento.Value) : null;
 
             if (!string.IsNullOrEmpty(dto.Legajo))
                 docente.Legajo = dto.Legajo;
@@ -228,15 +227,13 @@ namespace EduSys.Api.Repositories
 
         public async Task<DocenteRequestDTO?> GetMiPerfilAsync(string emailUsuario)
         {
-            // Buscamos al docente cuyo usuario asociado tenga el email del Token JWT
             var docente = await _context.Docentes
-                .Include(d => d.IdUsuarioNavigation) // Incluimos la tabla de Usuario para traer Nombre, Email, etc.
+                .Include(d => d.IdUsuarioNavigation)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(d => d.IdUsuarioNavigation.Email == emailUsuario);
 
             if (docente == null) return null;
 
-            // Mapeamos a DocenteRequestDTO (el mismo que usamos en la vista)
             return new DocenteRequestDTO
             {
                 IdDocente = docente.Id,
@@ -247,7 +244,6 @@ namespace EduSys.Api.Repositories
                 TituloAcademico = docente.TituloAcademico,
                 Email = docente.IdUsuarioNavigation.Email,
                 Telefono = docente.IdUsuarioNavigation.Telefono,
-                // ✅ CORRECCIÓN AQUÍ: Si es null, por defecto lo ponemos en false (o true, según prefieras)
                 Activo = docente.Activo ?? false
             };
         }

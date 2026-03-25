@@ -92,6 +92,8 @@ builder.Services.AddScoped<IAulaRepository, AulaRepository>();
 
 builder.Services.AddScoped<IAsistenciaRepository, AsistenciaRepository>();
 
+builder.Services.AddScoped<IRolRepository, RolRepository>();
+
 builder.Services.AddControllers();
 
 // ==================================================================

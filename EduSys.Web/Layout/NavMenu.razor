@@ -12,7 +12,7 @@
 @implements IDisposable
 
 <style>
-    /* ===== VARIABLES & TEMA ===== */
+    /* ... (Mantenemos tus estilos existentes iguales) ... */
     :root {
         --nav-primary: #1e3a58;
         --nav-accent: #456990;
@@ -33,7 +33,6 @@
         user-select: none;
     }
 
-    /* ===== 1. PERFIL DE USUARIO ===== */
     .nav-profile-section {
         padding: 20px 16px;
         display: flex;
@@ -85,7 +84,6 @@
         align-self: flex-start;
     }
 
-    /* ===== 2. BUSCADOR (TRIGGER) ===== */
     .command-trigger {
         margin: 12px 16px 8px 16px;
         padding: 8px 12px;
@@ -121,7 +119,6 @@
         color: var(--nav-text-muted);
     }
 
-    /* ===== 3. LISTA DE NAVEGACIÓN ===== */
     .nav-scroll-area {
         flex: 1;
         overflow-y: auto;
@@ -179,7 +176,6 @@
 
     .mud-nav-link.active .mud-nav-link-icon { color: var(--nav-accent) !important; }
 
-    /* ESTRELLA FAVORITOS */
     .favorite-star-btn {
         position: absolute;
         right: 8px;
@@ -200,10 +196,8 @@
     .favorite-star-btn:hover { color: #f59e0b; transform: translateY(-50%) scale(1.2); }
     .favorites-pinned { margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px dashed var(--nav-border); }
 
-    /* ===== FOOTER ===== */
     .nav-footer { padding: 12px 16px; border-top: 1px solid var(--nav-border); background: #fff; }
 
-    /* ===== MODAL COMMAND PALETTE ===== */
     .command-palette-overlay {
         position: fixed; top: 0; left: 0; right: 0; bottom: 0;
         background: rgba(30, 58, 88, 0.4); backdrop-filter: blur(3px);
@@ -324,7 +318,10 @@
                         @RenderNavLink("/institucion", "Configuración Base", Icons.Material.Filled.Settings)
                         <AuthorizeView Roles="Administrador" Context="secAuth">
                             <Authorized>
-                                @RenderNavLink("/usuarios", "Seguridad", Icons.Material.Filled.Security)
+                                <div class="nav-section-header">Seguridad Avanzada</div>
+                                @RenderNavLink("/usuarios", "Usuarios y Cuentas", Icons.Material.Filled.Security)
+                                @* 🚀 NUEVO ENLACE AL MÓDULO DE ROLES *@
+                                @RenderNavLink("/admin/roles", "Roles y Permisos", Icons.Material.Filled.AdminPanelSettings)
                             </Authorized>
                         </AuthorizeView>
                     </Authorized>
@@ -340,7 +337,6 @@
 
                 <div class="nav-section-header">Cursada</div>
                 @RenderNavLink("/alumno/mis-cursadas", "Mis Notas", Icons.Material.Filled.Grade)
-                @RenderNavLink("/horarios-alumno", "Mis Horarios", Icons.Material.Filled.CalendarMonth)
                 @RenderNavLink("/alumno/asistencias", "Mis Asistencias", Icons.Material.Filled.FactCheck)
 
                 <div class="nav-section-header">Autogestión</div>
@@ -427,7 +423,6 @@
 }
 
 @code {
-    // --- Variables de Usuario ---
     private string FotoPerfilUsuario = "";
     private string NombreUsuario = "Cargando...";
     private string UserEmail = "";
@@ -435,7 +430,6 @@
     private string RoleFull = "";
     private string UserId = "";
 
-    // --- Command Palette ---
     private bool showCommandPalette = false;
     private string commandSearch = "";
     private int selectedCommandIndex = 0;
@@ -444,7 +438,6 @@
     private List<CommandItem> filteredCommands = new();
     private DotNetObjectReference<NavMenu>? _dotNetRef;
 
-    // --- Favoritos ---
     private List<NavPage> favoritePages = new();
     private string FavoritesKey => string.IsNullOrEmpty(UserId) ? "edusys_favorites_guest" : $"edusys_favorites_{UserId}";
 
@@ -476,12 +469,21 @@
             FotoPerfilUsuario = user.FindFirst("FotoPerfilUrl")?.Value ?? "";
             UserId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value ?? "";
 
-            if (user.IsInRole("Administrador")) RoleFull = "Administrador del Sistema";
-            else if (user.IsInRole("Secretaria Academica")) RoleFull = "Secretaría Académica";
-            else if (user.IsInRole("Coordinador")) RoleFull = "Coordinador de Carrera";
-            else if (user.IsInRole("Docente")) RoleFull = "Docente Académico";
-            else if (user.IsInRole("Alumno")) RoleFull = "Alumno Regular";
-            else RoleFull = "Usuario";
+            // 🚀 ACTUALIZADO: Manejo de múltiples roles para el Badge
+            var roles = user.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+            if (roles.Count > 1) 
+            {
+                RoleFull = "Perfil Multirrol";
+            }
+            else
+            {
+                if (user.IsInRole("Administrador")) RoleFull = "Administrador del Sistema";
+                else if (user.IsInRole("Secretaria Academica")) RoleFull = "Secretaría Académica";
+                else if (user.IsInRole("Coordinador")) RoleFull = "Coordinador de Carrera";
+                else if (user.IsInRole("Docente")) RoleFull = "Docente Académico";
+                else if (user.IsInRole("Alumno")) RoleFull = "Alumno Regular";
+                else RoleFull = "Usuario";
+            }
 
             InitializeCommands(user);
         }
@@ -528,6 +530,7 @@
 
     private Color GetAvatarColor(ClaimsPrincipal user)
     {
+        if (user.FindAll(ClaimTypes.Role).Count() > 1) return Color.Dark; // Color para multirrol
         if (user.IsInRole("Docente")) return Color.Tertiary;
         if (user.IsInRole("Alumno")) return Color.Secondary;
         return Color.Primary;
@@ -536,8 +539,6 @@
     private async Task CerrarSesion()
     {
         try { await AuthService.LogoutAsync(); } catch { }
-        
-        // Se fuerza la recarga (forceLoad: true) para limpiar la memoria de la SPA al cambiar de usuario
         NavManager.NavigateTo("/", forceLoad: true);
     }
 
@@ -579,26 +580,13 @@
             allCommands.Add(new CommandItem { Title = "Carreras", Category = "Config. Institucional", Url = "/carreras", Icon = Icons.Material.Filled.AccountBalance });
             allCommands.Add(new CommandItem { Title = "Planes de Estudio", Category = "Config. Institucional", Url = "/planes", Icon = Icons.Material.Filled.Map });
             allCommands.Add(new CommandItem { Title = "Materias", Category = "Config. Institucional", Url = "/materias", Icon = Icons.Material.Filled.Book });
-            allCommands.Add(new CommandItem { Title = "Sedes", Category = "Config. Institucional", Url = "/sedes", Icon = Icons.Material.Filled.Place });
-            allCommands.Add(new CommandItem { Title = "Períodos Académicos", Category = "Planificación", Url = "/periodos", Icon = Icons.Material.Filled.DateRange });
-            allCommands.Add(new CommandItem { Title = "Comisiones", Category = "Planificación", Url = "/comisiones", Icon = Icons.Material.Filled.Groups });
-            allCommands.Add(new CommandItem { Title = "Alumnos / Legajos", Category = "Comunidad", Url = "/alumnos", Icon = Icons.Material.Filled.Person });
-            allCommands.Add(new CommandItem { Title = "Docentes", Category = "Comunidad", Url = "/docentes", Icon = Icons.Material.Filled.Face });
-            allCommands.Add(new CommandItem { Title = "Reportes", Category = "Sistema", Url = "/reportes/operativos", Icon = Icons.Material.Filled.BarChart });
+            allCommands.Add(new CommandItem { Title = "Roles y Permisos", Category = "Seguridad", Url = "/admin/roles", Icon = Icons.Material.Filled.AdminPanelSettings });
         }
 
         if (user.IsInRole("Alumno"))
         {
             allCommands.Add(new CommandItem { Title = "Mis Notas", Category = "Cursada", Url = "/alumno/mis-cursadas", Icon = Icons.Material.Filled.Grade });
             allCommands.Add(new CommandItem { Title = "Inscribirme a Cursadas", Category = "Autogestión", Url = "/inscripcion-materias", Icon = Icons.Material.Filled.LibraryAdd });
-            allCommands.Add(new CommandItem { Title = "Mis Horarios", Category = "Cursada", Url = "/horarios-alumno", Icon = Icons.Material.Filled.CalendarMonth });
-            allCommands.Add(new CommandItem { Title = "Rendir Finales", Category = "Autogestión", Url = "/alumno/inscripcion-finales", Icon = Icons.Material.Filled.AssignmentTurnedIn });
-        }
-
-        if (user.IsInRole("Docente"))
-        {
-            allCommands.Add(new CommandItem { Title = "Mis Comisiones", Category = "Clases", Url = "/mis-comisiones", Icon = Icons.Material.Filled.Groups });
-            allCommands.Add(new CommandItem { Title = "Cargar Notas", Category = "Evaluación", Url = "/docente/cargar-notas", Icon = Icons.Material.Filled.EditNote });
         }
 
         filteredCommands = allCommands.ToList();
@@ -625,7 +613,6 @@
     private void HandleSearchInput(ChangeEventArgs e)
     {
         commandSearch = e.Value?.ToString() ?? "";
-        
         if (string.IsNullOrWhiteSpace(commandSearch)) 
             filteredCommands = allCommands.ToList();
         else 
@@ -644,7 +631,7 @@
         else if (e.Key == "Escape") CloseCommandPalette();
     }
 
-    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e) => StateHasChanged();
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) => StateHasChanged();
     
     public void Dispose() 
     {
@@ -663,14 +650,7 @@
             NavManager.NavigateTo("/alumno/perfil");
         else
         {
-            var options = new DialogOptions 
-            { 
-                MaxWidth = MaxWidth.Small, 
-                FullWidth = true, 
-                NoHeader = true, 
-                CloseButton = false,
-                BackdropClick = true 
-            };
+            var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, NoHeader = true, CloseButton = false, BackdropClick = true };
             DialogService.Show<DialogoPerfil>("", options);
         }
         CloseCommandPalette();

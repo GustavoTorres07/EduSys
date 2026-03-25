@@ -23,8 +23,9 @@ namespace EduSys.Api.Repositories
 
         public async Task<SesionDTO> LoginAsync(LoginDTO login)
         {
+            // 🚀 MODIFICADO: Incluimos la colección de Roles y sus Permisos
             var usuario = await _context.Usuarios
-                .Include(u => u.IdRolNavigation)
+                .Include(u => u.IdRols)
                     .ThenInclude(r => r.IdPermisos)
                 .FirstOrDefaultAsync(u => u.Email == login.Email);
 
@@ -35,20 +36,28 @@ namespace EduSys.Api.Repositories
 
             string token = GenerarTokenJWT(usuario);
 
-            // Validación segura de nulos por si el rol no tiene permisos asignados
-            var listaPermisos = usuario.IdRolNavigation?.IdPermisos?.Select(p => p.Codigo).ToList() ?? new List<string>();
+            // 🚀 MODIFICADO: Aplanamos todos los permisos de todos los roles y quitamos duplicados
+            var listaPermisos = usuario.IdRols
+                .SelectMany(r => r.IdPermisos)
+                .Select(p => p.Codigo)
+                .Distinct()
+                .ToList();
 
             bool esClaveInicial = BCrypt.Net.BCrypt.Verify(usuario.Dni, usuario.ClaveHash);
+
+            // Determinamos qué mostrar como "Rol principal" en caso de tener varios
+            var nombresRoles = usuario.IdRols.Select(r => r.Nombre).ToList();
+            string rolPrincipal = nombresRoles.Count > 1 ? "Multirrol" : (nombresRoles.FirstOrDefault() ?? "Sin Rol");
 
             return new SesionDTO
             {
                 Nombre = usuario.Nombre,
                 Apellido = usuario.Apellido,
                 Email = usuario.Email,
-                Rol = usuario.IdRolNavigation?.Nombre ?? "Sin Rol",
+                Rol = rolPrincipal, // Mostramos Multirrol si tiene más de 1
                 Token = token,
                 Permisos = listaPermisos,
-                DebeCambiarPass = usuario.DebeCambiarPass || esClaveInicial, // Forzamos cambio si es la inicial
+                DebeCambiarPass = usuario.DebeCambiarPass || esClaveInicial,
                 FotoPerfilUrl = usuario.FotoPerfilUrl ?? string.Empty
             };
         }
@@ -56,7 +65,7 @@ namespace EduSys.Api.Repositories
         public async Task<Usuario> RegistrarAsync(Usuario usuario, string claveTextoPlano)
         {
             usuario.ClaveHash = BCrypt.Net.BCrypt.HashPassword(claveTextoPlano);
-            usuario.FechaRegistro = DateTime.UtcNow; // 🚀 Mejor UTC para servidores
+            usuario.FechaRegistro = DateTime.UtcNow;
             usuario.Activo = true;
 
             _context.Usuarios.Add(usuario);
@@ -73,7 +82,6 @@ namespace EduSys.Api.Repositories
 
         public async Task<bool> ExisteEmailAsync(string email)
         {
-            // 🚀 AsNoTracking para validaciones instantáneas
             return await _context.Usuarios
                 .AsNoTracking()
                 .AnyAsync(u => u.Email.ToLower() == email.ToLower());
@@ -97,28 +105,34 @@ namespace EduSys.Api.Repositories
             if (string.IsNullOrEmpty(key)) throw new InvalidOperationException("Falta configurar Jwt:Key");
 
             var keyBytes = Encoding.ASCII.GetBytes(key);
-            var claims = new List<Claim>();
-
-            claims.Add(new Claim(ClaimTypes.NameIdentifier, usuario.Id.ToString()));
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.NameIdentifier, usuario.Id.ToString()),
+                new Claim(ClaimTypes.Email, usuario.Email),
+                new Claim(ClaimTypes.Name, $"{usuario.Apellido}, {usuario.Nombre}")
+            };
 
             if (!string.IsNullOrWhiteSpace(usuario.FotoPerfilUrl))
             {
                 claims.Add(new Claim("FotoPerfilUrl", usuario.FotoPerfilUrl));
             }
 
-            claims.Add(new Claim(ClaimTypes.Email, usuario.Email));
-            claims.Add(new Claim(ClaimTypes.Name, $"{usuario.Apellido}, {usuario.Nombre}"));
-
-            if (usuario.IdRolNavigation != null)
+            // 🚀 MODIFICADO: Agregamos todos los roles y permisos únicos al Token
+            if (usuario.IdRols != null && usuario.IdRols.Any())
             {
-                claims.Add(new Claim(ClaimTypes.Role, usuario.IdRolNavigation.Nombre));
-
-                if (usuario.IdRolNavigation.IdPermisos != null)
+                foreach (var rol in usuario.IdRols)
                 {
-                    foreach (var permiso in usuario.IdRolNavigation.IdPermisos)
-                    {
-                        claims.Add(new Claim("Permiso", permiso.Codigo));
-                    }
+                    claims.Add(new Claim(ClaimTypes.Role, rol.Nombre));
+                }
+
+                var permisosUnicos = usuario.IdRols
+                    .SelectMany(r => r.IdPermisos)
+                    .Select(p => p.Codigo)
+                    .Distinct();
+
+                foreach (var permiso in permisosUnicos)
+                {
+                    claims.Add(new Claim("Permiso", permiso));
                 }
             }
 
@@ -156,9 +170,8 @@ namespace EduSys.Api.Repositories
 
         public async Task<Usuario?> GetByIdAsync(int id)
         {
-            // Traemos el usuario con su Rol y Nacionalidad (por si los necesitas)
             return await _context.Usuarios
-                .Include(u => u.IdRolNavigation)
+                .Include(u => u.IdRols) // 🚀 MODIFICADO: Ahora es una colección
                 .Include(u => u.IdNacionalidadNavigation)
                 .FirstOrDefaultAsync(u => u.Id == id);
         }
