@@ -16,6 +16,7 @@ namespace EduSys.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    // 🔓 Candado Base: Requiere autenticación
     [Authorize]
     public class ReportesController : ControllerBase
     {
@@ -27,14 +28,13 @@ namespace EduSys.Api.Controllers
             public const string Blue = "#456990";
             public const string BlueDark = "#344f6e";
             public const string BluePale = "#edf2f7";
-            // Fondo alternado para separar comisiones visualmente
-            public const string ComA = "#ffffff";   // Comisión impar  → blanco puro
-            public const string ComB = "#f4f7fb";   // Comisión par    → gris-azulado muy suave
+            public const string ComA = "#ffffff";
+            public const string ComB = "#f4f7fb";
             public const string Teal = "#49BEAA";
             public const string Bg = "#f7f9fc";
             public const string Surface = "#ffffff";
             public const string Border = "#dde3ea";
-            public const string BorderSep = "#b0c4d8";   // borde separador entre comisiones (más oscuro)
+            public const string BorderSep = "#b0c4d8";
             public const string Text = "#1a2733";
             public const string TextMid = "#4a5568";
             public const string TextSoft = "#8a9ab0";
@@ -66,8 +66,9 @@ namespace EduSys.Api.Controllers
         // ================================================================
 
         [HttpGet("horarios-alumno-cursando")]
-        public async Task<IActionResult> GetHorariosCursando(
-            [FromQuery] int idPeriodo, [FromQuery] int idAlumno)
+        // 🔒 CANDADO MIXTO: El alumno puede ver los suyos, o el administrativo de reportes
+        [Authorize(Roles = "Alumno, REP_VER")]
+        public async Task<IActionResult> GetHorariosCursando([FromQuery] int idPeriodo, [FromQuery] int idAlumno)
         {
             try
             {
@@ -79,6 +80,7 @@ namespace EduSys.Api.Controllers
 
         [HttpGet("horario-descargar")]
         [Produces("application/pdf")]
+        // 🔓 ABIERTO (con Authorize base): Docentes, Alumnos y Administrativos necesitan descargar horarios
         public async Task<IActionResult> DescargarHorarioGet(
             [FromQuery] int idPeriodo,
             [FromQuery] int idCarrera,
@@ -114,6 +116,8 @@ namespace EduSys.Api.Controllers
 
         [HttpGet("constancia-inscripcion")]
         [Produces("application/pdf")]
+        // 🔒 CANDADO MIXTO: Autogestión Alumno o Bedelía (REP_VER)
+        [Authorize(Roles = "Alumno, REP_VER")]
         public async Task<IActionResult> DescargarConstancia(
             [FromQuery] int idAlumno, [FromQuery] int idPeriodo)
         {
@@ -131,6 +135,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpGet("historia-academica")]
+        // 🔒 CANDADO MIXTO
+        [Authorize(Roles = "Alumno, REP_VER, ALU_ABM")]
         public async Task<IActionResult> GetHistoriaAcademica([FromQuery] int idAlumno)
         {
             try
@@ -144,6 +150,8 @@ namespace EduSys.Api.Controllers
 
         [HttpGet("certificado-alumno-regular-descargar")]
         [Produces("application/pdf")]
+        // 🔒 CANDADO MIXTO
+        [Authorize(Roles = "Alumno, REP_VER")]
         public async Task<IActionResult> DescargarCertificadoRegular(
             [FromQuery] int idAlumno, [FromQuery] int idPeriodo)
         {
@@ -176,6 +184,7 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpGet("analitico-provisorio")]
+        // 🔒 CANDADO ESTRICTO: Solo el Alumno (ya que saca su propio ID del Token)
         [Authorize(Roles = "Alumno")]
         [Produces("application/pdf")]
         public async Task<IActionResult> DescargarAnaliticoProvisorio()
@@ -202,6 +211,7 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpGet("constancia-final/{idInscripcion}")]
+        // 🔒 CANDADO ESTRICTO: Solo el Alumno
         [Authorize(Roles = "Alumno")]
         [Produces("application/pdf")]
         public async Task<IActionResult> DescargarConstanciaFinal(int idInscripcion)
@@ -224,8 +234,9 @@ namespace EduSys.Api.Controllers
         }
 
         // ================================================================
-        // GENERADOR PDF HORARIO — UNA SOLA HOJA A4 LANDSCAPE
+        // MÉTODOS PRIVADOS (Se mantienen igual)
         // ================================================================
+
         private Document CrearHorarioPdf(HorarioRequestDTO request)
         {
             return Document.Create(container =>
@@ -321,7 +332,6 @@ namespace EduSys.Api.Controllers
 
                         foreach (var gAnio in gruposAnio)
                         {
-                            // Separador entre años — barra sólida 2 pt azul
                             if (!isFirstAnio)
                             {
                                 table.Cell()
@@ -338,11 +348,10 @@ namespace EduSys.Api.Controllers
 
                             uint rowSpanAnio = (uint)coms.Count;
                             bool isFirstCom = true;
-                            int comIndex = 0; // para alternar fondo
+                            int comIndex = 0;
 
                             foreach (var gCom in coms)
                             {
-                                // Fondo alternado: blanco / gris-azulado suave
                                 string bgRow = (comIndex % 2 == 0) ? P.ComA : P.ComB;
                                 comIndex++;
 
@@ -363,8 +372,6 @@ namespace EduSys.Api.Controllers
                                 }
 
                                 // ── COLUMNA COMISIÓN ──────────────────────
-                                // Borde superior más marcado en comisiones que no son la primera
-                                // para separar visualmente dentro del mismo año
                                 var comCell = table.Cell()
                                      .Background(P.Bg)
                                      .BorderBottom(1).BorderColor(P.Border)
@@ -372,7 +379,7 @@ namespace EduSys.Api.Controllers
                                      .AlignCenter().AlignMiddle()
                                      .Padding(2);
 
-                                if (comIndex > 1) // segunda comisión en adelante
+                                if (comIndex > 1)
                                     comCell = comCell
                                         .BorderTop(1.5f).BorderColor(P.BorderSep);
 
@@ -393,7 +400,6 @@ namespace EduSys.Api.Controllers
                                         .OrderBy(h => h.HoraInicio)
                                         .ToList();
 
-                                    // Borde superior separador en comisiones no-primeras
                                     var dayCell = table.Cell()
                                          .BorderBottom(1).BorderColor(P.Border)
                                          .BorderRight(1).BorderColor(P.Border)
@@ -432,7 +438,6 @@ namespace EduSys.Api.Controllers
                                                                         .FontSize(6f).Bold()
                                                                         .FontColor(P.White);
 
-                                                                 // cb-line
                                                                  timeCol.Item()
                                                                         .PaddingVertical(1)
                                                                         .PaddingHorizontal(5)
@@ -490,18 +495,17 @@ namespace EduSys.Api.Controllers
                                                                      .FontSize(5.5f).Italic()
                                                                      .FontColor(P.TextSoft);
                                                              });
-                                                  }); // fin cardRow
-                                        } // fin foreach clases
-                                    }); // fin dayCol
-                                } // fin foreach dia
-                            } // fin foreach gCom
-                        } // fin foreach gAnio
-                    }); // fin Table
-                }); // fin Page
-            }); // fin Document
+                                                  });
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                    });
+                });
+            });
         }
 
-        // Quita tildes para comparar días con o sin acento
         private static string NormalizarDia(string dia)
         {
             if (string.IsNullOrWhiteSpace(dia)) return dia ?? "";
@@ -512,10 +516,6 @@ namespace EduSys.Api.Controllers
                 .Replace("í", "i").Replace("Í", "I")
                 .Replace("ú", "u").Replace("Ú", "U");
         }
-
-        // ================================================================
-        // HELPERS — Certificado Regular
-        // ================================================================
 
         private void HeaderCertificadoRegular(IContainer container, CertificadoAlumnoRegularDTO data)
         {
@@ -625,10 +625,6 @@ namespace EduSys.Api.Controllers
                 });
             });
         }
-
-        // ================================================================
-        // HELPERS — Footer y rutas
-        // ================================================================
 
         private void FooterComun(IContainer container)
         {

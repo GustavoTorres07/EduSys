@@ -8,7 +8,8 @@ namespace EduSys.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize] // Lectura permitida para cualquier usuario autenticado
+    // 🔓 Candado Base: Lectura permitida para cualquier usuario autenticado
+    [Authorize]
     public class RegimenesController : ControllerBase
     {
         private readonly IRegimenRepository _repo;
@@ -34,7 +35,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Administrador, Secretaria Academica")] // 🔒
+        // 🔒 CANDADO REAL: Restringido a Gestión de Parámetros Académicos
+        [Authorize(Roles = "CFG_PARAMETROS_ACA")]
         [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(RegimenDTO))]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Post([FromBody] RegimenDTO dto)
@@ -52,7 +54,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpPut]
-        [Authorize(Roles = "Administrador, Secretaria Academica")] // 🔒
+        // 🔒 CANDADO REAL
+        [Authorize(Roles = "CFG_PARAMETROS_ACA")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(RegimenDTO))]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -69,7 +72,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Administrador, Secretaria Academica")] // 🔒
+        // 🔒 CANDADO REAL
+        [Authorize(Roles = "CFG_PARAMETROS_ACA")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Delete(int id)

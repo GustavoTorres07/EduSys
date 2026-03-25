@@ -7,7 +7,8 @@ namespace EduSys.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Roles = "Administrador")] // Solo el Admin puede gestionar la seguridad
+    // 🔓 Candado Base: Requiere autenticación
+    [Authorize]
     public class RolesController : ControllerBase
     {
         private readonly IRolRepository _rolRepo;
@@ -19,6 +20,8 @@ namespace EduSys.Api.Controllers
 
         // GET: api/roles
         [HttpGet]
+        // 🔒 CANDADO MIXTO: Quien gestiona Roles o quien gestiona Usuarios necesita ver esta lista
+        [Authorize(Roles = "SEG_ROLES_ABM, SEG_USUARIOS_ABM")]
         public async Task<ActionResult<List<RolRequestDTO>>> GetRoles()
         {
             var roles = await _rolRepo.GetAllAsync();
@@ -27,6 +30,8 @@ namespace EduSys.Api.Controllers
 
         // GET: api/roles/5
         [HttpGet("{id}")]
+        // 🔒 CANDADO ESTRICTO: Solo gestión de Roles
+        [Authorize(Roles = "SEG_ROLES_ABM")]
         public async Task<ActionResult<RolRequestDTO>> GetRol(int id)
         {
             var rol = await _rolRepo.GetByIdAsync(id);
@@ -37,6 +42,8 @@ namespace EduSys.Api.Controllers
 
         // GET: api/roles/permisos
         [HttpGet("permisos")]
+        // 🔒 CANDADO ESTRICTO
+        [Authorize(Roles = "SEG_ROLES_ABM")]
         public async Task<ActionResult<List<PermisoDTO>>> GetPermisos()
         {
             var permisos = await _rolRepo.GetPermisosCatalogoAsync();
@@ -45,6 +52,8 @@ namespace EduSys.Api.Controllers
 
         // POST: api/roles
         [HttpPost]
+        // 🔒 CANDADO ESTRICTO
+        [Authorize(Roles = "SEG_ROLES_ABM")]
         public async Task<IActionResult> GuardarRol([FromBody] RolRequestDTO dto)
         {
             if (string.IsNullOrWhiteSpace(dto.Nombre))
@@ -59,6 +68,8 @@ namespace EduSys.Api.Controllers
 
         // DELETE: api/roles/5
         [HttpDelete("{id}")]
+        // 🔒 CANDADO ESTRICTO
+        [Authorize(Roles = "SEG_ROLES_ABM")]
         public async Task<IActionResult> BajaRol(int id)
         {
             var resultado = await _rolRepo.BajaLogicaAsync(id);

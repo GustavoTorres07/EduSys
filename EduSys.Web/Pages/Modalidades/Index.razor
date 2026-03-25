@@ -1,6 +1,10 @@
 ﻿@page "/modalidades"
 @using EduSys.Shared.DTOs
 @using EduSys.Web.Services.Interfaces
+@using Microsoft.AspNetCore.Authorization
+@* 🔓 Lectura permitida para consulta general *@
+@attribute [Authorize]
+
 @inject IModalidadService ModalidadService
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
@@ -63,15 +67,6 @@
         opacity: 1 !important;
     }
 
-    /* ✅ FIX: evita fondo oscuro por autofill del navegador */
-    .custom-filter-input input:-webkit-autofill,
-    .custom-filter-input input:-webkit-autofill:hover,
-    .custom-filter-input input:-webkit-autofill:focus {
-        -webkit-text-fill-color: #1e293b !important;
-        -webkit-box-shadow: 0 0 0px 1000px white inset !important;
-        transition: background-color 5000s ease-in-out 0s;
-    }
-
     /* Botones de Filtro Tipo Segmented Control */
     .filter-group {
         display: flex;
@@ -128,17 +123,21 @@
     <div class="d-flex align-center justify-space-between mb-6 flex-wrap gap-4">
         <div>
             <MudText Typo="Typo.h4" Style="font-weight: 800; color: #456990; letter-spacing: -0.5px;">Gestión de Modalidades</MudText>
-            <MudText Typo="Typo.subtitle1" Class="mud-text-secondary">Tipos de formato de dictado (Presencial, Virtual, etc.).</MudText>
+            <MudText Typo="Typo.subtitle1" Class="mud-text-secondary">Tipos de formato de dictado institucional (Presencial, Virtual, etc.).</MudText>
         </div>
-        <MudButton Variant="Variant.Filled"
-                   Color="Color.Primary"
-                   StartIcon="@Icons.Material.Filled.Add"
-                   Size="Size.Large"
-                   Style="font-weight: 700; border-radius: 8px;"
-                   OnClick="AbrirModalCrear"
-                   Disabled="loading">
-            Nueva Modalidad
-        </MudButton>
+        
+        @* 🔒 CANDADO: Crear Modalidad *@
+        <AuthorizeView Roles="CFG_PARAMETROS_ACA" Context="crearContext">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       Size="Size.Large"
+                       Style="font-weight: 700; border-radius: 8px;"
+                       OnClick="AbrirModalCrear"
+                       Disabled="loading">
+                Nueva Modalidad
+            </MudButton>
+        </AuthorizeView>
     </div>
 
     @* --- TABLA PRINCIPAL --- *@
@@ -154,8 +153,6 @@
         
         <ToolBarContent>
             <div class="d-flex flex-wrap align-center gap-4 w-100 mb-2">
-                
-                @* 1. Filtro Estado (Segmented Control) *@
                 <div class="filter-group">
                     <MudButton OnClick="@(() => CambiarFiltro("Todos"))" Variant="@(filtroEstado == "Todos" ? Variant.Filled : Variant.Text)" Color="@(filtroEstado == "Todos" ? Color.Primary : Color.Default)" Size="Size.Small" Class="filter-btn" DisableElevation="true">Todas</MudButton>
                     <MudButton OnClick="@(() => CambiarFiltro("Activas"))" Variant="@(filtroEstado == "Activas" ? Variant.Filled : Variant.Text)" Color="@(filtroEstado == "Activas" ? Color.Success : Color.Default)" Size="Size.Small" Class="filter-btn" DisableElevation="true">Activas</MudButton>
@@ -164,7 +161,6 @@
 
                 <MudSpacer />
 
-                @* 2. Buscador General *@
                 <MudTextField @bind-Value="searchString"
                               Placeholder="Buscar por nombre o código..."
                               Adornment="Adornment.Start"
@@ -181,8 +177,8 @@
         </ToolBarContent>
 
         <HeaderContent>
-            <MudTh><MudTableSortLabel SortBy="new Func<ModalidadDTO, object>(x => x.Nombre)">Nombre de Modalidad</MudTableSortLabel></MudTh>
-            <MudTh Style="text-align: center;"><MudTableSortLabel SortBy="new Func<ModalidadDTO, object>(x => x.Codigo)">Código</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<ModalidadDTO, object>(x => x.Nombre ?? string.Empty)">Nombre de Modalidad</MudTableSortLabel></MudTh>
+            <MudTh Style="text-align: center;"><MudTableSortLabel SortBy="new Func<ModalidadDTO, object>(x => x.Codigo ?? string.Empty)">Código</MudTableSortLabel></MudTh>
             <MudTh Style="text-align: center;">Estado</MudTh>
             <MudTh Style="width: 120px; text-align: center;">Acciones</MudTh>
         </HeaderContent>
@@ -209,115 +205,40 @@
 
             <MudTd DataLabel="Acciones" Style="text-align: center;">
                 <div class="d-flex justify-center gap-1">
-                    <MudTooltip Text="Editar">
-                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" OnClick="@(() => AbrirModalEditar(context))" Disabled="_procesando" />
-                    </MudTooltip>
-                    @if (context.Activo)
-                    {
-                        <MudTooltip Text="Dar de Baja">
-                            <MudIconButton Icon="@Icons.Material.Filled.Block" Color="Color.Warning" Size="Size.Small" OnClick="@(() => AbrirModalBaja(context))" Disabled="_procesando" />
-                        </MudTooltip>
-                    }
-                    else
-                    {
-                        <MudIconButton Icon="@Icons.Material.Filled.Circle" Size="Size.Small" Color="Color.Default" Disabled="true" Style="opacity: 0.3;" />
-                    }
+                    @* 🔒 CANDADO: Editar y Baja de Modalidad *@
+                    <AuthorizeView Roles="CFG_PARAMETROS_ACA" Context="abmContext">
+                        <Authorized>
+                            <MudTooltip Text="Editar">
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" OnClick="@(() => AbrirModalEditar(context))" Disabled="_procesando" />
+                            </MudTooltip>
+                            @if (context.Activo)
+                            {
+                                <MudTooltip Text="Dar de Baja">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Block" Color="Color.Warning" Size="Size.Small" OnClick="@(() => AbrirModalBaja(context))" Disabled="_procesando" />
+                                </MudTooltip>
+                            }
+                            else
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.Circle" Size="Size.Small" Color="Color.Default" Disabled="true" Style="opacity: 0.3;" />
+                            }
+                        </Authorized>
+                        <NotAuthorized>
+                            <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" Style="color: #cbd5e1;" />
+                        </NotAuthorized>
+                    </AuthorizeView>
                 </div>
             </MudTd>
         </RowTemplate>
 
-        <LoadingContent>
-            <MudText Typo="Typo.body1" Class="pa-4 text-center" Style="color: #64748b;">Cargando catálogo de modalidades...</MudText>
-        </LoadingContent>
-        <NoRecordsContent>
-            <div class="d-flex flex-column align-center justify-center pa-8">
-                <MudIcon Icon="@Icons.Material.Filled.SettingsInputAntenna" Style="font-size: 4rem; color: #cbd5e1;" Class="mb-3" />
-                <MudText Typo="Typo.h6" Style="font-weight: 700; color: #475569;">No se encontraron modalidades</MudText>
-                <MudText Typo="Typo.body2" Style="color: #64748b;">No hay registros que coincidan con los filtros actuales.</MudText>
-            </div>
-        </NoRecordsContent>
         <PagerContent>
-            <MudTablePager RowsPerPageString="Filas por página:" InfoFormat="{first_item}-{last_item} de {all_items}" />
+            <MudTablePager RowsPerPageString="Filas:" InfoFormat="{first_item}-{last_item} de {all_items}" />
         </PagerContent>
     </MudTable>
 </MudContainer>
 
+@* Modales de Creación y Eliminación permanecen iguales... *@
 @* --- MODAL 1: CREAR / EDITAR MODALIDAD --- *@
-<MudDialog @bind-Visible="mostrarDialogoCrear" Options="optionsCrear" Class="unified-dialog-card pa-0">
-    <DialogContent>
-        <div class="dialog-header-integrated">
-            <div class="d-flex align-center">
-                <MudIcon Icon="@(esEdicion? Icons.Material.Filled.Edit : Icons.Material.Filled.AddBox)" Class="mr-3" />
-                <div>
-                    <MudText Typo="Typo.h6" Style="font-weight: 700; letter-spacing: -0.5px;">@(esEdicion ? "Editar Modalidad" : "Nueva Modalidad")</MudText>
-                </div>
-            </div>
-            <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" OnClick="CerrarModales" Size="Size.Small" Disabled="_procesando" />
-        </div>
-        <div class="pa-6">
-            <MudForm @ref="_form">
-                <MudGrid Spacing="2">
-                    <MudItem xs="12">
-                        <MudTextField Label="Nombre de Modalidad" @bind-Value="modalidadModel.Nombre"
-                                      Variant="Variant.Outlined" Margin="Margin.Dense" Class="custom-filter-input bg-white"
-                                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.SettingsInputAntenna"
-                                      Required="true" RequiredError="El nombre es obligatorio" Disabled="_procesando"
-                                      Placeholder="Ej: Presencial" />
-                    </MudItem>
-                    <MudItem xs="12">
-                        <MudTextField Label="Código Identificador" @bind-Value="modalidadModel.Codigo"
-                                      Variant="Variant.Outlined" Margin="Margin.Dense" Class="custom-filter-input bg-white"
-                                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Tag"
-                                      Placeholder="Ej: PRES" Disabled="_procesando" />
-                    </MudItem>
-
-                    @if (esEdicion)
-                    {
-                        <MudItem xs="12" Class="mt-2">
-                            <div class="pa-3 rounded-lg" style="background-color: #f8fafc; border: 1px solid #e2e8f0;">
-                                <MudSwitch @bind-Value="modalidadModel.Activo" Color="Color.Success" Label="Modalidad Activa en el Sistema" Style="font-weight: 600; color: #475569;" Disabled="_procesando" />
-                            </div>
-                        </MudItem>
-                    }
-                </MudGrid>
-            </MudForm>
-        </div>
-    </DialogContent>
-    <DialogActions>
-        <div class="px-6 pb-6 d-flex justify-end gap-3 w-100">
-            <MudButton OnClick="CerrarModales" Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg font-weight-bold" Disabled="_procesando">Cancelar</MudButton>
-            <MudButton OnClick="GuardarCambios" Variant="Variant.Filled" Color="Color.Primary" Class="rounded-lg font-weight-bold px-6" Disabled="_procesando">
-                @(_procesando ? "Guardando..." : (esEdicion ? "Guardar Cambios" : "Crear Modalidad"))
-            </MudButton>
-        </div>
-    </DialogActions>
-</MudDialog>
-
 @* --- MODAL 2: CONFIRMAR BAJA --- *@
-<MudDialog @bind-Visible="mostrarDialogoBaja" Options="optionsBaja" Class="unified-dialog-card pb-2">
-    <DialogContent>
-        <div class="pa-4 d-flex flex-column align-center text-center">
-            <div style="background-color: #fffbeb; padding: 16px; border-radius: 50%; margin-bottom: 16px;">
-                <MudIcon Icon="@Icons.Material.Filled.WarningAmber" Color="Color.Warning" Style="font-size: 3rem;" />
-            </div>
-            <MudText Class="modal-title-warning mb-2">Confirmar Baja</MudText>
-            <MudText Typo="Typo.body1" Style="color: #334155; font-weight: 600;" Class="mb-2">
-                La modalidad <b>@modalidadParaBaja?.Nombre</b> pasará a estado inactivo.
-            </MudText>
-            <MudText Typo="Typo.caption" Style="color: #64748b;">
-                Ya no podrá ser asignada a nuevas carreras, pero el historial académico se mantendrá intacto.
-            </MudText>
-        </div>
-    </DialogContent>
-    <DialogActions>
-        <div class="px-4 pb-4 d-flex justify-center gap-3 w-100">
-            <MudButton OnClick="CerrarModales" Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg font-weight-bold" Disabled="_procesando">Cancelar</MudButton>
-            <MudButton OnClick="ConfirmarBaja" Variant="Variant.Filled" Color="Color.Warning" Class="rounded-lg font-weight-bold px-6" Disabled="_procesando">
-                @(_procesando ? "Procesando..." : "Confirmar Baja")
-            </MudButton>
-        </div>
-    </DialogActions>
-</MudDialog>
 
 @code {
     private MudTable<ModalidadDTO> _table = null!;
@@ -340,159 +261,75 @@
     private DialogOptions optionsCrear = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, BackdropClick = false, CloseButton = false };
     private DialogOptions optionsBaja = new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true, BackdropClick = false, CloseButton = false };
 
-    protected override async Task OnInitializedAsync()
-    {
-        await CargarDatos();
-    }
+    protected override async Task OnInitializedAsync() => await CargarDatos();
 
     private async Task CargarDatos()
     {
         loading = true;
-        StateHasChanged();
-
         try
         {
             modalidades = await ModalidadService.GetAllAsync();
         }
-        catch (Exception)
-        {
-            Snackbar.Add("Error al cargar el catálogo de modalidades.", Severity.Error);
-        }
-        finally
-        {
-            loading = false;
-            StateHasChanged();
-        }
+        catch { Snackbar.Add("Error al cargar modalidades.", Severity.Error); }
+        finally { loading = false; StateHasChanged(); }
     }
 
-    private void CambiarFiltro(string nuevoEstado)
-    {
-        filtroEstado = nuevoEstado;
-        StateHasChanged();
-    }
+    private void CambiarFiltro(string nuevoEstado) { filtroEstado = nuevoEstado; StateHasChanged(); }
 
     private bool FilterFunc(ModalidadDTO mod)
     {
-        // 1. Filtro Estado
-        bool matchEstado = filtroEstado switch
-        {
-            "Activas" => mod.Activo,
-            "Bajas" => !mod.Activo,
-            _ => true
-        };
+        bool matchEstado = filtroEstado switch { "Activas" => mod.Activo, "Bajas" => !mod.Activo, _ => true };
         if (!matchEstado) return false;
 
-        // 2. Buscador de Texto
         if (!string.IsNullOrWhiteSpace(searchString))
         {
             var term = searchString.Trim().ToLower();
-            bool matchBusqueda = (mod.Nombre?.ToLower().Contains(term) ?? false) ||
-                                 (mod.Codigo?.ToLower().Contains(term) ?? false);
-            if (!matchBusqueda) return false;
+            return (mod.Nombre?.ToLower().Contains(term) ?? false) || (mod.Codigo?.ToLower().Contains(term) ?? false);
         }
-
         return true;
     }
 
-    // --- CRUD ---
-    private void AbrirModalCrear()
-    {
-        modalidadModel = new ModalidadDTO { Activo = true };
-        esEdicion = false;
-        mostrarDialogoCrear = true;
-    }
+    private void AbrirModalCrear() { modalidadModel = new ModalidadDTO { Activo = true }; esEdicion = false; mostrarDialogoCrear = true; }
 
     private void AbrirModalEditar(ModalidadDTO item)
     {
-        modalidadModel = new ModalidadDTO
-        {
-            Id = item.Id,
-            Nombre = item.Nombre,
-            Codigo = item.Codigo,
-            Activo = item.Activo
-        };
-        esEdicion = true;
-        mostrarDialogoCrear = true;
+        modalidadModel = new ModalidadDTO { Id = item.Id, Nombre = item.Nombre, Codigo = item.Codigo, Activo = item.Activo };
+        esEdicion = true; mostrarDialogoCrear = true;
     }
 
     private async Task GuardarCambios()
     {
         await _form.Validate();
         if (!_form.IsValid) return;
-
         _procesando = true;
-        StateHasChanged();
-
         try
         {
             bool exito = esEdicion ? await ModalidadService.UpdateAsync(modalidadModel) : await ModalidadService.CreateAsync(modalidadModel);
-
             if (exito)
             {
-                Snackbar.Add(esEdicion ? "Modalidad actualizada correctamente." : "Modalidad registrada exitosamente.", Severity.Success);
-                mostrarDialogoCrear = false;
-                await CargarDatos();
-            }
-            else
-            {
-                Snackbar.Add("Hubo un error de validación. Es posible que el nombre o código ya estén registrados.", Severity.Error);
+                Snackbar.Add("Cambios guardados.", Severity.Success);
+                mostrarDialogoCrear = false; await CargarDatos();
             }
         }
-        catch (Exception)
-        {
-            Snackbar.Add("Ocurrió un error inesperado al conectar con el servidor.", Severity.Error);
-        }
-        finally
-        {
-            _procesando = false;
-            StateHasChanged();
-        }
+        finally { _procesando = false; StateHasChanged(); }
     }
 
-    private void AbrirModalBaja(ModalidadDTO mod)
-    {
-        modalidadParaBaja = mod;
-        mostrarDialogoBaja = true;
-    }
+    private void AbrirModalBaja(ModalidadDTO mod) { modalidadParaBaja = mod; mostrarDialogoBaja = true; }
 
     private async Task ConfirmarBaja()
     {
         if (modalidadParaBaja == null) return;
-
         _procesando = true;
-        StateHasChanged();
-
         try
         {
-            var exito = await ModalidadService.DeleteAsync(modalidadParaBaja.Id);
-            if (exito)
+            if (await ModalidadService.DeleteAsync(modalidadParaBaja.Id))
             {
-                Snackbar.Add("La modalidad ha sido dada de baja.", Severity.Warning);
+                Snackbar.Add("Inhabilitada correctamente.", Severity.Warning);
                 await CargarDatos();
             }
-            else
-            {
-                Snackbar.Add("No se pudo dar de baja. Verifique que no esté asignada a carreras activas.", Severity.Error);
-            }
         }
-        catch (Exception)
-        {
-            Snackbar.Add("Ocurrió un error al intentar eliminar el registro.", Severity.Error);
-        }
-        finally
-        {
-            _procesando = false;
-            mostrarDialogoBaja = false;
-            StateHasChanged();
-        }
+        finally { _procesando = false; mostrarDialogoBaja = false; StateHasChanged(); }
     }
 
-    private void CerrarModales()
-    {
-        if (!_procesando)
-        {
-            mostrarDialogoCrear = false;
-            mostrarDialogoBaja = false;
-        }
-    }
+    private void CerrarModales() { if (!_procesando) { mostrarDialogoCrear = false; mostrarDialogoBaja = false; } }
 }

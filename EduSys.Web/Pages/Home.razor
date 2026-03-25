@@ -1,6 +1,10 @@
 ﻿@page "/Home"
+@* 🔒 CANDADO BASE: Solo personal con al menos una función administrativa puede ver este dashboard *@
+@attribute [Authorize(Roles = "REP_VER, ALU_ABM, ACA_CARRERA_ABM, COM_COMISION_ABM, SEG_USUARIOS_ABM, SEG_ROLES_ABM, INS_FINAL_MESAS_ABM, PER_PERIODO_ABM")]
+
 @using EduSys.Shared.DTOs
 @using EduSys.Web.Services.Interfaces
+@using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
 @using System.Security.Claims
 @using System.Globalization
@@ -29,7 +33,6 @@
         padding: 1.5rem;
     }
 
-    /* ✅ Agregada la animación que faltaba */
     .animate-fade-in {
         animation: fadeIn 0.4s ease-out forwards;
     }
@@ -66,7 +69,7 @@
         font-size: 0.875rem;
         color: #64748b;
         margin: 0;
-        text-transform: capitalize; /* Para que "mes" inicie en mayúscula */
+        text-transform: capitalize;
     }
 
     .system-status {
@@ -374,77 +377,98 @@
                     <MudIcon Icon="@Icons.Material.Filled.FlashOn" Size="Size.Small" />
                     Acciones Rápidas - Gestión Académica
                 </div>
+                
                 <div class="actions-grid">
-                    <div class="action-btn" style="--action-color: var(--c-corp); --action-bg: rgba(69, 105, 144, 0.08);" @onclick="@(() => Navigation.NavigateTo("/alumnos"))">
-                        <div class="action-icon"><MudIcon Icon="@Icons.Material.Filled.PersonAdd" Size="Size.Medium" /></div>
-                        <div class="action-text">
-                            <p class="action-title">Nuevo Alumno</p>
-                            <p class="action-subtitle">Inscripción</p>
+                    @* 🔒 Filtrado por Permisos Granulares *@
+                    <AuthorizeView Roles="ALU_ABM" Context="aluContext">
+                        <div class="action-btn" style="--action-color: var(--c-corp); --action-bg: rgba(69, 105, 144, 0.08);" @onclick="@(() => Navigation.NavigateTo("/alumnos"))">
+                            <div class="action-icon"><MudIcon Icon="@Icons.Material.Filled.PersonAdd" Size="Size.Medium" /></div>
+                            <div class="action-text">
+                                <p class="action-title">Nuevo Alumno</p>
+                                <p class="action-subtitle">Inscripción</p>
+                            </div>
                         </div>
-                    </div>
+                    </AuthorizeView>
 
-                    <div class="action-btn" style="--action-color: var(--c-success); --action-bg: rgba(73, 190, 170, 0.08);" @onclick="@(() => Navigation.NavigateTo("/comisiones"))">
-                        <div class="action-icon"><MudIcon Icon="@Icons.Material.Filled.Groups" Size="Size.Medium" /></div>
-                        <div class="action-text">
-                            <p class="action-title">Nueva Comisión</p>
-                            <p class="action-subtitle">Cursada</p>
+                    <AuthorizeView Roles="COM_COMISION_ABM" Context="comContext">
+                        <div class="action-btn" style="--action-color: var(--c-success); --action-bg: rgba(73, 190, 170, 0.08);" @onclick="@(() => Navigation.NavigateTo("/comisiones"))">
+                            <div class="action-icon"><MudIcon Icon="@Icons.Material.Filled.Groups" Size="Size.Medium" /></div>
+                            <div class="action-text">
+                                <p class="action-title">Nueva Comisión</p>
+                                <p class="action-subtitle">Cursada</p>
+                            </div>
                         </div>
-                    </div>
+                    </AuthorizeView>
 
-                    <div class="action-btn" style="--action-color: var(--c-warn); --action-bg: rgba(238, 184, 104, 0.08);" @onclick="@(() => Navigation.NavigateTo("/mesas-finales"))">
-                        <div class="action-icon"><MudIcon Icon="@Icons.Material.Filled.EventAvailable" Size="Size.Medium" /></div>
-                        <div class="action-text">
-                            <p class="action-title">Mesa de Examen</p>
-                            <p class="action-subtitle">Finales</p>
+                    <AuthorizeView Roles="INS_FINAL_MESAS_ABM" Context="mesaContext">
+                        <div class="action-btn" style="--action-color: var(--c-warn); --action-bg: rgba(238, 184, 104, 0.08);" @onclick="@(() => Navigation.NavigateTo("/mesas-finales"))">
+                            <div class="action-icon"><MudIcon Icon="@Icons.Material.Filled.EventAvailable" Size="Size.Medium" /></div>
+                            <div class="action-text">
+                                <p class="action-title">Mesa de Examen</p>
+                                <p class="action-subtitle">Finales</p>
+                            </div>
                         </div>
-                    </div>
+                    </AuthorizeView>
 
-                    <div class="action-btn" style="--action-color: #9333ea; --action-bg: rgba(147, 51, 234, 0.08);" @onclick="@(() => Navigation.NavigateTo("/carreras"))">
-                        <div class="action-icon"><MudIcon Icon="@Icons.Material.Filled.AddCircleOutline" Size="Size.Medium" /></div>
-                        <div class="action-text">
-                            <p class="action-title">Nueva Carrera</p>
-                            <p class="action-subtitle">Estructura</p>
+                    <AuthorizeView Roles="ACA_CARRERA_ABM" Context="carreraContext">
+                        <div class="action-btn" style="--action-color: #9333ea; --action-bg: rgba(147, 51, 234, 0.08);" @onclick="@(() => Navigation.NavigateTo("/carreras"))">
+                            <div class="action-icon"><MudIcon Icon="@Icons.Material.Filled.AddCircleOutline" Size="Size.Medium" /></div>
+                            <div class="action-text">
+                                <p class="action-title">Nueva Carrera</p>
+                                <p class="action-subtitle">Estructura</p>
+                            </div>
                         </div>
-                    </div>
+                    </AuthorizeView>
 
-                    <div class="action-btn" style="--action-color: #0891b2; --action-bg: rgba(8, 145, 178, 0.08);" @onclick="@(() => Navigation.NavigateTo("/periodos"))">
-                        <div class="action-icon"><MudIcon Icon="@Icons.Material.Filled.DateRange" Size="Size.Medium" /></div>
-                        <div class="action-text">
-                            <p class="action-title">Nuevo Período</p>
-                            <p class="action-subtitle">Calendario</p>
+                    <AuthorizeView Roles="PER_PERIODO_ABM" Context="periodoContext">
+                        <div class="action-btn" style="--action-color: #0891b2; --action-bg: rgba(8, 145, 178, 0.08);" @onclick="@(() => Navigation.NavigateTo("/periodos"))">
+                            <div class="action-icon"><MudIcon Icon="@Icons.Material.Filled.DateRange" Size="Size.Medium" /></div>
+                            <div class="action-text">
+                                <p class="action-title">Nuevo Período</p>
+                                <p class="action-subtitle">Calendario</p>
+                            </div>
                         </div>
-                    </div>
+                    </AuthorizeView>
                 </div>
 
-                <div class="section-title mt-4">
-                    <MudIcon Icon="@Icons.Material.Filled.Security" Size="Size.Small" />
-                    Administración del Sistema
-                </div>
-                <div class="actions-grid">
-                    <div class="action-btn" style="--action-color: var(--c-danger); --action-bg: rgba(239, 118, 122, 0.08);" @onclick="@(() => Navigation.NavigateTo("/usuarios"))">
-                        <div class="action-icon"><MudIcon Icon="@Icons.Material.Filled.SupervisedUserCircle" Size="Size.Medium" /></div>
-                        <div class="action-text">
-                            <p class="action-title">Usuarios</p>
-                            <p class="action-subtitle">Gestión</p>
-                        </div>
+                @* 🔒 Sección de Administración visible solo para roles específicos *@
+                <AuthorizeView Roles="SEG_USUARIOS_ABM, SEG_ROLES_ABM, REP_VER" Context="adminContext">
+                    <div class="section-title mt-4">
+                        <MudIcon Icon="@Icons.Material.Filled.Security" Size="Size.Small" />
+                        Administración del Sistema
                     </div>
+                    <div class="actions-grid">
+                        <AuthorizeView Roles="SEG_USUARIOS_ABM" Context="usrContext">
+                            <div class="action-btn" style="--action-color: var(--c-danger); --action-bg: rgba(239, 118, 122, 0.08);" @onclick="@(() => Navigation.NavigateTo("/usuarios"))">
+                                <div class="action-icon"><MudIcon Icon="@Icons.Material.Filled.SupervisedUserCircle" Size="Size.Medium" /></div>
+                                <div class="action-text">
+                                    <p class="action-title">Usuarios</p>
+                                    <p class="action-subtitle">Gestión</p>
+                                </div>
+                            </div>
+                        </AuthorizeView>
 
-                    <div class="action-btn" style="--action-color: #dc2626; --action-bg: rgba(220, 38, 38, 0.08);" @onclick="@(() => Navigation.NavigateTo("/roles"))">
-                        <div class="action-icon"><MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Medium" /></div>
-                        <div class="action-text">
-                            <p class="action-title">Roles y Permisos</p>
-                            <p class="action-subtitle">Seguridad</p>
-                        </div>
-                    </div>
+                        <AuthorizeView Roles="SEG_ROLES_ABM" Context="rolContext">
+                            <div class="action-btn" style="--action-color: #dc2626; --action-bg: rgba(220, 38, 38, 0.08);" @onclick="@(() => Navigation.NavigateTo("/admin/roles"))">
+                                <div class="action-icon"><MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Medium" /></div>
+                                <div class="action-text">
+                                    <p class="action-title">Roles y Permisos</p>
+                                    <p class="action-subtitle">Seguridad</p>
+                                </div>
+                            </div>
+                        </AuthorizeView>
 
-                    <div class="action-btn" style="--action-color: #64748b; --action-bg: rgba(100, 116, 139, 0.08);" @onclick="@(() => Navigation.NavigateTo("/auditoria"))">
-                        <div class="action-icon"><MudIcon Icon="@Icons.Material.Filled.History" Size="Size.Medium" /></div>
-                        <div class="action-text">
-                            <p class="action-title">Auditoría</p>
-                            <p class="action-subtitle">Logs del sistema</p>
-                        </div>
+                        <AuthorizeView Roles="REP_VER" Context="auditContext">
+                            <div class="action-btn" style="--action-color: #64748b; --action-bg: rgba(100, 116, 139, 0.08);" @onclick="@(() => Navigation.NavigateTo("/auditoria"))">
+                                <div class="action-icon"><MudIcon Icon="@Icons.Material.Filled.History" Size="Size.Medium" /></div>
+                                <div class="action-text">
+                                    <p class="action-title">Auditoría</p>
+                                    <p class="action-subtitle">Logs del sistema</p>
+                                </div>
+                            </div>
+                        </AuthorizeView>
                     </div>
-                </div>
+                </AuthorizeView>
             </div>
 
             @* --- PANELES --- *@
@@ -513,7 +537,10 @@
                             <MudIcon Icon="@Icons.Material.Filled.Notifications" Size="Size.Small" />
                             Actividad Reciente
                         </div>
-                        <MudButton Variant="Variant.Text" Size="Size.Small" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/auditoria"))">Ver Todo</MudButton>
+                        @* 🔒 Proteger el botón de Auditoría *@
+                        <AuthorizeView Roles="REP_VER, SEG_USUARIOS_ABM" Context="linkAuditoria">
+                            <MudButton Variant="Variant.Text" Size="Size.Small" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/auditoria"))">Ver Todo</MudButton>
+                        </AuthorizeView>
                     </div>
                     <div class="activity-timeline">
                         @if (data.UltimosEventos != null && data.UltimosEventos.Any())
@@ -563,9 +590,9 @@
         if (uri.Query.Contains("login=exito"))
         {
             Snackbar.Add("¡Inicio de sesión exitoso! Bienvenido a EduSys.", Severity.Success, config => 
-{
-    config.VisibleStateDuration = 1500; // 1500 milisegundos = 1.5 segundos
-});
+            {
+                config.VisibleStateDuration = 1500;
+            });
             Navigation.NavigateTo(uri.GetLeftPart(UriPartial.Path), replace: true);
         }
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
@@ -573,7 +600,6 @@
 
         if (user.Identity != null && user.Identity.IsAuthenticated)
         {
-            // Extraer nombre de forma segura (soportando múltiples claims)
             var nombre = user.FindFirst("Nombre")?.Value ?? user.FindFirst(ClaimTypes.GivenName)?.Value;
             var apellido = user.FindFirst("Apellido")?.Value ?? user.FindFirst(ClaimTypes.Surname)?.Value;
 
@@ -589,13 +615,12 @@
             rolUsuario = user.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value ?? "Admin";
         }
 
-        // Timer optimizado: En lugar de 1000ms, actualiza exactamente al cambiar el minuto
         int millisecondsToNextMinute = (60 - DateTime.Now.Second) * 1000;
         _timer = new System.Threading.Timer(
             _ => ActualizarReloj(), 
             null, 
-            millisecondsToNextMinute, // Espera hasta el siguiente minuto exacto
-            60000 // Luego actualiza cada 60 segundos
+            millisecondsToNextMinute, 
+            60000 
         );
 
         await RecargarDatos();
@@ -604,7 +629,7 @@
     private void ActualizarReloj()
     {
         var nuevaHora = DateTime.Now.ToString("HH:mm");
-        if (horaActual != nuevaHora) // Solo redibuja si la hora realmente cambió
+        if (horaActual != nuevaHora) 
         {
             horaActual = nuevaHora;
             InvokeAsync(StateHasChanged);

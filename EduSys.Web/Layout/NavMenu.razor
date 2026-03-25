@@ -12,7 +12,6 @@
 @implements IDisposable
 
 <style>
-    /* ... (Mantenemos tus estilos existentes iguales) ... */
     :root {
         --nav-primary: #1e3a58;
         --nav-accent: #456990;
@@ -270,109 +269,113 @@
             </div>
         }
 
-        @* === ADMINISTRATIVOS === *@
-        <AuthorizeView Roles="Administrador, Secretaria Academica, Coordinador">
+        <AuthorizeView Context="authContext">
             <Authorized>
-                <div class="nav-section-header">Panel de Control</div>
-                @RenderNavLink("/Home", "Dashboard", Icons.Material.Filled.Dashboard, true)
+                @* Panel de Control *@
+                @if (HasPermission(authContext.User, "REP_VER", "ACA_CARRERA_ABM", "COM_COMISION_ABM", "ALU_ABM"))
+                {
+                    <div class="nav-section-header">Panel de Control</div>
+                    @RenderNavLink("/Home", "Dashboard", Icons.Material.Filled.Dashboard, true)
+                }
 
-                <div class="nav-section-header">Config. Institucional</div>
-                @RenderNavLink("/carreras", "Carreras", Icons.Material.Filled.AccountBalance)
-                @RenderNavLink("/planes", "Planes de Estudio", Icons.Material.Filled.Map)
-                @RenderNavLink("/materias", "Materias", Icons.Material.Filled.Book)
-                @RenderNavLink("/admin/estados-materia", "Estados de Materia", Icons.Material.Filled.RuleFolder)
-                @RenderNavLink("/sedes", "Sedes", Icons.Material.Filled.Place)
-                @RenderNavLink("/modalidades", "Modalidades", Icons.Material.Filled.LaptopChromebook)
-                @RenderNavLink("/regimenes", "Regímenes", Icons.Material.Filled.Rule)
+                @* Config. Institucional *@
+                @if (HasPermission(authContext.User, "ACA_CARRERA_ABM", "ACA_PLAN_ABM", "ACA_MATERIA_ABM", "CFG_PARAMETROS_ACA", "CFG_SEDES_ABM"))
+                {
+                    <div class="nav-section-header">Config. Institucional</div>
+                    @if (HasPermission(authContext.User, "ACA_CARRERA_ABM")) @RenderNavLink("/carreras", "Carreras", Icons.Material.Filled.AccountBalance)
+                    @if (HasPermission(authContext.User, "ACA_PLAN_ABM")) @RenderNavLink("/planes", "Planes de Estudio", Icons.Material.Filled.Map)
+                    @if (HasPermission(authContext.User, "ACA_MATERIA_ABM")) @RenderNavLink("/materias", "Materias", Icons.Material.Filled.Book)
+                    @if (HasPermission(authContext.User, "CFG_PARAMETROS_ACA")) @RenderNavLink("/admin/estados-materia", "Estados de Materia", Icons.Material.Filled.RuleFolder)
+                    @if (HasPermission(authContext.User, "CFG_SEDES_ABM")) @RenderNavLink("/sedes", "Sedes", Icons.Material.Filled.Place)
+                    @if (HasPermission(authContext.User, "CFG_PARAMETROS_ACA")) @RenderNavLink("/modalidades", "Modalidades", Icons.Material.Filled.LaptopChromebook)
+                    @if (HasPermission(authContext.User, "CFG_PARAMETROS_ACA")) @RenderNavLink("/regimenes", "Regímenes", Icons.Material.Filled.Rule)
+                }
 
-                <div class="nav-section-header">Planificación Académica</div>
-                @RenderNavLink("/periodos", "Períodos Académicos", Icons.Material.Filled.DateRange)
-                @RenderNavLink("/calendario", "Ventanas y Calendario", Icons.Material.Filled.EventAvailable)
-                @RenderNavLink("/comisiones", "Comisiones", Icons.Material.Filled.Groups)
-                @RenderNavLink("/horarios", "Horarios", Icons.Material.Filled.AccessTime)
+                @* Planificación Académica *@
+                @if (HasPermission(authContext.User, "PER_PERIODO_ABM", "PER_CALENDARIO_ABM", "COM_COMISION_ABM", "COM_HORARIOS_EDIT"))
+                {
+                    <div class="nav-section-header">Planificación Académica</div>
+                    @if (HasPermission(authContext.User, "PER_PERIODO_ABM")) @RenderNavLink("/periodos", "Períodos Académicos", Icons.Material.Filled.DateRange)
+                    @if (HasPermission(authContext.User, "PER_CALENDARIO_ABM")) @RenderNavLink("/calendario", "Ventanas y Calendario", Icons.Material.Filled.EventAvailable)
+                    @if (HasPermission(authContext.User, "COM_COMISION_ABM")) @RenderNavLink("/comisiones", "Comisiones", Icons.Material.Filled.Groups)
+                    @if (HasPermission(authContext.User, "COM_HORARIOS_EDIT")) @RenderNavLink("/horarios", "Horarios", Icons.Material.Filled.AccessTime)
+                }
 
-                <div class="nav-section-header">Operaciones de Cursada</div>
-                @RenderNavLink("/admin/inscripciones", "Forzar Inscripciones", Icons.Material.Filled.HowToReg)
-                @RenderNavLink("/asistencia", "Asistencias", Icons.Material.Filled.FactCheck)
+                @* Operaciones de Cursada *@
+                @if (HasPermission(authContext.User, "INS_CURSADA_GESTION", "ASIS_VER", "ASIS_CARGAR"))
+                {
+                    <div class="nav-section-header">Operaciones de Cursada</div>
+                    @if (HasPermission(authContext.User, "INS_CURSADA_GESTION")) @RenderNavLink("/admin/inscripciones", "Forzar Inscripciones", Icons.Material.Filled.HowToReg)
+                    @if (HasPermission(authContext.User, "ASIS_VER", "ASIS_CARGAR")) @RenderNavLink("/asistencia", "Asistencias", Icons.Material.Filled.FactCheck)
+                }
 
-                <div class="nav-section-header">Evaluaciones y Actas</div>
-                @RenderNavLink("/evaluaciones", "Parciales", Icons.Material.Filled.Assignment)
-                @RenderNavLink("/notas", "Carga de Notas", Icons.Material.Filled.Grade)
-                @RenderNavLink("/admin/actas", "Libros de Actas", Icons.Material.Filled.Description)
-                @RenderNavLink("/mesas-finales", "Mesas de Finales", Icons.Material.Filled.EventSeat)
-                @RenderNavLink("/resultados-finales", "Actas de Finales", Icons.Material.Filled.EmojiEvents)
+                @* Evaluaciones y Actas *@
+                @if (HasPermission(authContext.User, "EVA_ABM", "EVA_CARGAR_NOTAS", "ACTA_VER", "INS_FINAL_MESAS_ABM", "FINAL_CARGAR_RESULTADO"))
+                {
+                    <div class="nav-section-header">Evaluaciones y Actas</div>
+                    @if (HasPermission(authContext.User, "EVA_ABM")) @RenderNavLink("/evaluaciones", "Parciales", Icons.Material.Filled.Assignment)
+                    @if (HasPermission(authContext.User, "EVA_CARGAR_NOTAS")) @RenderNavLink("/notas", "Carga de Notas", Icons.Material.Filled.Grade)
+                    @if (HasPermission(authContext.User, "ACTA_VER")) @RenderNavLink("/admin/actas", "Libros de Actas", Icons.Material.Filled.Description)
+                    @if (HasPermission(authContext.User, "INS_FINAL_MESAS_ABM")) @RenderNavLink("/mesas-finales", "Mesas de Finales", Icons.Material.Filled.EventSeat)
+                    @if (HasPermission(authContext.User, "FINAL_CARGAR_RESULTADO")) @RenderNavLink("/resultados-finales", "Actas de Finales", Icons.Material.Filled.EmojiEvents)
+                }
 
-                <div class="nav-section-header">Comunidad</div>
-                @RenderNavLink("/alumnos", "Alumnos / Legajos", Icons.Material.Filled.Person)
-                @RenderNavLink("/docentes", "Docentes", Icons.Material.Filled.Face)
-                @RenderNavLink("/admin/solicitudes", "Solicitudes Ingreso", Icons.Material.Filled.AssignmentInd)
-                @RenderNavLink("/solicitudes/bandeja", "Mesa de Entradas", Icons.Material.Filled.Inbox)
+                @* Comunidad *@
+                @if (HasPermission(authContext.User, "ALU_ABM", "DOC_ABM", "SOL_GESTION"))
+                {
+                    <div class="nav-section-header">Comunidad</div>
+                    @if (HasPermission(authContext.User, "ALU_ABM")) @RenderNavLink("/alumnos", "Alumnos / Legajos", Icons.Material.Filled.Person)
+                    @if (HasPermission(authContext.User, "DOC_ABM")) @RenderNavLink("/docentes", "Docentes", Icons.Material.Filled.Face)
+                    @if (HasPermission(authContext.User, "SOL_GESTION")) @RenderNavLink("/admin/solicitudes", "Solicitudes Ingreso", Icons.Material.Filled.AssignmentInd)
+                    @if (HasPermission(authContext.User, "SOL_GESTION")) @RenderNavLink("/solicitudes/bandeja", "Mesa de Entradas", Icons.Material.Filled.Inbox)
+                }
 
-                <div class="nav-section-header">Sistema</div>
-                @RenderNavLink("/admin/tickets", "Gestión de Tickets", Icons.Material.Filled.ConfirmationNumber)
-                @RenderNavLink("/reportes/operativos", "Reportes", Icons.Material.Filled.BarChart)
-                @RenderNavLink("/emails/masivos", "Comunicación", Icons.Material.Filled.Email)
-
-                <AuthorizeView Roles="Administrador, Secretaria Academica" Context="configAuth">
-                    <Authorized>
+                @* Sistema *@
+                @if (HasPermission(authContext.User, "REP_VER", "EMAIL_MASIVO", "CFG_INSTITUCION_EDIT", "SEG_USUARIOS_ABM", "SEG_ROLES_ABM"))
+                {
+                    <div class="nav-section-header">Sistema</div>
+                    @RenderNavLink("/admin/tickets", "Gestión de Tickets", Icons.Material.Filled.ConfirmationNumber)
+                    @if (HasPermission(authContext.User, "REP_VER")) @RenderNavLink("/reportes/operativos", "Reportes", Icons.Material.Filled.BarChart)
+                    @if (HasPermission(authContext.User, "EMAIL_MASIVO")) @RenderNavLink("/emails/masivos", "Comunicación", Icons.Material.Filled.Email)
+                    
+                    @if (HasPermission(authContext.User, "CFG_INSTITUCION_EDIT"))
+                    {
                         @RenderNavLink("/institucion", "Configuración Base", Icons.Material.Filled.Settings)
-                        <AuthorizeView Roles="Administrador" Context="secAuth">
-                            <Authorized>
-                                <div class="nav-section-header">Seguridad Avanzada</div>
-                                @RenderNavLink("/usuarios", "Usuarios y Cuentas", Icons.Material.Filled.Security)
-                                @* 🚀 NUEVO ENLACE AL MÓDULO DE ROLES *@
-                                @RenderNavLink("/admin/roles", "Roles y Permisos", Icons.Material.Filled.AdminPanelSettings)
-                            </Authorized>
-                        </AuthorizeView>
-                    </Authorized>
-                </AuthorizeView>
-            </Authorized>
-        </AuthorizeView>
+                    }
+                    
+                    @if (HasPermission(authContext.User, "SEG_USUARIOS_ABM", "SEG_ROLES_ABM"))
+                    {
+                        <div class="nav-section-header">Seguridad Avanzada</div>
+                        @if (HasPermission(authContext.User, "SEG_USUARIOS_ABM")) @RenderNavLink("/usuarios", "Usuarios y Cuentas", Icons.Material.Filled.Security)
+                        @if (HasPermission(authContext.User, "SEG_ROLES_ABM")) @RenderNavLink("/admin/roles", "Roles y Permisos", Icons.Material.Filled.AdminPanelSettings)
+                    }
+                }
 
-        @* === ALUMNOS === *@
-        <AuthorizeView Roles="Alumno">
-            <Authorized>
-                <div class="nav-section-header">Mi Espacio</div>
-                @RenderNavLink("/dashboard-alumno", "Inicio", Icons.Material.Filled.Home, true)
+                @* Mi Espacio Alumno *@
+                @if (authContext.User.IsInRole("Alumno"))
+                {
+                    <div class="nav-section-header" style="color: var(--mud-palette-secondary);">Mi Espacio Alumno</div>
+                    @RenderNavLink("/dashboard-alumno", "Inicio", Icons.Material.Filled.Home, true)
+                    @RenderNavLink("/alumno/mis-cursadas", "Mis Notas", Icons.Material.Filled.Grade)
+                    @RenderNavLink("/alumno/asistencias", "Mis Asistencias", Icons.Material.Filled.FactCheck)
+                    @RenderNavLink("/inscripcion-materias", "Cursar Materias", Icons.Material.Filled.Class)
+                    @RenderNavLink("/alumno/inscripcion-finales", "Rendir Finales", Icons.Material.Filled.AssignmentTurnedIn)
+                    @RenderNavLink("/historia-academica", "Historia Académica", Icons.Material.Filled.HistoryEdu)
+                    @RenderNavLink("/tramites", "Trámites y Certificados", Icons.Material.Filled.Description)
+                }
 
-                <div class="nav-section-header">Cursada</div>
-                @RenderNavLink("/alumno/mis-cursadas", "Mis Notas", Icons.Material.Filled.Grade)
-                @RenderNavLink("/alumno/asistencias", "Mis Asistencias", Icons.Material.Filled.FactCheck)
-
-                <div class="nav-section-header">Autogestión</div>
-                @RenderNavLink("/inscripcion-materias", "Cursar Materias", Icons.Material.Filled.Class)
-                @RenderNavLink("/alumno/inscripcion-finales", "Rendir Finales", Icons.Material.Filled.AssignmentTurnedIn)
-
-                <div class="nav-section-header">Trámites</div>
-                @RenderNavLink("/historia-academica", "Historia Académica", Icons.Material.Filled.HistoryEdu)
-                @RenderNavLink("/tramites", "Trámites y Certificados", Icons.Material.Filled.Description)
-                @RenderNavLink("/alumno/analitico", "Analítico", Icons.Material.Filled.MenuBook)
-
-                <div class="nav-section-header">Ayuda</div>
-                @RenderNavLink("/soporte/nuevo-ticket", "Soporte Técnico", Icons.Material.Filled.SupportAgent)
-            </Authorized>
-        </AuthorizeView>
-
-        @* === DOCENTES === *@
-        <AuthorizeView Roles="Docente">
-            <Authorized>
-                <div class="nav-section-header">Mi Espacio</div>
-                @RenderNavLink("/dashboard-docente", "Inicio", Icons.Material.Filled.Home, true)
-
-                <div class="nav-section-header">Mis Clases</div>
-                @RenderNavLink("/mis-comisiones", "Mis Comisiones", Icons.Material.Filled.Groups)
-                @RenderNavLink("/docente/tomar-asistencia", "Tomar Asistencia", Icons.Material.Filled.HowToReg)
-
-                <div class="nav-section-header">Evaluaciones</div>
-                @RenderNavLink("/docente/evaluaciones", "Planificar Exámenes", Icons.Material.Filled.Assignment)
-                @RenderNavLink("/docente/cargar-notas", "Cargar Notas", Icons.Material.Filled.EditNote)
-                @RenderNavLink("/docente/actas", "Cerrar Actas", Icons.Material.Filled.Description)
-
-                <div class="nav-section-header">Exámenes Finales</div>
-                @RenderNavLink("/docente/mesas-asignadas", "Mesas Asignadas", Icons.Material.Filled.EventSeat)
-
-                <div class="nav-section-header">Ayuda</div>
-                @RenderNavLink("/soporte/nuevo-ticket", "Soporte Técnico", Icons.Material.Filled.SupportAgent)
+                @* Mi Espacio Docente *@
+                @if (authContext.User.IsInRole("Docente"))
+                {
+                    <div class="nav-section-header" style="color: var(--mud-palette-tertiary);">Mi Espacio Docente</div>
+                    @RenderNavLink("/dashboard-docente", "Inicio", Icons.Material.Filled.Home, true)
+                    @RenderNavLink("/mis-comisiones", "Mis Comisiones", Icons.Material.Filled.Groups)
+                    @RenderNavLink("/docente/tomar-asistencia", "Tomar Asistencia", Icons.Material.Filled.HowToReg)
+                    @RenderNavLink("/docente/evaluaciones", "Planificar Exámenes", Icons.Material.Filled.Assignment)
+                    @RenderNavLink("/docente/cargar-notas", "Cargar Notas", Icons.Material.Filled.EditNote)
+                    @RenderNavLink("/docente/actas", "Cerrar Actas", Icons.Material.Filled.Description)
+                    @RenderNavLink("/docente/mesas-asignadas", "Mesas Asignadas", Icons.Material.Filled.EventSeat)
+                }
             </Authorized>
         </AuthorizeView>
     </div>
@@ -454,6 +457,11 @@
         </div>
     };
 
+    private bool HasPermission(ClaimsPrincipal user, params string[] permissions)
+    {
+        return user.IsInRole("Administrador") || permissions.Any(p => user.IsInRole(p));
+    }
+
     protected override async Task OnInitializedAsync()
     {
         _dotNetRef = DotNetObjectReference.Create(this); 
@@ -469,9 +477,13 @@
             FotoPerfilUsuario = user.FindFirst("FotoPerfilUrl")?.Value ?? "";
             UserId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value ?? "";
 
-            // 🚀 ACTUALIZADO: Manejo de múltiples roles para el Badge
-            var roles = user.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
-            if (roles.Count > 1) 
+            var structuralRoles = new[] { "Administrador", "Secretaria Academica", "Coordinador", "Docente", "Alumno" };
+            var assignedStructuralRoles = user.FindAll(ClaimTypes.Role)
+                                              .Select(c => c.Value)
+                                              .Where(r => structuralRoles.Contains(r))
+                                              .ToList();
+
+            if (assignedStructuralRoles.Count > 1) 
             {
                 RoleFull = "Perfil Multirrol";
             }
@@ -482,7 +494,7 @@
                 else if (user.IsInRole("Coordinador")) RoleFull = "Coordinador de Carrera";
                 else if (user.IsInRole("Docente")) RoleFull = "Docente Académico";
                 else if (user.IsInRole("Alumno")) RoleFull = "Alumno Regular";
-                else RoleFull = "Usuario";
+                else RoleFull = "Personal Administrativo";
             }
 
             InitializeCommands(user);
@@ -530,7 +542,7 @@
 
     private Color GetAvatarColor(ClaimsPrincipal user)
     {
-        if (user.FindAll(ClaimTypes.Role).Count() > 1) return Color.Dark; // Color para multirrol
+        if (user.FindAll(ClaimTypes.Role).Count() > 1 && user.IsInRole("Docente") && user.IsInRole("Administrador")) return Color.Dark;
         if (user.IsInRole("Docente")) return Color.Tertiary;
         if (user.IsInRole("Alumno")) return Color.Secondary;
         return Color.Primary;
@@ -574,19 +586,63 @@
 
         allCommands.Add(new CommandItem { Title = "Cerrar Sesión", Category = "Cuenta", Action = () => { _ = CerrarSesion(); return Task.CompletedTask; }, Icon = Icons.Material.Filled.Logout });
 
-        if (user.IsInRole("Administrador") || user.IsInRole("Secretaria Academica"))
-        {
+        if (HasPermission(user, "REP_VER", "ACA_CARRERA_ABM", "COM_COMISION_ABM", "ALU_ABM"))
             allCommands.Add(new CommandItem { Title = "Dashboard", Category = "Inicio", Url = "/Home", Icon = Icons.Material.Filled.Dashboard });
-            allCommands.Add(new CommandItem { Title = "Carreras", Category = "Config. Institucional", Url = "/carreras", Icon = Icons.Material.Filled.AccountBalance });
-            allCommands.Add(new CommandItem { Title = "Planes de Estudio", Category = "Config. Institucional", Url = "/planes", Icon = Icons.Material.Filled.Map });
-            allCommands.Add(new CommandItem { Title = "Materias", Category = "Config. Institucional", Url = "/materias", Icon = Icons.Material.Filled.Book });
-            allCommands.Add(new CommandItem { Title = "Roles y Permisos", Category = "Seguridad", Url = "/admin/roles", Icon = Icons.Material.Filled.AdminPanelSettings });
-        }
+
+        if (HasPermission(user, "ACA_CARRERA_ABM")) allCommands.Add(new CommandItem { Title = "Carreras", Category = "Configuración Institucional", Url = "/carreras", Icon = Icons.Material.Filled.AccountBalance });
+        if (HasPermission(user, "ACA_PLAN_ABM")) allCommands.Add(new CommandItem { Title = "Planes de Estudio", Category = "Configuración Institucional", Url = "/planes", Icon = Icons.Material.Filled.Map });
+        if (HasPermission(user, "ACA_MATERIA_ABM")) allCommands.Add(new CommandItem { Title = "Materias", Category = "Configuración Institucional", Url = "/materias", Icon = Icons.Material.Filled.Book });
+        if (HasPermission(user, "CFG_PARAMETROS_ACA")) allCommands.Add(new CommandItem { Title = "Estados de Materia", Category = "Configuración Institucional", Url = "/admin/estados-materia", Icon = Icons.Material.Filled.RuleFolder });
+        if (HasPermission(user, "CFG_SEDES_ABM")) allCommands.Add(new CommandItem { Title = "Sedes", Category = "Configuración Institucional", Url = "/sedes", Icon = Icons.Material.Filled.Place });
+        if (HasPermission(user, "CFG_PARAMETROS_ACA")) allCommands.Add(new CommandItem { Title = "Modalidades", Category = "Configuración Institucional", Url = "/modalidades", Icon = Icons.Material.Filled.LaptopChromebook });
+        if (HasPermission(user, "CFG_PARAMETROS_ACA")) allCommands.Add(new CommandItem { Title = "Regímenes", Category = "Configuración Institucional", Url = "/regimenes", Icon = Icons.Material.Filled.Rule });
+
+        if (HasPermission(user, "PER_PERIODO_ABM")) allCommands.Add(new CommandItem { Title = "Períodos Académicos", Category = "Planificación", Url = "/periodos", Icon = Icons.Material.Filled.DateRange });
+        if (HasPermission(user, "PER_CALENDARIO_ABM")) allCommands.Add(new CommandItem { Title = "Ventanas y Calendario", Category = "Planificación", Url = "/calendario", Icon = Icons.Material.Filled.EventAvailable });
+        if (HasPermission(user, "COM_COMISION_ABM")) allCommands.Add(new CommandItem { Title = "Comisiones", Category = "Planificación", Url = "/comisiones", Icon = Icons.Material.Filled.Groups });
+        if (HasPermission(user, "COM_HORARIOS_EDIT")) allCommands.Add(new CommandItem { Title = "Horarios", Category = "Planificación", Url = "/horarios", Icon = Icons.Material.Filled.AccessTime });
+
+        if (HasPermission(user, "INS_CURSADA_GESTION")) allCommands.Add(new CommandItem { Title = "Forzar Inscripciones", Category = "Operaciones de Cursada", Url = "/admin/inscripciones", Icon = Icons.Material.Filled.HowToReg });
+        if (HasPermission(user, "ASIS_VER", "ASIS_CARGAR")) allCommands.Add(new CommandItem { Title = "Asistencias", Category = "Operaciones de Cursada", Url = "/asistencia", Icon = Icons.Material.Filled.FactCheck });
+
+        if (HasPermission(user, "EVA_ABM")) allCommands.Add(new CommandItem { Title = "Parciales", Category = "Evaluaciones", Url = "/evaluaciones", Icon = Icons.Material.Filled.Assignment });
+        if (HasPermission(user, "EVA_CARGAR_NOTAS")) allCommands.Add(new CommandItem { Title = "Carga de Notas", Category = "Evaluaciones", Url = "/notas", Icon = Icons.Material.Filled.Grade });
+        if (HasPermission(user, "ACTA_VER")) allCommands.Add(new CommandItem { Title = "Libros de Actas", Category = "Evaluaciones", Url = "/admin/actas", Icon = Icons.Material.Filled.Description });
+        if (HasPermission(user, "INS_FINAL_MESAS_ABM")) allCommands.Add(new CommandItem { Title = "Mesas de Finales", Category = "Evaluaciones", Url = "/mesas-finales", Icon = Icons.Material.Filled.EventSeat });
+        if (HasPermission(user, "FINAL_CARGAR_RESULTADO")) allCommands.Add(new CommandItem { Title = "Actas de Finales", Category = "Evaluaciones", Url = "/resultados-finales", Icon = Icons.Material.Filled.EmojiEvents });
+
+        if (HasPermission(user, "ALU_ABM")) allCommands.Add(new CommandItem { Title = "Alumnos / Legajos", Category = "Comunidad", Url = "/alumnos", Icon = Icons.Material.Filled.Person });
+        if (HasPermission(user, "DOC_ABM")) allCommands.Add(new CommandItem { Title = "Docentes", Category = "Comunidad", Url = "/docentes", Icon = Icons.Material.Filled.Face });
+        if (HasPermission(user, "SOL_GESTION")) allCommands.Add(new CommandItem { Title = "Solicitudes Ingreso", Category = "Comunidad", Url = "/admin/solicitudes", Icon = Icons.Material.Filled.AssignmentInd });
+        if (HasPermission(user, "SOL_GESTION")) allCommands.Add(new CommandItem { Title = "Mesa de Entradas", Category = "Comunidad", Url = "/solicitudes/bandeja", Icon = Icons.Material.Filled.Inbox });
+
+        if (HasPermission(user, "REP_VER", "EMAIL_MASIVO", "CFG_INSTITUCION_EDIT", "SEG_USUARIOS_ABM", "SEG_ROLES_ABM")) allCommands.Add(new CommandItem { Title = "Gestión de Tickets", Category = "Sistema", Url = "/admin/tickets", Icon = Icons.Material.Filled.ConfirmationNumber });
+        if (HasPermission(user, "REP_VER")) allCommands.Add(new CommandItem { Title = "Reportes", Category = "Sistema", Url = "/reportes/operativos", Icon = Icons.Material.Filled.BarChart });
+        if (HasPermission(user, "EMAIL_MASIVO")) allCommands.Add(new CommandItem { Title = "Comunicación", Category = "Sistema", Url = "/emails/masivos", Icon = Icons.Material.Filled.Email });
+        if (HasPermission(user, "CFG_INSTITUCION_EDIT")) allCommands.Add(new CommandItem { Title = "Configuración Base", Category = "Sistema", Url = "/institucion", Icon = Icons.Material.Filled.Settings });
+        if (HasPermission(user, "SEG_USUARIOS_ABM")) allCommands.Add(new CommandItem { Title = "Usuarios y Cuentas", Category = "Seguridad Avanzada", Url = "/usuarios", Icon = Icons.Material.Filled.Security });
+        if (HasPermission(user, "SEG_ROLES_ABM")) allCommands.Add(new CommandItem { Title = "Roles y Permisos", Category = "Seguridad Avanzada", Url = "/admin/roles", Icon = Icons.Material.Filled.AdminPanelSettings });
 
         if (user.IsInRole("Alumno"))
         {
-            allCommands.Add(new CommandItem { Title = "Mis Notas", Category = "Cursada", Url = "/alumno/mis-cursadas", Icon = Icons.Material.Filled.Grade });
-            allCommands.Add(new CommandItem { Title = "Inscribirme a Cursadas", Category = "Autogestión", Url = "/inscripcion-materias", Icon = Icons.Material.Filled.LibraryAdd });
+            allCommands.Add(new CommandItem { Title = "Inicio Alumno", Category = "Mi Espacio", Url = "/dashboard-alumno", Icon = Icons.Material.Filled.Home });
+            allCommands.Add(new CommandItem { Title = "Mis Notas", Category = "Mi Espacio", Url = "/alumno/mis-cursadas", Icon = Icons.Material.Filled.Grade });
+            allCommands.Add(new CommandItem { Title = "Mis Asistencias", Category = "Mi Espacio", Url = "/alumno/asistencias", Icon = Icons.Material.Filled.FactCheck });
+            allCommands.Add(new CommandItem { Title = "Cursar Materias", Category = "Mi Espacio", Url = "/inscripcion-materias", Icon = Icons.Material.Filled.Class });
+            allCommands.Add(new CommandItem { Title = "Rendir Finales", Category = "Mi Espacio", Url = "/alumno/inscripcion-finales", Icon = Icons.Material.Filled.AssignmentTurnedIn });
+            allCommands.Add(new CommandItem { Title = "Historia Académica", Category = "Mi Espacio", Url = "/historia-academica", Icon = Icons.Material.Filled.HistoryEdu });
+            allCommands.Add(new CommandItem { Title = "Trámites y Certificados", Category = "Mi Espacio", Url = "/tramites", Icon = Icons.Material.Filled.Description });
+        }
+
+        if (user.IsInRole("Docente"))
+        {
+            allCommands.Add(new CommandItem { Title = "Inicio Docente", Category = "Mi Espacio", Url = "/dashboard-docente", Icon = Icons.Material.Filled.Home });
+            allCommands.Add(new CommandItem { Title = "Mis Comisiones", Category = "Mi Espacio", Url = "/mis-comisiones", Icon = Icons.Material.Filled.Groups });
+            allCommands.Add(new CommandItem { Title = "Tomar Asistencia", Category = "Mi Espacio", Url = "/docente/tomar-asistencia", Icon = Icons.Material.Filled.HowToReg });
+            allCommands.Add(new CommandItem { Title = "Planificar Exámenes", Category = "Mi Espacio", Url = "/docente/evaluaciones", Icon = Icons.Material.Filled.Assignment });
+            allCommands.Add(new CommandItem { Title = "Cargar Notas", Category = "Mi Espacio", Url = "/docente/cargar-notas", Icon = Icons.Material.Filled.EditNote });
+            allCommands.Add(new CommandItem { Title = "Cerrar Actas", Category = "Mi Espacio", Url = "/docente/actas", Icon = Icons.Material.Filled.Description });
+            allCommands.Add(new CommandItem { Title = "Mesas Asignadas", Category = "Mi Espacio", Url = "/docente/mesas-asignadas", Icon = Icons.Material.Filled.EventSeat });
         }
 
         filteredCommands = allCommands.ToList();
@@ -631,7 +687,7 @@
         else if (e.Key == "Escape") CloseCommandPalette();
     }
 
-    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) => StateHasChanged();
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e) => StateHasChanged();
     
     public void Dispose() 
     {

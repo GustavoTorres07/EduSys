@@ -1,6 +1,10 @@
 ﻿@page "/planes"
 @using EduSys.Shared.DTOs
 @using EduSys.Web.Services.Interfaces
+@using Microsoft.AspNetCore.Authorization
+@* 🔓 Lectura permitida para consulta general *@
+@attribute [Authorize]
+
 @inject IPlanService PlanService
 @inject ICarreraService CarreraService
 @inject ISedeService SedeService 
@@ -41,16 +45,6 @@
     /* FIX: Visibilidad de iconos */
     .custom-filter-input .mud-input-adornment .mud-icon-root, .custom-filter-input .mud-select-icon { color: #456990 !important; opacity: 1 !important; }
 
-    /* FIX: evita fondo oscuro por autofill */
-    .custom-filter-input input:-webkit-autofill, .custom-filter-input input:-webkit-autofill:hover, .custom-filter-input input:-webkit-autofill:focus {
-        -webkit-text-fill-color: #1e293b !important;
-        -webkit-box-shadow: 0 0 0px 1000px white inset !important;
-        transition: background-color 5000s ease-in-out 0s;
-    }
-
-    .custom-filter-input .mud-input input[type="number"] { padding-top: 4px !important; padding-bottom: 4px !important; }
-    .custom-filter-input input[type="number"]::-webkit-outer-spin-button, .custom-filter-input input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-
     /* Botones de Filtro Tipo Segmented Control */
     .filter-group { display: flex; background-color: #f1f5f9; border-radius: 8px; padding: 4px; border: 1px solid #e2e8f0; }
     .filter-btn { border-radius: 6px !important; text-transform: none !important; font-weight: 700 !important; padding: 4px 16px !important; }
@@ -62,6 +56,7 @@
     .actions-footer { padding: 16px 24px; border-top: 1px solid #e2e8f0; background-color: #f8fafc; display: flex; justify-content: flex-end; gap: 12px; border-radius: 0 0 16px 16px; }
 </style>
 
+@* OVERLAY DE PROTECCIÓN *@
 <MudOverlay Visible="_procesando" DarkBackground="true" Absolute="false" ZIndex="9999">
     <MudStack AlignItems="AlignItems.Center">
         <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
@@ -75,11 +70,15 @@
     <div class="d-flex align-center justify-space-between mb-6 flex-wrap gap-4">
         <div>
             <MudText Typo="Typo.h4" Style="font-weight: 800; color: #456990; letter-spacing: -0.5px;">Planes de Estudio</MudText>
-            <MudText Typo="Typo.subtitle1" Class="mud-text-secondary">Gestión de cohortes y currículas académicas.</MudText>
+            <MudText Typo="Typo.subtitle1" Class="mud-text-secondary">Gestión de cohortes y currículas académicas por carrera.</MudText>
         </div>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Size="Size.Large" Style="font-weight: 700; border-radius: 8px;" OnClick="AbrirModalCrear" Disabled="loading">
-            Nuevo Plan
-        </MudButton>
+        
+        @* 🔒 CANDADO: Crear Nuevo Plan *@
+        <AuthorizeView Roles="ACA_PLAN_ABM" Context="crearContext">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Size="Size.Large" Style="font-weight: 700; border-radius: 8px;" OnClick="AbrirModalCrear" Disabled="loading">
+                Nuevo Plan
+            </MudButton>
+        </AuthorizeView>
     </div>
 
     @* --- TABLA PRINCIPAL --- *@
@@ -87,27 +86,18 @@
 
         <ToolBarContent>
             <div class="d-flex flex-wrap align-center gap-4 w-100 mb-2">
-
-                @* 1. Filtro Estado *@
                 <div class="filter-group">
                     <MudButton OnClick="@(() => CambiarFiltro("Todos"))" Variant="@(filtroEstado == "Todos" ? Variant.Filled : Variant.Text)" Color="@(filtroEstado == "Todos" ? Color.Primary : Color.Default)" Size="Size.Small" Class="filter-btn" DisableElevation="true">Todos</MudButton>
                     <MudButton OnClick="@(() => CambiarFiltro("Vigentes"))" Variant="@(filtroEstado == "Vigentes" ? Variant.Filled : Variant.Text)" Color="@(filtroEstado == "Vigentes" ? Color.Success : Color.Default)" Size="Size.Small" Class="filter-btn" DisableElevation="true">Vigentes</MudButton>
                     <MudButton OnClick="@(() => CambiarFiltro("Históricos"))" Variant="@(filtroEstado == "Históricos" ? Variant.Filled : Variant.Text)" Color="@(filtroEstado == "Históricos" ? Color.Error : Color.Default)" Size="Size.Small" Class="filter-btn" DisableElevation="true">Históricos</MudButton>
                 </div>
 
-                @* 2. Filtro Carrera *@
-                <MudSelect T="string" @bind-Value="filtroCarrera" Placeholder="Todas las Carreras" Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="custom-filter-input" Style="min-width: 250px;">
+                <MudSelect T="string" @bind-Value="filtroCarrera" Placeholder="Filtrar por Carrera" Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="custom-filter-input" Style="min-width: 250px;">
                     @foreach (var c in listaCarreras) { <MudSelectItem Value="@c.Nombre">@c.Nombre</MudSelectItem> }
-                </MudSelect>
-
-                @* 3. Filtro SEDE *@
-                <MudSelect T="int?" @bind-Value="filtroSede" Placeholder="Todas las Sedes" Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="custom-filter-input" Style="min-width: 200px;">
-                    @foreach (var s in listaSedes) { <MudSelectItem T="int?" Value="@s.Id">@s.Nombre</MudSelectItem> }
                 </MudSelect>
 
                 <MudSpacer />
 
-                @* 4. Buscador General *@
                 <MudTextField @bind-Value="searchString" Placeholder="Buscar plan o resolución..." Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" AdornmentColor="Color.Primary" Variant="Variant.Outlined" Margin="Margin.Dense" Class="custom-filter-input mt-0" Style="min-width: 250px; background-color: white; border-radius: 8px;" Immediate="true" DebounceInterval="300" Clearable="true" />
             </div>
         </ToolBarContent>
@@ -140,30 +130,29 @@
             </MudTd>
             <MudTd DataLabel="Acciones" Style="text-align: center;">
                 <div class="d-flex justify-center gap-1">
-                    <MudTooltip Text="Diseñar Malla Curricular">
-                        <MudIconButton Icon="@Icons.Material.Filled.AccountTree" Color="Color.Secondary" Size="Size.Small" OnClick="@(() => IrADetalle(context.Id))" Disabled="_procesando" />
-                    </MudTooltip>
-                    <MudTooltip Text="Editar Datos y Sedes">
-                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" OnClick="@(() => AbrirModalEditar(context))" Disabled="_procesando" />
-                    </MudTooltip>
+                    @* 🔒 CANDADO: Solo los que pueden gestionar planes ven las acciones administrativas *@
+                    <AuthorizeView Roles="ACA_PLAN_ABM" Context="abmContext">
+                        <Authorized>
+                            <MudTooltip Text="Diseñar Malla Curricular">
+                                <MudIconButton Icon="@Icons.Material.Filled.AccountTree" Color="Color.Secondary" Size="Size.Small" OnClick="@(() => IrADetalle(context.Id))" Disabled="_procesando" />
+                            </MudTooltip>
+                            <MudTooltip Text="Editar Datos y Sedes">
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" OnClick="@(() => AbrirModalEditar(context))" Disabled="_procesando" />
+                            </MudTooltip>
+                        </Authorized>
+                        <NotAuthorized>
+                            <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" Style="color: #cbd5e1;" />
+                        </NotAuthorized>
+                    </AuthorizeView>
                 </div>
             </MudTd>
         </RowTemplate>
 
-        <LoadingContent>
-            <MudText Typo="Typo.body1" Class="pa-4 text-center" Style="color: #64748b;">Cargando planes de estudio...</MudText>
-        </LoadingContent>
-        <NoRecordsContent>
-            <div class="d-flex flex-column align-center justify-center pa-8">
-                <MudIcon Icon="@Icons.Material.Filled.AccountTree" Style="font-size: 4rem; color: #cbd5e1;" Class="mb-3" />
-                <MudText Typo="Typo.h6" Style="font-weight: 700; color: #475569;">No se encontraron planes</MudText>
-                <MudText Typo="Typo.body2" Style="color: #64748b;">No hay registros que coincidan con los filtros actuales.</MudText>
-            </div>
-        </NoRecordsContent>
         <PagerContent><MudTablePager RowsPerPageString="Filas:" InfoFormat="{first_item}-{last_item} de {all_items}" /></PagerContent>
     </MudTable>
 </MudContainer>
 
+@* Los modales se mantienen igual ya que su apertura está protegida por los botones anteriores *@
 @* --- MODAL CREAR / EDITAR PLAN --- *@
 <MudDialog @bind-Visible="mostrarDialogo" Options="dialogOptions" Class="unified-dialog-card pa-0">
     <DialogContent>
@@ -194,16 +183,15 @@
                     </MudItem>
 
                     <MudItem xs="12">
-                        <MudTextField Label="Resolución Ministerial" @bind-Value="planModel.ResolucionMinisterial" Variant="Variant.Outlined" Margin="Margin.Dense" Class="custom-filter-input bg-white" Placeholder="Ej: RES-ME-2026/01 (Opcional)" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Gavel" Disabled="_procesando" />
+                        <MudTextField Label="Resolución Ministerial" @bind-Value="planModel.ResolucionMinisterial" Variant="Variant.Outlined" Margin="Margin.Dense" Class="custom-filter-input bg-white" Placeholder="Ej: RES-ME-2026/01" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Gavel" Disabled="_procesando" />
                     </MudItem>
                     
-                    @* ✅ SELECTOR DE SEDES CORREGIDO *@
                     <MudItem xs="12">
                         <div class="pa-4 rounded-lg mt-2" style="background-color: white; border: 1px solid #e2e8f0;">
                             <div class="d-flex justify-space-between align-center mb-3">
-                                <MudText Typo="Typo.subtitle2" Style="font-weight: 800; color: #1e3a58;">Sedes Habilitadas para este Plan:</MudText>
+                                <MudText Typo="Typo.subtitle2" Style="font-weight: 800; color: #1e3a58;">Sedes Habilitadas:</MudText>
                                 <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Checklist" OnClick="SeleccionarTodasLasSedes">
-                                    Asignar a Todas
+                                    Marcar Todas
                                 </MudButton>
                             </div>
                             <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="sedesSeleccionadas" Placeholder="Seleccionar sede..." 
@@ -219,7 +207,7 @@
                     {
                         <MudItem xs="12" Class="mt-2">
                             <div class="pa-3 rounded-lg" style="background-color: white; border: 1px solid #e2e8f0;">
-                                <MudSwitch @bind-Value="planModel.EsVigente" Color="Color.Success" Label="Plan Vigente (Activo para inscripciones)" Style="font-weight: 600; color: #475569;" Disabled="_procesando" />
+                                <MudSwitch @bind-Value="planModel.EsVigente" Color="Color.Success" Label="Plan Vigente" Style="font-weight: 600; color: #475569;" Disabled="_procesando" />
                             </div>
                         </MudItem>
                     }
@@ -230,7 +218,7 @@
         <div class="actions-footer">
             <MudButton OnClick="CerrarModal" Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg font-weight-bold" Disabled="_procesando">Cancelar</MudButton>
             <MudButton OnClick="Guardar" Variant="Variant.Filled" Color="Color.Primary" Class="rounded-lg font-weight-bold px-6" Disabled="_procesando">
-                @(_procesando ? "Guardando..." : (esEdicion ? "Guardar Cambios" : "Crear Plan"))
+                @(_procesando ? "Guardando..." : (esEdicion ? "Actualizar" : "Crear"))
             </MudButton>
         </div>
     </DialogContent>
@@ -238,12 +226,9 @@
 
 @code {
     private MudForm _form = null!;
-
     private List<PlanEstudioDTO> planes = new();
     private List<CarreraDTO> listaCarreras = new();
     private List<SedeDTO> listaSedes = new();
-    
-    // Diccionario temporal para almacenar qué sedes tiene cada plan (necesario para el filtro de la tabla)
     private Dictionary<int, List<int>> sedesPorPlan = new();
 
     private PlanEstudioDTO planModel = new();
@@ -256,176 +241,85 @@
 
     private DialogOptions dialogOptions = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, BackdropClick = false, CloseButton = false };
 
-    // Filtros
     private string searchString = "";
     private string filtroEstado = "Vigentes";
     private string? filtroCarrera = null;
     private int? filtroSede = null;
 
-    protected override async Task OnInitializedAsync()
-    {
-        await CargarDatos();
-    }
+    protected override async Task OnInitializedAsync() => await CargarDatos();
 
     private async Task CargarDatos()
     {
         loading = true;
-        StateHasChanged();
-
-        try
-        {
+        try {
             var t1 = PlanService.GetAllAsync();
             var t2 = CarreraService.GetAllAsync();
             var t3 = SedeService.GetAllAsync(); 
-            
             await Task.WhenAll(t1, t2, t3);
 
             planes = t1.Result;
             listaCarreras = t2.Result.ToList();
             listaSedes = t3.Result.ToList();
             
-            // Cargamos silenciosamente las sedes de todos los planes para que funcione el Filtro de Sede en la tabla
             sedesPorPlan.Clear();
-            foreach (var p in planes)
-            {
+            foreach (var p in planes) {
                 var sedesPlan = await PlanService.GetSedesByPlanAsync(p.Id);
                 sedesPorPlan[p.Id] = sedesPlan.Where(s => s.Seleccionado).Select(s => s.IdSede).ToList();
             }
-        }
-        catch (Exception)
-        {
-            Snackbar.Add("Error al cargar la información del servidor.", Severity.Error);
-        }
-        finally
-        {
-            loading = false;
-            StateHasChanged();
-        }
+        } catch { Snackbar.Add("Error al cargar datos.", Severity.Error); }
+        finally { loading = false; StateHasChanged(); }
     }
 
-    // ✅ FUNCIÓN PARA MOSTRAR TEXTO EN VEZ DE IDs EN EL SELECTOR DE SEDES
-    private string ObtenerTextoSedes(List<string> values)
-    {
-        if (sedesSeleccionadas == null || !sedesSeleccionadas.Any())
-            return "Seleccionar sede...";
-            
-        var nombresSeleccionados = listaSedes
-            .Where(s => sedesSeleccionadas.Contains(s.Id))
-            .Select(s => s.Nombre);
-            
-        return string.Join(", ", nombresSeleccionados);
+    private string ObtenerTextoSedes(List<string> values) {
+        if (sedesSeleccionadas == null || !sedesSeleccionadas.Any()) return "Seleccionar sede...";
+        return string.Join(", ", listaSedes.Where(s => sedesSeleccionadas.Contains(s.Id)).Select(s => s.Nombre));
     }
 
-    // ✅ FUNCIÓN DEL BOTÓN PARA SELECCIONAR TODAS LAS SEDES
-    private void SeleccionarTodasLasSedes()
-    {
-        sedesSeleccionadas = listaSedes.Select(s => s.Id).ToHashSet();
-    }
+    private void SeleccionarTodasLasSedes() => sedesSeleccionadas = listaSedes.Select(s => s.Id).ToHashSet();
+    private void CambiarFiltro(string nuevoEstado) { filtroEstado = nuevoEstado; StateHasChanged(); }
 
-    private void CambiarFiltro(string nuevoEstado)
-    {
-        filtroEstado = nuevoEstado;
-        StateHasChanged();
-    }
-
-    private bool FilterFunc(PlanEstudioDTO p)
-    {
+    private bool FilterFunc(PlanEstudioDTO p) {
         if (!string.IsNullOrEmpty(filtroCarrera) && p.NombreCarrera != filtroCarrera) return false;
-
-        // Lógica del filtro por SEDE
-        if (filtroSede.HasValue)
-        {
-            if (!sedesPorPlan.ContainsKey(p.Id) || !sedesPorPlan[p.Id].Contains(filtroSede.Value))
-                return false;
-        }
-
+        if (filtroSede.HasValue && (!sedesPorPlan.ContainsKey(p.Id) || !sedesPorPlan[p.Id].Contains(filtroSede.Value))) return false;
         bool matchEstado = filtroEstado switch { "Vigentes" => p.EsVigente, "Históricos" => !p.EsVigente, _ => true };
         if (!matchEstado) return false;
-
-        if (!string.IsNullOrWhiteSpace(searchString))
-        {
+        if (!string.IsNullOrWhiteSpace(searchString)) {
             var term = searchString.Trim().ToLower();
-            if (!(p.Nombre?.ToLower().Contains(term) ?? false) && !(p.ResolucionMinisterial?.ToLower().Contains(term) ?? false)) 
-                return false;
+            if (!(p.Nombre?.ToLower().Contains(term) ?? false) && !(p.ResolucionMinisterial?.ToLower().Contains(term) ?? false)) return false;
         }
-
         return true;
     }
 
-    private void AbrirModalCrear()
-    {
+    private void AbrirModalCrear() {
         planModel = new PlanEstudioDTO { AnioInicio = DateTime.Now.Year, EsVigente = true, IdCarrera = 0 };
         sedesSeleccionadas = new HashSet<int>();
         esEdicion = false;
         mostrarDialogo = true;
     }
 
-    private async Task AbrirModalEditar(PlanEstudioDTO item)
-    {
+    private async Task AbrirModalEditar(PlanEstudioDTO item) {
         _procesando = true;
-        planModel = new PlanEstudioDTO
-        {
-            Id = item.Id, Nombre = item.Nombre, IdCarrera = item.IdCarrera,
-            AnioInicio = item.AnioInicio, ResolucionMinisterial = item.ResolucionMinisterial, EsVigente = item.EsVigente
-        };
-        
-        // Consultamos las sedes asignadas al plan
+        planModel = new PlanEstudioDTO { Id = item.Id, Nombre = item.Nombre, IdCarrera = item.IdCarrera, AnioInicio = item.AnioInicio, ResolucionMinisterial = item.ResolucionMinisterial, EsVigente = item.EsVigente };
         var sedesGuardadas = await PlanService.GetSedesByPlanAsync(item.Id);
         sedesSeleccionadas = sedesGuardadas.Where(s => s.Seleccionado).Select(s => s.IdSede).ToHashSet();
-        
-        esEdicion = true;
-        _procesando = false;
-        mostrarDialogo = true;
+        esEdicion = true; _procesando = false; mostrarDialogo = true;
     }
 
-    private async Task Guardar()
-    {
+    private async Task Guardar() {
         await _form.Validate();
-        if (!_form.IsValid) return;
-
-        if (planModel.IdCarrera <= 0) { Snackbar.Add("Seleccione una carrera.", Severity.Warning); return; }
-        if (!sedesSeleccionadas.Any()) { Snackbar.Add("Debe seleccionar al menos una Sede.", Severity.Warning); return; }
-
+        if (!_form.IsValid || planModel.IdCarrera <= 0 || !sedesSeleccionadas.Any()) return;
         _procesando = true;
-        StateHasChanged();
-
-        try
-        {
-            bool exito;
-            if (esEdicion)
-            {
-                exito = await PlanService.UpdateAsync(planModel);
-                if(exito) await PlanService.ActualizarSedesAsync(planModel.Id, sedesSeleccionadas.ToList());
+        try {
+            bool exito = esEdicion ? await PlanService.UpdateAsync(planModel) : (await PlanService.CreateAsync(planModel) > 0);
+            if (exito) {
+                await PlanService.ActualizarSedesAsync(planModel.Id, sedesSeleccionadas.ToList());
+                Snackbar.Add("Guardado correctamente.", Severity.Success);
+                mostrarDialogo = false; await CargarDatos();
             }
-            else
-            {
-                int newId = await PlanService.CreateAsync(planModel);
-                exito = newId > 0;
-                if(exito) await PlanService.ActualizarSedesAsync(newId, sedesSeleccionadas.ToList());
-            }
-
-            if (exito)
-            {
-                Snackbar.Add(esEdicion ? "Plan actualizado correctamente." : "Plan registrado exitosamente.", Severity.Success);
-                mostrarDialogo = false;
-                await CargarDatos();
-            }
-            else
-            {
-                Snackbar.Add("Error al guardar en el servidor.", Severity.Error);
-            }
-        }
-        catch (Exception)
-        {
-            Snackbar.Add("Ocurrió un error inesperado.", Severity.Error);
-        }
-        finally
-        {
-            _procesando = false;
-            StateHasChanged();
-        }
+        } catch { Snackbar.Add("Error al guardar.", Severity.Error); }
+        finally { _procesando = false; StateHasChanged(); }
     }
 
     private void CerrarModal() { if (!_procesando) mostrarDialogo = false; }
-    private void IrADetalle(int idPlan) { Navigation.NavigateTo($"/planes/{idPlan}/detalle"); }
+    private void IrADetalle(int idPlan) => Navigation.NavigateTo($"/planes/{idPlan}/detalle");
 }

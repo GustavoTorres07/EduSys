@@ -8,7 +8,8 @@ namespace EduSys.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize] // 🔒 Protección base: Requiere login para leer periodos
+    // 🔓 Candado Base: Requiere login para leer periodos (necesario para selects y filtros en todo el sistema)
+    [Authorize]
     public class PeriodosController : ControllerBase
     {
         private readonly IPeriodoRepository _repo;
@@ -51,7 +52,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Administrador, Secretaria Academica")] // 🔒 Solo gestión crea periodos
+        // 🔒 CANDADO REAL: Solo personal con permisos de planificación de períodos
+        [Authorize(Roles = "PER_PERIODO_ABM")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Create([FromBody] PeriodoAcademicoDTO dto)
@@ -78,7 +80,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpPut]
-        [Authorize(Roles = "Administrador, Secretaria Academica")] // 🔒 Solo gestión modifica periodos
+        // 🔒 CANDADO REAL
+        [Authorize(Roles = "PER_PERIODO_ABM")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Update([FromBody] PeriodoAcademicoDTO dto)
@@ -108,7 +111,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Administrador, Secretaria Academica")] // 🔒 Solo gestión elimina periodos
+        // 🔒 CANDADO REAL
+        [Authorize(Roles = "PER_PERIODO_ABM")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Delete(int id)

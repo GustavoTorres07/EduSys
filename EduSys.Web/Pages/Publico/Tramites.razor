@@ -6,6 +6,7 @@
 @using System.Security.Claims
 @using System.IO
 
+@* 🔒 Esta vista es exclusiva para el perfil Alumno *@
 @attribute [Authorize(Roles = "Alumno")]
 
 @inject IPeriodoService PeriodoService
@@ -80,6 +81,7 @@
     .custom-select-doc.mud-input-control.mud-input-focused .mud-input-outlined-border { border-color: #9333ea !important; border-width: 2px !important; }
 </style>
 
+@* OVERLAY GLOBAL PARA GENERACIÓN DE PDF *@
 <MudOverlay Visible="procesando" DarkBackground="true" Absolute="false" ZIndex="9999">
     <MudStack AlignItems="AlignItems.Center">
         <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
@@ -92,7 +94,7 @@
     
     <div class="mb-10">
         <MudText Typo="Typo.h4" Style="font-weight: 800; color: var(--edusys-primary); letter-spacing: -0.5px;">Trámites y Certificados</MudText>
-        <MudText Typo="Typo.subtitle1" Class="mud-text-secondary">Gestión y descarga de documentación académica oficial.</MudText>
+        <MudText Typo="Typo.subtitle1" Class="mud-text-secondary">Gestión y descarga de documentación académica oficial de autogestión.</MudText>
     </div>
 
     @if (loading)
@@ -129,7 +131,7 @@
                             Acredita las asignaturas en las que te encuentras inscripto en el ciclo actual.
                         </MudText>
                         <div class="mt-4 pa-3 rounded-lg" style="background-color: #f8fafc; border: 1px dashed #cbd5e1;">
-                            <MudText Typo="Typo.caption" Style="font-weight: 700;">CICLO LECTIVO</MudText>
+                            <MudText Typo="Typo.caption" Style="font-weight: 700;">CICLO LECTIVO ACTUAL</MudText>
                             <MudText Typo="Typo.body2" Style="font-weight: 800;">@(periodoActual?.Nombre ?? "Sin ciclo activo")</MudText>
                         </div>
                     </div>
@@ -213,6 +215,10 @@
                                 }
                             </MudSelect>
                         }
+                        else
+                        {
+                            <MudText Typo="Typo.caption" Style="color: #94a3b8; font-style: italic;">No tienes inscripciones a finales registradas.</MudText>
+                        }
                     </div>
                     <div class="doc-footer">
                         <MudButton Variant="Variant.Filled" Style="background-color: #9333ea; color: white;" FullWidth="true" OnClick="DescargarConstanciaExamenFinal"
@@ -261,32 +267,29 @@
                 }
             }
         }
-        catch { Snackbar.Add("Error de conexión.", Severity.Error); }
+        catch { Snackbar.Add("Error de conexión al cargar tus datos.", Severity.Error); }
         finally { loading = false; }
     }
 
-// Busca este método en el bloque @code de Tramites.razor
-private async Task DescargarAnalitico()
-{
-    procesando = true;
-    try
+    private async Task DescargarAnalitico()
     {
-        // 🚀 CORRECCIÓN: Llamada sin parámetros
-        var pdfBytes = await ReportesService.DescargarAnaliticoProvisorioAsync();
-        
-        // Usamos el helper de descarga que ya tenemos
-        var fileName = $"Analitico_{DateTime.Now:yyyyMMdd}.pdf";
-        await DescargarFile(fileName, pdfBytes);
-        
-        Snackbar.Add("Analítico generado correctamente.", Severity.Success);
+        procesando = true;
+        try
+        {
+            // El backend identifica al alumno por el Token JWT
+            var pdfBytes = await ReportesService.DescargarAnaliticoProvisorioAsync();
+            
+            var fileName = $"Analitico_{DateTime.Now:yyyyMMdd}.pdf";
+            await DescargarFile(fileName, pdfBytes);
+            
+            Snackbar.Add("Analítico generado correctamente.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Warning); 
+        }
+        finally { procesando = false; }
     }
-    catch (Exception ex)
-    {
-        // El error vendrá del "ExtraerMensajeError" que hicimos en el servicio
-        Snackbar.Add(ex.Message, Severity.Warning); 
-    }
-    finally { procesando = false; }
-}
 
     private async Task DescargarConstanciaInscripcion()
     {
@@ -296,9 +299,9 @@ private async Task DescargarAnalitico()
         {
             var pdfBytes = await ReportesService.DescargarConstanciaInscripcionPdfAsync(alumnoActual.Id, periodoActual.Id);
             await DescargarFile($"Inscripcion_{periodoActual.Nombre}.pdf", pdfBytes);
-            Snackbar.Add("Constancia descargada.", Severity.Success);
+            Snackbar.Add("Constancia descargada con éxito.", Severity.Success);
         }
-        catch { Snackbar.Add("Error al generar constancia.", Severity.Error); }
+        catch { Snackbar.Add("Error al generar la constancia.", Severity.Error); }
         finally { procesando = false; }
     }
 
@@ -310,9 +313,9 @@ private async Task DescargarAnalitico()
         {
             var pdfBytes = await ReportesService.DescargarCertificadoRegularPdfAsync(alumnoActual.Id, periodoActual.Id);
             await DescargarFile("Certificado_Regular.pdf", pdfBytes);
-            Snackbar.Add("Certificado descargado.", Severity.Success);
+            Snackbar.Add("Certificado generado con éxito.", Severity.Success);
         }
-        catch { Snackbar.Add("Sin inscripciones activas para este ciclo.", Severity.Warning); }
+        catch { Snackbar.Add("No se registran inscripciones activas para este ciclo.", Severity.Warning); }
         finally { procesando = false; }
     }
 
@@ -325,8 +328,9 @@ private async Task DescargarAnalitico()
             var pdfBytes = await ReportesService.DescargarConstanciaFinalAsync(idFinalSeleccionado);
             await DescargarFile("Constancia_Examen.pdf", pdfBytes);
             idFinalSeleccionado = 0;
+            Snackbar.Add("Constancia de examen generada.", Severity.Success);
         }
-        catch { Snackbar.Add("Error al generar constancia de examen.", Severity.Error); }
+        catch { Snackbar.Add("Error al generar la constancia de examen.", Severity.Error); }
         finally { procesando = false; }
     }
 

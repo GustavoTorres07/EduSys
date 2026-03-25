@@ -8,8 +8,8 @@ namespace EduSys.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    // 🔒 Protegemos este controlador para que solo Admins puedan crear/ver usuarios
-    [Authorize(Roles = "Administrador, Secretaria Academica")]
+    // 🔓 Candado Base: Requiere autenticación para que cada usuario gestione su propio perfil
+    [Authorize]
     public class UsuariosController : ControllerBase
     {
         private readonly IUsuarioRepository _usuarioRepository;
@@ -21,6 +21,8 @@ namespace EduSys.Api.Controllers
 
         // POST: api/usuarios (Crear usuarios administrativos o docentes manualmente)
         [HttpPost]
+        // 🔒 CANDADO REAL: Solo personal con permisos de gestión de usuarios y seguridad
+        [Authorize(Roles = "SEG_USUARIOS_ABM")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(Usuario))]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Crear([FromBody] Usuario usuario)
@@ -50,7 +52,9 @@ namespace EduSys.Api.Controllers
 
         // GET: api/usuarios/5 (Obtener perfil)
         [HttpGet("{id}")]
-        [Authorize] // Permite a cualquier rol logueado ver su perfil
+        // 🔓 Hereda [Authorize]: Permite a cualquier rol logueado ver su perfil
+        // ⚠️ NOTA DE SEGURIDAD A FUTURO: Asegurarse de que el ID solicitado coincida con el ID del Token JWT (Claim), 
+        // a menos que el usuario tenga rol SEG_USUARIOS_ABM.
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(UsuarioDTO))]
         public async Task<ActionResult<UsuarioDTO>> GetById(int id)
         {
@@ -87,7 +91,7 @@ namespace EduSys.Api.Controllers
 
         // PUT: api/usuarios/5 (Actualizar perfil)
         [HttpPut("{id}")]
-        [Authorize] // Permite a cualquier rol logueado editar su perfil
+        // 🔓 Hereda [Authorize]: Permite a cualquier rol logueado editar su perfil (solo datos de contacto)
         public async Task<IActionResult> Update(int id, [FromBody] UsuarioDTO dto)
         {
             if (id != dto.Id) return BadRequest(new { message = "Los IDs no coinciden." });

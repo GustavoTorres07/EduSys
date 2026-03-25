@@ -2,7 +2,10 @@
 @using EduSys.Shared.DTOs
 @using EduSys.Web.Services.Interfaces
 @using Microsoft.AspNetCore.Authorization
-@attribute [Authorize(Roles = "Administrador")]
+@using Microsoft.AspNetCore.Components.Authorization
+
+@* 🔒 CAMBIO CLAVE: Ahora protegemos por permiso granular, no por el nombre del rol "Administrador" *@
+@attribute [Authorize(Roles = "SEG_ROLES_ABM, Administrador")]
 
 @inject IRolService RolService
 @inject ISnackbar Snackbar
@@ -28,15 +31,13 @@
     --text:        #1a2733;
     --text-mid:    #4a5568;
     --text-soft:   #8a9ab0;
-    --radius:      8px;
+    --radius:      #8px;
     --shadow:      0 1px 4px rgba(69,105,144,0.10);
     --shadow-md:   0 4px 16px rgba(69,105,144,0.13);
     --shadow-lg:   0 8px 32px rgba(69,105,144,0.16);
     --font-serif:  'Source Serif 4', Georgia, serif;
     --font-ui:     'Inter', system-ui, sans-serif;
 }
-
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 .page-wrap {
     font-family: var(--font-ui);
@@ -47,7 +48,6 @@
     -webkit-font-smoothing: antialiased;
 }
 
-/* ── HEADER ──────────────────────────────────────────────────── */
 .page-header {
     background: linear-gradient(135deg, var(--blue-dark) 0%, var(--blue) 60%, var(--blue-mid) 100%);
     border-radius: 14px;
@@ -61,15 +61,7 @@
     justify-content: space-between;
     gap: 16px;
 }
-.page-header::before {
-    content: ''; position: absolute;
-    top: -40px; right: -40px;
-    width: 180px; height: 180px; border-radius: 50%;
-    background: rgba(255,255,255,0.04); pointer-events: none;
-}
-.header-eyebrow { font-size: 0.65rem; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; color: rgba(255,255,255,0.5); margin-bottom: 5px; }
 .header-title   { font-family: var(--font-serif); font-size: 1.6rem; font-weight: 700; color: #fff; letter-spacing: -0.3px; line-height: 1.2; }
-.header-subtitle { font-size: 0.8rem; color: rgba(255,255,255,0.55); margin-top: 4px; }
 .header-badge {
     background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2);
     border-radius: 8px; padding: 8px 16px; text-align: center;
@@ -78,18 +70,13 @@
 .header-badge-val { font-size: 1.4rem; font-weight: 800; color: #fff; line-height: 1; }
 .header-badge-lbl { font-size: 0.6rem; font-weight: 600; color: rgba(255,255,255,0.55); text-transform: uppercase; letter-spacing: 0.5px; }
 
-/* ── LAYOUT DOS COLUMNAS ─────────────────────────────────────── */
 .split-layout {
     display: grid;
     grid-template-columns: 300px 1fr;
     gap: 20px;
     align-items: start;
 }
-@@media (max-width: 900px) {
-    .split-layout { grid-template-columns: 1fr; }
-}
 
-/* ── PANEL IZQUIERDO ─────────────────────────────────────────── */
 .panel-left {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -106,219 +93,55 @@
     border-bottom: 1px solid var(--border);
     display: flex; align-items: center; justify-content: space-between;
     background: var(--blue-pale);
-    flex-shrink: 0;
-}
-.panel-left-title {
-    font-size: 0.7rem; font-weight: 800; letter-spacing: 1.5px;
-    text-transform: uppercase; color: var(--blue);
 }
 
-/* Buscador interno */
-.search-wrap {
-    padding: 12px 14px;
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-    position: relative;
-}
+.search-wrap { padding: 12px 14px; border-bottom: 1px solid var(--border); position: relative; }
 .search-input {
-    width: 100%;
-    background: var(--bg);
-    border: 1.5px solid var(--border);
-    border-radius: var(--radius);
-    padding: 8px 10px 8px 34px;
-    font-family: var(--font-ui); font-size: 0.82rem; font-weight: 500; color: var(--text);
-    outline: none; transition: border-color 0.15s;
+    width: 100%; background: var(--bg); border: 1.5px solid var(--border); border-radius: 8px;
+    padding: 8px 10px 8px 34px; font-size: 0.82rem; font-weight: 500; outline: none;
 }
-.search-input:focus { border-color: var(--blue); }
-.search-input::placeholder { color: var(--text-soft); }
-.search-ico { position: absolute; left: 24px; top: 50%; transform: translateY(-50%); color: var(--text-soft); font-size: 16px; pointer-events: none; }
 
-/* Lista de roles */
-.rol-list { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
-.rol-list::-webkit-scrollbar { width: 4px; }
-.rol-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-
+.rol-list { flex: 1; overflow-y: auto; }
 .rol-item {
-    display: flex; align-items: center; gap: 12px;
-    padding: 12px 18px;
-    border-bottom: 1px solid var(--bg);
-    cursor: pointer;
-    transition: background 0.12s;
-    position: relative;
+    display: flex; align-items: center; gap: 12px; padding: 12px 18px; border-bottom: 1px solid var(--bg); cursor: pointer;
 }
-.rol-item:hover { background: var(--blue-pale); }
 .rol-item.selected { background: var(--blue-pale); border-left: 3px solid var(--blue); }
-.rol-item.selected .rol-item-name { color: var(--blue); }
 
-.rol-item-icon {
-    width: 34px; height: 34px; border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-    font-size: 16px;
-}
-.rol-icon-active   { background: var(--teal-pale);  color: var(--teal); }
-.rol-icon-inactive { background: var(--bg); color: var(--text-soft); }
-
-.rol-item-name { font-size: 0.85rem; font-weight: 700; color: var(--text); }
-.rol-item-name.inactive { text-decoration: line-through; color: var(--text-soft); }
-.rol-item-count { font-size: 0.67rem; color: var(--text-soft); margin-top: 1px; }
-
-.rol-inactive-chip {
-    margin-left: auto; flex-shrink: 0;
-    background: var(--bg); border: 1px solid var(--border);
-    border-radius: 10px; padding: 2px 8px;
-    font-size: 0.58rem; font-weight: 700; color: var(--text-soft);
-    text-transform: uppercase; letter-spacing: 0.3px;
-}
-
-/* ── PANEL DERECHO ───────────────────────────────────────────── */
 .panel-right {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: var(--shadow);
-    display: flex;
-    flex-direction: column;
-    height: calc(100vh - 220px);
-    min-height: 400px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    overflow: hidden; box-shadow: var(--shadow); display: flex; flex-direction: column;
+    height: calc(100vh - 220px); min-height: 400px;
 }
 
-/* Empty state derecho */
-.panel-empty {
-    flex: 1; display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    gap: 10px; color: var(--text-soft); text-align: center; padding: 40px;
-}
-.panel-empty-ico { font-size: 3rem; color: var(--border); }
-.panel-empty-title { font-family: var(--font-serif); font-size: 1.1rem; font-weight: 600; color: var(--text-mid); }
-.panel-empty-sub   { font-size: 0.8rem; max-width: 280px; line-height: 1.5; }
-
-/* Head del panel derecho */
-.panel-right-head {
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--border);
-    background: var(--bg);
-    display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
-    flex-shrink: 0;
-}
-.fields-col { display: flex; flex-direction: column; gap: 10px; flex: 1; }
-
-/* Inputs nativos */
-.field-group { display: flex; flex-direction: column; gap: 4px; }
-.field-label { font-size: 0.62rem; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-soft); }
+.panel-right-head { padding: 16px 20px; border-bottom: 1px solid var(--border); background: var(--bg); display: flex; gap: 16px; }
 .field-input, .field-textarea {
-    background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius);
-    padding: 8px 12px; font-family: var(--font-ui); font-size: 0.875rem; font-weight: 600;
-    color: var(--text); outline: none; transition: border-color 0.15s, box-shadow 0.15s;
-    width: 100%;
+    background: var(--surface); border: 1.5px solid var(--border); border-radius: 8px;
+    padding: 8px 12px; font-size: 0.875rem; font-weight: 600; outline: none; width: 100%;
 }
-.field-input:focus, .field-textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(69,105,144,0.12); }
-.field-textarea { resize: none; line-height: 1.5; }
 
-/* Botones de acción */
-.actions-col { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; padding-top: 2px; }
-.btn {
-    display: inline-flex; align-items: center; gap: 6px;
-    font-family: var(--font-ui); font-size: 0.75rem; font-weight: 700;
-    padding: 9px 16px; border-radius: var(--radius);
-    cursor: pointer; border: none; transition: all 0.15s;
-    white-space: nowrap; letter-spacing: 0.3px;
-}
-.btn:disabled { opacity: 0.35; pointer-events: none; }
-.btn-solid  { background: var(--blue);  color: #fff; border: 1.5px solid var(--blue); }
-.btn-solid:hover { background: var(--blue-dark); border-color: var(--blue-dark); }
-.btn-danger { background: transparent; color: var(--coral); border: 1.5px solid var(--coral); }
-.btn-danger:hover { background: var(--coral-pale); }
-.btn-ghost  { background: transparent; color: var(--blue); border: 1.5px solid var(--border); }
-.btn-ghost:hover { border-color: var(--blue); }
-
-/* Zona de permisos */
-.permisos-wrap {
-    flex: 1; overflow-y: auto; padding: 20px;
-    scrollbar-width: thin; scrollbar-color: var(--border) transparent;
-}
-.permisos-wrap::-webkit-scrollbar { width: 4px; }
-.permisos-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-
-.section-label {
-    font-size: 0.65rem; font-weight: 800; letter-spacing: 2px;
-    text-transform: uppercase; color: var(--text-soft); margin-bottom: 12px;
-    display: flex; align-items: center; gap: 8px;
-}
-.section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
-
-/* Acordeón de módulo */
-.modulo-block { margin-bottom: 8px; }
 .modulo-toggle {
-    width: 100%; background: var(--bg); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 10px 14px;
-    display: flex; align-items: center; justify-content: space-between;
-    font-family: var(--font-ui); cursor: pointer; transition: background 0.12s;
-    gap: 10px;
+    width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px;
+    display: flex; align-items: center; justify-content: space-between; cursor: pointer;
 }
-.modulo-toggle:hover { background: var(--blue-pale); }
-.modulo-toggle.open  { background: var(--blue-pale); border-color: var(--blue); border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
-.modulo-toggle-left  { display: flex; align-items: center; gap: 10px; }
-.modulo-ico { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; background: var(--blue-pale); flex-shrink: 0; font-size: 14px; }
-.modulo-toggle.open .modulo-ico { background: var(--blue); color: white; }
-.modulo-name { font-size: 0.8rem; font-weight: 800; color: var(--text); text-transform: uppercase; letter-spacing: 0.5px; }
-.modulo-toggle.open .modulo-name { color: var(--blue); }
-.modulo-right { display: flex; align-items: center; gap: 8px; }
-.modulo-counter {
-    font-size: 0.65rem; font-weight: 700; padding: 2px 8px; border-radius: 10px;
-    background: var(--surface); border: 1px solid var(--border); color: var(--text-mid);
-}
-.modulo-toggle.open .modulo-counter { background: var(--blue); color: white; border-color: var(--blue); }
-.modulo-chev { transition: transform 0.2s; font-size: 16px; color: var(--text-soft); }
-.modulo-chev.open { transform: rotate(180deg); }
 
-/* Grid de permisos dentro del módulo */
 .modulo-permisos {
-    border: 1px solid var(--blue);
-    border-top: none;
-    border-radius: 0 0 var(--radius) var(--radius);
-    padding: 14px;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-    background: var(--surface);
-    margin-bottom: 2px;
+    border: 1px solid var(--blue); border-top: none; padding: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: var(--surface);
 }
-@@media (max-width: 600px) { .modulo-permisos { grid-template-columns: 1fr; } }
 
-/* Checkbox de permiso */
-.permiso-item {
-    display: flex; align-items: flex-start; gap: 8px;
-    padding: 8px 10px; border-radius: 6px;
-    cursor: pointer; transition: background 0.1s;
-    border: 1px solid transparent;
-}
-.permiso-item:hover { background: var(--bg); }
-.permiso-item.checked { background: var(--teal-pale); border-color: rgba(73,190,170,0.25); }
+.permiso-item { display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px; border-radius: 6px; cursor: pointer; }
+.permiso-item.checked { background: var(--teal-pale); }
 
-.permiso-cb {
-    width: 16px; height: 16px; flex-shrink: 0; margin-top: 1px;
-    accent-color: var(--blue); cursor: pointer;
-}
-.permiso-desc { font-size: 0.78rem; font-weight: 700; color: var(--text); line-height: 1.3; }
-.permiso-code { font-size: 0.62rem; font-weight: 600; color: var(--text-soft); letter-spacing: 0.3px; font-family: monospace; margin-top: 1px; }
-
-/* ── SKELETON ────────────────────────────────────────────────── */
+.sk { background: linear-gradient(90deg,#eaedf1 25%,#f4f6f9 50%,#eaedf1 75%); background-size:1200px 100%; animation:sk 1.4s infinite linear; border-radius:8px; }
 @@keyframes sk { 0%{background-position:-600px 0} 100%{background-position:600px 0} }
-.sk { background: linear-gradient(90deg,#eaedf1 25%,#f4f6f9 50%,#eaedf1 75%); background-size:1200px 100%; animation:sk 1.4s infinite linear; border-radius:var(--radius); }
 </style>
 
 <div class="page-wrap">
-
-    <!-- ── HEADER ────────────────────────────────────────────── -->
     <div class="page-header">
         <div>
-            <div class="header-eyebrow">Administración · EduSys</div>
+            <div style="font-size: 0.65rem; font-weight: 700; color: rgba(255,255,255,0.5); text-transform: uppercase;">Administración · EduSys</div>
             <div class="header-title">Roles y Permisos</div>
-            <div class="header-subtitle">Definí qué puede hacer cada rol dentro del sistema.</div>
         </div>
-        <div style="display:flex;gap:10px;flex-shrink:0;">
+        <div style="display:flex;gap:10px;">
             <div class="header-badge">
                 <div class="header-badge-val">@roles.Count(r => r.Activo)</div>
                 <div class="header-badge-lbl">Activos</div>
@@ -330,158 +153,77 @@
         </div>
     </div>
 
-    <!-- ── LAYOUT ────────────────────────────────────────────── -->
     <div class="split-layout">
-
-        <!-- ── PANEL IZQUIERDO ────────────────────────────── -->
         <div class="panel-left">
             <div class="panel-left-head">
-                <span class="panel-left-title">Roles definidos</span>
-                <button class="btn btn-solid" style="padding:6px 12px;font-size:0.7rem;" @onclick="NuevoRol">
-                    <MudIcon Icon="@Icons.Material.Filled.Add" Style="font-size:14px;" />
-                    Nuevo
-                </button>
+                <span style="font-size: 0.7rem; font-weight: 800; color: var(--blue); text-transform: uppercase;">Roles</span>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="NuevoRol" StartIcon="@Icons.Material.Filled.Add">Nuevo</MudButton>
             </div>
-
             <div class="search-wrap">
-                <MudIcon Icon="@Icons.Material.Filled.Search" Class="search-ico" />
-                <input class="search-input"
-                       placeholder="Buscar rol…"
-                       @bind="searchString"
-                       @bind:event="oninput" />
+                <MudIcon Icon="@Icons.Material.Filled.Search" Style="position:absolute; left:24px; top:50%; transform:translateY(-50%); color:gray;" />
+                <input class="search-input" placeholder="Buscar rol…" @bind="searchString" @bind:event="oninput" />
             </div>
-
             <div class="rol-list">
                 @if (loadingRoles)
                 {
-                    <div style="padding:16px;display:flex;flex-direction:column;gap:8px;">
-                        @for (int i = 0; i < 5; i++)
-                        {
-                            <div class="sk" style="height:52px;"></div>
-                        }
-                    </div>
+                    <div class="pa-4"><div class="sk" style="height:200px;"></div></div>
                 }
                 else
                 {
-                    @foreach (var rol in roles.Where(r =>
-                        string.IsNullOrEmpty(searchString) ||
-                        r.Nombre.Contains(searchString, StringComparison.OrdinalIgnoreCase)))
+                    @foreach (var rol in roles.Where(r => string.IsNullOrEmpty(searchString) || r.Nombre.Contains(searchString, StringComparison.OrdinalIgnoreCase)))
                     {
-                        string iconClass = rol.Activo ? "rol-icon-active" : "rol-icon-inactive";
-                        string itemClass = rol.Id == idRolSeleccionado ? "rol-item selected" : "rol-item";
-                        int nPermisos    = 0; // sin detalle cargado no lo sabemos
-                        var r = rol;
-
-                        <div class="@itemClass" @onclick="() => CargarDetalleRol(r.Id)">
-                            <div class="@($"rol-item-icon {iconClass}")">
-                                <MudIcon Icon="@Icons.Material.Filled.VerifiedUser" Style="font-size:inherit;color:inherit;" />
+                        <div class="@(rol.Id == idRolSeleccionado ? "rol-item selected" : "rol-item")" @onclick="() => CargarDetalleRol(rol.Id)">
+                            <MudIcon Icon="@Icons.Material.Filled.VerifiedUser" Color="@(rol.Activo ? Color.Success : Color.Default)" Class="mr-3" />
+                            <div style="flex:1;">
+                                <div style="font-size:0.85rem; font-weight:700;">@rol.Nombre</div>
+                                @if (!rol.Activo) { <span style="font-size:0.6rem; color:red;">INACTIVO</span> }
                             </div>
-                            <div style="flex:1;min-width:0;">
-                                <div class="@($"rol-item-name{(rol.Activo ? "" : " inactive")}")">
-                                    @rol.Nombre
-                                </div>
-                            </div>
-                            @if (!rol.Activo)
-                            {
-                                <span class="rol-inactive-chip">Inactivo</span>
-                            }
                         </div>
                     }
                 }
             </div>
         </div>
 
-        <!-- ── PANEL DERECHO ──────────────────────────────── -->
         <div class="panel-right">
             @if (rolSeleccionado == null)
             {
-                <div class="panel-empty">
-                    <MudIcon Icon="@Icons.Material.Filled.Security" Class="panel-empty-ico" Style="font-size:inherit;color:inherit;" />
-                    <div class="panel-empty-title">Seleccioná un rol</div>
-                    <p class="panel-empty-sub">Elegí un rol de la lista para ver y editar sus permisos, o creá uno nuevo.</p>
+                <div style="flex:1; display:flex; flex-direction:column; align-center:center; justify-content:center; text-align:center; color:gray; padding:40px;">
+                    <MudIcon Icon="@Icons.Material.Filled.Security" Style="font-size:3rem; margin-bottom:10px;" />
+                    <MudText>Seleccioná un rol para gestionar sus permisos.</MudText>
                 </div>
             }
             else
             {
-                <!-- Head con campos + acciones -->
                 <div class="panel-right-head">
-                    <div class="fields-col">
-<div class="field-group">
-    <label class="field-label">Nombre del Rol</label>
-    <input class="field-input"
-           value="@rolSeleccionado.Nombre"
-           @oninput="e => rolSeleccionado.Nombre = e.Value?.ToString() ?? string.Empty"
-           placeholder="Nombre del rol" />
-</div>
-<div class="field-group">
-    <label class="field-label">Descripción</label>
-    <textarea class="field-textarea" rows="2"
-              value="@rolSeleccionado.Descripcion"
-              @oninput="e => rolSeleccionado.Descripcion = e.Value?.ToString() ?? string.Empty"
-              placeholder="Descripción opcional…">
-    </textarea>
-</div>
+                    <div style="flex:1; display:flex; flex-direction:column; gap:10px;">
+                        <input class="field-input" @bind="rolSeleccionado.Nombre" placeholder="Nombre del rol" />
+                        <textarea class="field-textarea" rows="2" @bind="rolSeleccionado.Descripcion" placeholder="Descripción..."></textarea>
                     </div>
-                    <div class="actions-col">
-                        <button class="btn btn-solid" @onclick="GuardarCambios">
-                            <MudIcon Icon="@Icons.Material.Filled.Save" Style="font-size:14px;" />
-                            Guardar
-                        </button>
-                        <button class="btn btn-danger"
-                                disabled="@(!rolSeleccionado.Activo)"
-                                @onclick="DesactivarRol">
-                            <MudIcon Icon="@Icons.Material.Filled.PersonOff" Style="font-size:14px;" />
-                            Baja lógica
-                        </button>
+                    <div style="display:flex; flex-direction:column; gap:8px;">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="GuardarCambios" StartIcon="@Icons.Material.Filled.Save">Guardar</MudButton>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="DesactivarRol" Disabled="@(!rolSeleccionado.Activo)">Baja</MudButton>
                     </div>
                 </div>
 
-                <!-- Permisos por módulo -->
-                <div class="permisos-wrap">
-
-                    <div class="section-label">Permisos por módulo</div>
-
+                <div style="flex:1; overflow-y:auto; padding:20px;">
                     @foreach (var modulo in catalogoPermisos.GroupBy(p => p.Modulo).OrderBy(g => g.Key))
                     {
-                        int total    = modulo.Count();
-                        int asignados = modulo.Count(p => p.Asignado);
-                        bool abierto  = modulosAbiertos.Contains(modulo.Key);
-
-                        string toggleClass = abierto ? "modulo-toggle open" : "modulo-toggle";
-                        string chevClass   = abierto ? "modulo-chev open"   : "modulo-chev";
-                        var    mod         = modulo;
-
-                        <div class="modulo-block">
-                            <button class="@toggleClass" @onclick="() => ToggleModulo(mod.Key)">
-                                <div class="modulo-toggle-left">
-                                    <div class="modulo-ico">
-                                        <MudIcon Icon="@GetModuloIcon(mod.Key)"
-                                                 Style="font-size:inherit;color:inherit;" />
-                                    </div>
-                                    <span class="modulo-name">@mod.Key</span>
-                                </div>
-                                <div class="modulo-right">
-                                    <span class="modulo-counter">@asignados / @total</span>
-                                    <MudIcon Icon="@Icons.Material.Filled.ExpandMore"
-                                             Class="@chevClass"
-                                             Style="font-size:16px;" />
-                                </div>
+                        var abierto = modulosAbiertos.Contains(modulo.Key);
+                        <div style="margin-bottom:8px;">
+                            <button class="modulo-toggle" @onclick="() => ToggleModulo(modulo.Key)">
+                                <span style="font-weight:800; font-size:0.8rem;">@modulo.Key.ToUpper()</span>
+                                <MudIcon Icon="@(abierto ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)" />
                             </button>
-
                             @if (abierto)
                             {
                                 <div class="modulo-permisos">
-                                    @foreach (var permiso in modulo.OrderBy(p => p.Descripcion))
+                                    @foreach (var p in modulo.OrderBy(x => x.Descripcion))
                                     {
-                                        var  p         = permiso;
-                                        string itemCls = p.Asignado ? "permiso-item checked" : "permiso-item";
-                                        <label class="@itemCls">
-                                            <input class="permiso-cb" type="checkbox"
-                                                   checked="@p.Asignado"
-                                                   @onchange="e => p.Asignado = (bool)(e.Value ?? false)" />
+                                        <label class="@(p.Asignado ? "permiso-item checked" : "permiso-item")">
+                                            <input type="checkbox" @bind="p.Asignado" style="margin-right:8px;" />
                                             <div>
-                                                <div class="permiso-desc">@p.Descripcion</div>
-                                                <div class="permiso-code">@p.Codigo</div>
+                                                <div style="font-size:0.75rem; font-weight:700;">@p.Descripcion</div>
+                                                <div style="font-size:0.6rem; color:gray;">@p.Codigo</div>
                                             </div>
                                         </label>
                                     }
@@ -492,89 +234,70 @@
                 </div>
             }
         </div>
-
     </div>
 </div>
 
 @code {
-    private List<RolRequestDTO>  roles            = new();
-    private List<PermisoDTO>     catalogoPermisos = new();
-    private RolRequestDTO?       rolSeleccionado;
-    private int                  idRolSeleccionado;
-    private string               searchString = "";
-    private bool                 loadingRoles = true;
-
-    // Módulos expandidos
+    private List<RolRequestDTO> roles = new();
+    private List<PermisoDTO> catalogoPermisos = new();
+    private RolRequestDTO? rolSeleccionado;
+    private int idRolSeleccionado;
+    private string searchString = "";
+    private bool loadingRoles = true;
     private HashSet<string> modulosAbiertos = new();
 
     protected override async Task OnInitializedAsync()
     {
         await CargarRoles();
-        var result = await RolService.GetCatalogoPermisosAsync();
-        catalogoPermisos = result ?? new();
+        catalogoPermisos = await RolService.GetCatalogoPermisosAsync() ?? new();
     }
 
     private async Task CargarRoles()
     {
         loadingRoles = true;
-        var result = await RolService.GetAllAsync();
-        roles = result ?? new();
+        roles = await RolService.GetAllAsync() ?? new();
         loadingRoles = false;
     }
 
     private async Task CargarDetalleRol(int id)
     {
         idRolSeleccionado = id;
-        var detalle = await RolService.GetByIdAsync(id);
-        if (detalle == null) return;
+        rolSeleccionado = await RolService.GetByIdAsync(id);
+        if (rolSeleccionado == null) return;
 
-        rolSeleccionado = detalle;
         foreach (var p in catalogoPermisos)
             p.Asignado = rolSeleccionado.IdsPermisos.Contains(p.Id);
 
-        // Abrir automáticamente los módulos que tienen permisos asignados
-        modulosAbiertos = catalogoPermisos
-            .Where(p => p.Asignado)
-            .Select(p => p.Modulo)
-            .ToHashSet();
-
-        StateHasChanged();
+        modulosAbiertos = catalogoPermisos.Where(p => p.Asignado).Select(p => p.Modulo).ToHashSet();
     }
 
     private void NuevoRol()
     {
-        rolSeleccionado    = new RolRequestDTO { Nombre = "", Activo = true, IdsPermisos = new() };
-        idRolSeleccionado  = 0;
-        modulosAbiertos.Clear();
+        rolSeleccionado = new RolRequestDTO { Nombre = "", Activo = true, IdsPermisos = new() };
+        idRolSeleccionado = 0;
         foreach (var p in catalogoPermisos) p.Asignado = false;
     }
 
     private async Task GuardarCambios()
     {
-        if (rolSeleccionado == null) return;
-        if (string.IsNullOrWhiteSpace(rolSeleccionado.Nombre))
+        if (rolSeleccionado == null || string.IsNullOrWhiteSpace(rolSeleccionado.Nombre)) return;
+        rolSeleccionado.IdsPermisos = catalogoPermisos.Where(p => p.Asignado).Select(p => p.Id).ToList();
+        
+        if (await RolService.GuardarAsync(rolSeleccionado))
         {
-            Snackbar.Add("El nombre del rol es obligatorio.", Severity.Warning);
-            return;
+            Snackbar.Add("Cambios guardados.", Severity.Success);
+            await CargarRoles();
         }
-
-        rolSeleccionado.IdsPermisos = catalogoPermisos
-            .Where(p => p.Asignado).Select(p => p.Id).ToList();
-
-        bool ok = await RolService.GuardarAsync(rolSeleccionado);
-        if (ok) { Snackbar.Add("Rol guardado correctamente.", Severity.Success); await CargarRoles(); }
-        else      Snackbar.Add("Error al guardar el rol.", Severity.Error);
     }
 
     private async Task DesactivarRol()
     {
         if (rolSeleccionado == null || rolSeleccionado.Id == 0) return;
-        bool ok = await RolService.EliminarAsync(rolSeleccionado.Id);
-        if (ok)
+        if (await RolService.EliminarAsync(rolSeleccionado.Id))
         {
             Snackbar.Add("Rol desactivado.", Severity.Warning);
-            rolSeleccionado.Activo = false;
             await CargarRoles();
+            rolSeleccionado = null;
         }
     }
 
@@ -582,18 +305,5 @@
     {
         if (modulosAbiertos.Contains(modulo)) modulosAbiertos.Remove(modulo);
         else modulosAbiertos.Add(modulo);
-    }
-
-    private string GetModuloIcon(string modulo)
-    {
-        string m = modulo?.ToLower() ?? "";
-        if (m.Contains("seguridad"))  return Icons.Material.Filled.Security;
-        if (m.Contains("academico"))  return Icons.Material.Filled.School;
-        if (m.Contains("personas"))   return Icons.Material.Filled.People;
-        if (m.Contains("cursada"))    return Icons.Material.Filled.Class;
-        if (m.Contains("inscrip"))    return Icons.Material.Filled.AppRegistration;
-        if (m.Contains("evalu"))      return Icons.Material.Filled.Assignment;
-        if (m.Contains("reportes"))   return Icons.Material.Filled.BarChart;
-        return Icons.Material.Filled.Settings;
     }
 }

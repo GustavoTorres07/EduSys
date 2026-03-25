@@ -7,7 +7,8 @@ namespace EduSys.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize] // Requiere login (especialmente de Alumno)
+    // 🔓 Candado Base: Requiere estar logueado
+    [Authorize]
     public class InscripcionesFinalesController : ControllerBase
     {
         private readonly IInscripcionFinalRepository _repo;
@@ -18,6 +19,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpGet("oferta/{idAlumno}")]
+        // 🔒 CANDADO MIXTO: El alumno puede ver su oferta, o un administrativo con permisos
+        [Authorize(Roles = "Alumno, INS_FINAL_MESAS_ABM")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<MesaFinalOfertaDTO>))]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<ActionResult<List<MesaFinalOfertaDTO>>> GetOferta(int idAlumno, [FromQuery] int idPeriodo)
@@ -26,6 +29,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpGet("mis-inscripciones/{idAlumno}")]
+        // 🔒 CANDADO MIXTO
+        [Authorize(Roles = "Alumno, INS_FINAL_MESAS_ABM")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<MesaFinalOfertaDTO>))]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<ActionResult<List<MesaFinalOfertaDTO>>> GetMisInscripciones(int idAlumno, [FromQuery] int idPeriodo)
@@ -34,6 +39,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpPost("inscribir")]
+        // 🔒 CANDADO ESTRUCTURAL: Acción exclusiva de autogestión del alumno
+        [Authorize(Roles = "Alumno")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ResultadoOperacionDTO))]
         [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ResultadoOperacionDTO))]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -50,6 +57,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpDelete("cancelar/{idInscripcion}")]
+        // 🔒 CANDADO MIXTO: El alumno puede bajarse, o un administrativo puede darlo de baja
+        [Authorize(Roles = "Alumno, INS_FINAL_MESAS_ABM")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ResultadoOperacionDTO))]
         [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ResultadoOperacionDTO))]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]

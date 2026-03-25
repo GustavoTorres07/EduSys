@@ -1,6 +1,10 @@
 ﻿@page "/sedes/{Id:int}/aulas"
 @using EduSys.Shared.DTOs
 @using EduSys.Web.Services.Interfaces
+@using Microsoft.AspNetCore.Authorization
+@* 🔓 Permitimos la entrada general para consulta de espacios *@
+@attribute [Authorize]
+
 @inject ISedeService SedeService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
@@ -90,13 +94,11 @@
     .actions-footer { padding: 16px 24px; border-top: 1px solid var(--edusys-border); background-color: var(--edusys-bg); display: flex; justify-content: flex-end; gap: 12px; border-radius: 0 0 16px 16px; flex-shrink: 0; }
     .modal-title-warning { color: #d97706; font-weight: 800; font-size: 1.5rem; letter-spacing: -0.5px; }
 
-    /* Inputs forzados */
     .custom-input .mud-input-outlined-border { border-color: var(--edusys-border) !important; transition: border-color 0.2s; }
     .custom-input:hover .mud-input-outlined-border { border-color: var(--edusys-primary) !important; }
     .custom-input.mud-input-control.mud-input-focused .mud-input-outlined-border { border-color: var(--edusys-primary) !important; border-width: 2px !important; }
     .custom-input .mud-input-label { color: var(--edusys-primary) !important; background-color: white !important; padding: 0 5px; font-weight: 600; }
     
-    /* ✅ FIX PRINCIPAL: texto visible en todos los tipos de input (Aulas) */
     .custom-input input,
     .custom-input textarea,
     .custom-input .mud-select-input,
@@ -109,21 +111,11 @@
         -webkit-text-fill-color: #1e293b !important;
     }
 
-    /* ✅ FIX: Visibilidad de iconos en los inputs (Adornments y Selects) */
     .custom-input .mud-icon-root,
     .custom-input .mud-input-adornment .mud-icon-root,
     .custom-input .mud-select-icon {
         color: #456990 !important;
         opacity: 1 !important;
-    }
-
-    /* ✅ FIX: evita fondo oscuro por autofill del navegador */
-    .custom-input input:-webkit-autofill,
-    .custom-input input:-webkit-autofill:hover,
-    .custom-input input:-webkit-autofill:focus {
-        -webkit-text-fill-color: #1e293b !important;
-        -webkit-box-shadow: 0 0 0px 1000px white inset !important;
-        transition: background-color 5000s ease-in-out 0s;
     }
 </style>
 
@@ -163,11 +155,15 @@
 
             <MudContainer MaxWidth="MaxWidth.Large" Class="px-0 pb-10 pt-4">
 
-            <div class="d-flex justify-space-between align-center mb-6 animate__animated animate__fadeIn">
+                <div class="d-flex justify-space-between align-center mb-6 animate__animated animate__fadeIn">
                     <MudText Typo="Typo.h5" Style="font-weight: 800; color: var(--edusys-primary);">Aulas Registradas</MudText>
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="AbrirModalCrear" Class="rounded-lg px-6 font-weight-bold" Disabled="_procesando">
-                        Nueva Aula
-                    </MudButton>
+                    
+                    @* 🔒 CANDADO: Solo los autorizados ven el botón de creación *@
+                    <AuthorizeView Roles="CFG_AULAS_ABM" Context="crearContext">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="AbrirModalCrear" Class="rounded-lg px-6 font-weight-bold" Disabled="_procesando">
+                            Nueva Aula
+                        </MudButton>
+                    </AuthorizeView>
                 </div>
 
                 @if (!aulas.Any())
@@ -176,9 +172,13 @@
                         <MudIcon Icon="@Icons.Material.Filled.MeetingRoom" Style="font-size: 5rem; color: #94a3b8;" Class="mb-4" />
                         <MudText Typo="Typo.h5" Style="color: #475569; font-weight: 800;">Sede sin aulas</MudText>
                         <MudText Typo="Typo.body1" Style="color: #64748b;" Class="mb-6">Esta ubicación aún no tiene espacios físicos configurados.</MudText>
-                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Class="font-weight-bold rounded-lg px-6" OnClick="AbrirModalCrear" Disabled="_procesando">
-                            Crear la primera aula
-                        </MudButton>
+                        
+                        @* 🔒 CANDADO: Botón de primera aula *@
+                        <AuthorizeView Roles="CFG_AULAS_ABM" Context="emptyContext">
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Class="font-weight-bold rounded-lg px-6" OnClick="AbrirModalCrear" Disabled="_procesando">
+                                Crear la primera aula
+                            </MudButton>
+                        </AuthorizeView>
                     </div>
                 }
                 else
@@ -223,20 +223,29 @@
 
                                         <td class="col-center">
                                             <div class="d-flex justify-center gap-1">
-                                                <MudTooltip Text="Editar">
-                                                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="@(() => AbrirModalEditar(aula))" Disabled="_procesando" />
-                                                </MudTooltip>
-                                                
-                                                @if (aula.Activo)
-                                                {
-                                                    <MudTooltip Text="Dar de Baja">
-                                                        <MudIconButton Icon="@Icons.Material.Filled.Block" Color="Color.Warning" Size="Size.Small" OnClick="@(() => AbrirModalBaja(aula))" Disabled="_procesando" />
-                                                    </MudTooltip>
-                                                }
-                                                else
-                                                {
-                                                    <MudIconButton Icon="@Icons.Material.Filled.Circle" Size="Size.Small" Color="Color.Default" Style="opacity: 0.3;" Disabled="true" />
-                                                }
+                                                @* 🔒 CANDADO: Acciones ABM envueltas para usuarios autorizados *@
+                                                <AuthorizeView Roles="CFG_AULAS_ABM" Context="abmContext">
+                                                    <Authorized>
+                                                        <MudTooltip Text="Editar">
+                                                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="@(() => AbrirModalEditar(aula))" Disabled="_procesando" />
+                                                        </MudTooltip>
+                                                        
+                                                        @if (aula.Activo)
+                                                        {
+                                                            <MudTooltip Text="Dar de Baja">
+                                                                <MudIconButton Icon="@Icons.Material.Filled.Block" Color="Color.Warning" Size="Size.Small" OnClick="@(() => AbrirModalBaja(aula))" Disabled="_procesando" />
+                                                            </MudTooltip>
+                                                        }
+                                                        else
+                                                        {
+                                                            <MudIconButton Icon="@Icons.Material.Filled.Circle" Size="Size.Small" Color="Color.Default" Style="opacity: 0.3;" Disabled="true" />
+                                                        }
+                                                    </Authorized>
+                                                    <NotAuthorized>
+                                                        @* Si no tiene permiso, mostramos un candado o simplemente nada *@
+                                                        <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" Style="color: #cbd5e1;" />
+                                                    </NotAuthorized>
+                                                </AuthorizeView>
                                             </div>
                                         </td>
                                     </tr>
@@ -250,6 +259,7 @@
     }
 </MudContainer>
 
+@* Los modales se mantienen iguales ya que su visibilidad se controla desde los botones blindados *@
 @* --- MODAL 1: CREAR / EDITAR AULA --- *@
 <MudDialog @bind-Visible="mostrarModal" Options="dialogOptions" Class="unified-dialog-card pa-0">
     <DialogContent>
@@ -282,15 +292,15 @@
                     
                     <MudItem xs="12" sm="6">
                         <MudNumericField Label="Capacidad Máxima"
-                                         @bind-Value="modeloAula.Capacidad"
-                                         Variant="Variant.Outlined"
-                                         Margin="Margin.Dense"
-                                         Adornment="Adornment.Start"
-                                         AdornmentIcon="@Icons.Material.Filled.Groups"
-                                         Class="custom-input bg-white"
-                                         Min="1" Max="500" 
-                                         Required="true" RequiredError="Requerido"
-                                         Disabled="_procesando" />
+                                          @bind-Value="modeloAula.Capacidad"
+                                          Variant="Variant.Outlined"
+                                          Margin="Margin.Dense"
+                                          Adornment="Adornment.Start"
+                                          AdornmentIcon="@Icons.Material.Filled.Groups"
+                                          Class="custom-input bg-white"
+                                          Min="1" Max="500" 
+                                          Required="true" RequiredError="Requerido"
+                                          Disabled="_procesando" />
                     </MudItem>
 
                     @if (esEdicion)

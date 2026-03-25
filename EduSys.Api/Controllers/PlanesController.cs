@@ -8,12 +8,12 @@ namespace EduSys.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize] // Lectura permitida para cualquier usuario logueado
+    // 🔓 Candado Base: Lectura permitida para cualquier usuario logueado
+    [Authorize]
     public class PlanesController : ControllerBase
     {
         private readonly IPlanEstudioRepository _repo;
 
-        // ✅ INYECCIÓN LIMPIA: Se eliminó EduSysDbContext
         public PlanesController(IPlanEstudioRepository repo)
         {
             _repo = repo;
@@ -38,7 +38,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Administrador, Secretaria Academica")] // 🔒
+        // 🔒 CANDADO REAL: Solo personal con permiso de gestionar Planes de Estudio
+        [Authorize(Roles = "ACA_PLAN_ABM")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(int))]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Create([FromBody] PlanEstudioDTO dto)
@@ -50,7 +51,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpPut]
-        [Authorize(Roles = "Administrador, Secretaria Academica")] // 🔒
+        // 🔒 CANDADO REAL
+        [Authorize(Roles = "ACA_PLAN_ABM")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -65,7 +67,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Administrador, Secretaria Academica")] // 🔒
+        // 🔒 CANDADO REAL
+        [Authorize(Roles = "ACA_PLAN_ABM")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Delete(int id)
@@ -92,13 +95,13 @@ namespace EduSys.Api.Controllers
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<PlanMateriaDTO>))]
         public async Task<IActionResult> GetMateriasPorSede(int idCarrera, int idSede)
         {
-            // ✅ Delegamos la lógica pesada al repositorio
             var dtos = await _repo.GetMateriasPorSedeAsync(idCarrera, idSede);
             return Ok(dtos);
         }
 
         [HttpPost("materias")]
-        [Authorize(Roles = "Administrador, Secretaria Academica")] // 🔒
+        // 🔒 CANDADO REAL
+        [Authorize(Roles = "ACA_PLAN_ABM")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> AgregarMateria([FromBody] PlanMateriaDTO dto)
@@ -155,7 +158,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpPut("materias")]
-        [Authorize(Roles = "Administrador, Secretaria Academica")] // 🔒
+        // 🔒 CANDADO REAL
+        [Authorize(Roles = "ACA_PLAN_ABM")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -171,7 +175,6 @@ namespace EduSys.Api.Controllers
                 AnioCursada = dto.AnioCursada,
                 Cuatrimestre = dto.Cuatrimestre,
                 IdRegimen = dto.IdRegimen,
-                // ... (Todos los demás campos se mapean igual que en el Create)
                 CargaHorariaTotal = dto.CargaHorariaTotal,
                 TipoCalificacion = dto.TipoCalificacion,
                 NotaMinimaRegularizar = dto.NotaMinimaRegularizar,
@@ -215,7 +218,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpDelete("materias/{idPlanMateria}")]
-        [Authorize(Roles = "Administrador, Secretaria Academica")] // 🔒
+        // 🔒 CANDADO REAL
+        [Authorize(Roles = "ACA_PLAN_ABM")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> QuitarMateria(int idPlanMateria)
@@ -226,8 +230,9 @@ namespace EduSys.Api.Controllers
             return NoContent();
         }
 
-        [HttpPut("materias/{idPlanMateria}/correlativas")] 
-        [Authorize(Roles = "Administrador, Secretaria Academica")] // 🔒
+        [HttpPut("materias/{idPlanMateria}/correlativas")]
+        // 🔒 CANDADO REAL
+        [Authorize(Roles = "ACA_PLAN_ABM")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult> ActualizarCorrelativas(int idPlanMateria, [FromBody] List<CorrelativaItemDTO> correlativas)
@@ -259,13 +264,13 @@ namespace EduSys.Api.Controllers
         [HttpGet("{idPlan}/sedes")]
         public async Task<IActionResult> GetSedesDelPlan(int idPlan)
         {
-            // Este método llama a la lógica que te pasé anteriormente en el Repositorio
             var dtos = await _repo.GetSedesByPlanAsync(idPlan);
             return Ok(dtos);
         }
 
         [HttpPut("{idPlan}/sedes")]
-        [Authorize(Roles = "Administrador, Secretaria Academica")]
+        // 🔒 CANDADO REAL
+        [Authorize(Roles = "ACA_PLAN_ABM")]
         public async Task<IActionResult> ActualizarSedesDelPlan(int idPlan, [FromBody] List<int> idsSedes)
         {
             var exito = await _repo.ActualizarSedesAsync(idPlan, idsSedes);

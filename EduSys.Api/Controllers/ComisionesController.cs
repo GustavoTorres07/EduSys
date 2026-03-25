@@ -8,6 +8,7 @@ namespace EduSys.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    // 🔓 Candado Base: Lectura permitida para usuarios autenticados
     [Authorize]
     public class ComisionesController : ControllerBase
     {
@@ -20,7 +21,7 @@ namespace EduSys.Api.Controllers
             _inscripcionRepository = inscripcionRepository;
         }
 
-        // --- LECTURA ---
+        // --- LECTURA (Heredan [Authorize]) ---
 
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<ComisionDTO>))]
@@ -92,11 +93,8 @@ namespace EduSys.Api.Controllers
                     IdSede = principal.IdSede,
                     SedeNombre = principal.IdSedeNavigation?.Nombre ?? "",
                     CupoMaximo = principal.CupoMaximo,
-
-                    // ✅ FIX: Separamos el Turno puro del texto de Horarios
                     Turno = principal.Turno ?? "",
                     Horario = horariosTexto,
-
                     Profesor = nombreProfesor,
                     Estado = principal.Estado,
                     AnioCursada = principal.IdPlanMateriaNavigation?.AnioCursada ?? 1
@@ -134,7 +132,8 @@ namespace EduSys.Api.Controllers
         // --- ESCRITURA ---
 
         [HttpPost]
-        [Authorize(Roles = "Administrador, Secretaria Academica")]
+        // 🔒 CANDADO REAL: ABM Comisiones
+        [Authorize(Roles = "COM_COMISION_ABM")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ResultadoOperacionDTO))]
         public async Task<ActionResult<ResultadoOperacionDTO>> Post(ComisionDTO dto)
         {
@@ -156,7 +155,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpPut]
-        [Authorize(Roles = "Administrador, Secretaria Academica")]
+        // 🔒 CANDADO REAL
+        [Authorize(Roles = "COM_COMISION_ABM")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ResultadoOperacionDTO))]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<ResultadoOperacionDTO>> Put(ComisionDTO dto)
@@ -180,7 +180,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Administrador, Secretaria Academica")]
+        // 🔒 CANDADO REAL
+        [Authorize(Roles = "COM_COMISION_ABM")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ResultadoOperacionDTO))]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<ResultadoOperacionDTO>> Delete(int id)
@@ -192,8 +193,11 @@ namespace EduSys.Api.Controllers
                 : NotFound(new ResultadoOperacionDTO { Exito = false, Mensaje = "Comisión no encontrada." });
         }
 
+        // --- ASIGNACIÓN DE DOCENTES ---
+
         [HttpPost("asignar-docente")]
-        [Authorize(Roles = "Administrador, Secretaria Academica")]
+        // 🔒 CANDADO REAL: Asignar docentes a comisiones
+        [Authorize(Roles = "COM_COMISION_ABM")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ResultadoOperacionDTO))]
         public async Task<ActionResult<ResultadoOperacionDTO>> AsignarDocente(DocenteComisionRequestDTO dto)
         {
@@ -209,7 +213,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpDelete("docentes/{idAsignacion}")]
-        [Authorize(Roles = "Administrador, Secretaria Academica")]
+        // 🔒 CANDADO REAL
+        [Authorize(Roles = "COM_COMISION_ABM")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ResultadoOperacionDTO))]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<ResultadoOperacionDTO>> DesasignarDocente(int idAsignacion)
@@ -248,7 +253,6 @@ namespace EduSys.Api.Controllers
                 SedeNombre = c.IdSedeNavigation?.Nombre ?? "",
                 CupoMaximo = c.CupoMaximo,
 
-                // ✅ FIX: Separamos el Turno puro del texto de Horarios
                 Turno = c.Turno ?? "",
                 Horario = horariosTexto,
 

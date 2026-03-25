@@ -3,7 +3,8 @@
 @using EduSys.Web.Services.Interfaces
 @using Microsoft.AspNetCore.Authorization
 
-@attribute [Authorize(Roles = "Administrador, Secretaria Academica, Coordinador")]
+@* 🔓 Lectura permitida para el personal administrativo y coordinadores *@
+@attribute [Authorize(Roles = "Administrador, Secretaria Academica, Coordinador, INS_FINAL_MESAS_ABM")]
 
 @inject IMesaFinalService MesaFinalService
 @inject ISnackbar Snackbar
@@ -39,7 +40,7 @@
         border-width: 2px !important;
     }
 
-    /* ✅ FIX PRINCIPAL: texto visible en el buscador y selects */
+    /* FIX PRINCIPAL: texto visible en el buscador y selects */
     .custom-filter-input input,
     .custom-filter-input textarea,
     .custom-filter-input .mud-select-input,
@@ -52,7 +53,7 @@
         -webkit-text-fill-color: #1e293b !important;
     }
 
-    /* ✅ FIX: Visibilidad de iconos en los inputs (Lupa) */
+    /* FIX: Visibilidad de iconos en los inputs (Lupa) */
     .custom-filter-input .mud-icon-root,
     .custom-filter-input .mud-input-adornment .mud-icon-root,
     .custom-filter-input .mud-select-icon {
@@ -60,16 +61,7 @@
         opacity: 1 !important;
     }
 
-    /* ✅ FIX: evita fondo oscuro por autofill del navegador */
-    .custom-filter-input input:-webkit-autofill,
-    .custom-filter-input input:-webkit-autofill:hover,
-    .custom-filter-input input:-webkit-autofill:focus {
-        -webkit-text-fill-color: #1e293b !important;
-        -webkit-box-shadow: 0 0 0px 1000px white inset !important;
-        transition: background-color 5000s ease-in-out 0s;
-    }
-
-    /* ✅ FIX VISIBILIDAD: Paginador (Filas por página y números) */
+    /* FIX VISIBILIDAD: Paginador */
     .mud-table-pager {
         color: #1e293b !important;
     }
@@ -80,12 +72,7 @@
             -webkit-text-fill-color: #1e293b !important;
             font-weight: 600 !important;
         }
-    
-        .mud-table-pager .mud-icon-root {
-            color: #456990 !important;
-        }
 
-    /* Botones de Filtro Tipo Segmented Control */
     .filter-group {
         display: flex;
         background-color: #f1f5f9;
@@ -101,7 +88,6 @@
         padding: 4px 16px !important;
     }
 
-    /* --- MODALES --- */
     .unified-dialog-card {
         background-color: white !important;
         border-radius: 16px !important;
@@ -116,7 +102,7 @@
     }
 </style>
 
-@* OVERLAY DE PROTECCIÓN DURANTE PROCESAMIENTO *@
+@* OVERLAY DE PROTECCIÓN *@
 <MudOverlay Visible="_procesando" DarkBackground="true" Absolute="false" ZIndex="9999">
     <MudStack AlignItems="AlignItems.Center">
         <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
@@ -132,15 +118,19 @@
             <MudText Typo="Typo.h4" Style="font-weight: 800; color: #456990; letter-spacing: -0.5px;">Gestión de Mesas Finales</MudText>
             <MudText Typo="Typo.subtitle1" Class="mud-text-secondary">Administración de tribunales, fechas e inscripciones a exámenes.</MudText>
         </div>
-        <MudButton Variant="Variant.Filled"
-                   Color="Color.Primary"
-                   StartIcon="@Icons.Material.Filled.Add"
-                   Size="Size.Large"
-                   Style="font-weight: 700; border-radius: 8px;"
-                   OnClick="AbrirModalNuevo"
-                   Disabled="loading">
-            Nueva Mesa
-        </MudButton>
+        
+        @* 🔒 CANDADO: Crear Mesa *@
+        <AuthorizeView Roles="INS_FINAL_MESAS_ABM" Context="crearContext">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       Size="Size.Large"
+                       Style="font-weight: 700; border-radius: 8px;"
+                       OnClick="AbrirModalNuevo"
+                       Disabled="loading">
+                Nueva Mesa
+            </MudButton>
+        </AuthorizeView>
     </div>
 
     @* --- TABLA PRINCIPAL --- *@
@@ -155,8 +145,6 @@
         
         <ToolBarContent>
             <div class="d-flex flex-wrap align-center gap-4 w-100 mb-2">
-                
-                @* 1. Filtro Estado (Segmented Control) *@
                 <div class="filter-group">
                     <MudButton OnClick="@(() => CambiarFiltro("Todas"))" Variant="@(filtroEstado == "Todas" ? Variant.Filled : Variant.Text)" Color="@(filtroEstado == "Todas" ? Color.Primary : Color.Default)" Size="Size.Small" Class="filter-btn" DisableElevation="true">Todas</MudButton>
                     <MudButton OnClick="@(() => CambiarFiltro("Abiertas"))" Variant="@(filtroEstado == "Abiertas" ? Variant.Filled : Variant.Text)" Color="@(filtroEstado == "Abiertas" ? Color.Success : Color.Default)" Size="Size.Small" Class="filter-btn" DisableElevation="true">Abiertas</MudButton>
@@ -165,7 +153,6 @@
 
                 <MudSpacer />
 
-                @* 2. Buscador General *@
                 <MudTextField @bind-Value="searchString"
                               Placeholder="Buscar materia, carrera o docente..."
                               Adornment="Adornment.Start"
@@ -236,29 +223,27 @@
 
             <MudTd DataLabel="Acciones" Style="text-align:center">
                 <div class="d-flex justify-center gap-1">
-                    <MudTooltip Text="Editar Mesa">
-                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" OnClick="@(() => AbrirModalEditar(context))" Disabled="_procesando" />
-                    </MudTooltip>
-                    
-                    <MudTooltip Text="Eliminar Mesa">
-                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => AbrirModalEliminar(context))" Disabled="_procesando" />
-                    </MudTooltip>
+                    @* 🔒 CANDADO: Editar y Eliminar Mesa *@
+                    <AuthorizeView Roles="INS_FINAL_MESAS_ABM" Context="abmContext">
+                        <Authorized>
+                            <MudTooltip Text="Editar Mesa">
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" OnClick="@(() => AbrirModalEditar(context))" Disabled="_procesando" />
+                            </MudTooltip>
+                            
+                            <MudTooltip Text="Eliminar Mesa">
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => AbrirModalEliminar(context))" Disabled="_procesando" />
+                            </MudTooltip>
+                        </Authorized>
+                        <NotAuthorized>
+                            <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" Style="color: #cbd5e1;" />
+                        </NotAuthorized>
+                    </AuthorizeView>
                 </div>
             </MudTd>
         </RowTemplate>
 
-        <LoadingContent>
-            <MudText Typo="Typo.body1" Class="pa-4 text-center" Style="color: #64748b;">Cargando mesas de examen...</MudText>
-        </LoadingContent>
-        <NoRecordsContent>
-            <div class="d-flex flex-column align-center justify-center pa-8">
-                <MudIcon Icon="@Icons.Material.Filled.EventSeat" Style="font-size: 4rem; color: #cbd5e1;" Class="mb-3" />
-                <MudText Typo="Typo.h6" Style="font-weight: 700; color: #475569;">No se encontraron mesas</MudText>
-                <MudText Typo="Typo.body2" Style="color: #64748b;">No hay registros que coincidan con los filtros actuales.</MudText>
-            </div>
-        </NoRecordsContent>
         <PagerContent>
-            <MudTablePager RowsPerPageString="Filas por página:" InfoFormat="{first_item}-{last_item} de {all_items}" />
+            <MudTablePager RowsPerPageString="Filas por página:" />
         </PagerContent>
     </MudTable>
 </MudContainer>
@@ -275,7 +260,7 @@
                 Estás por eliminar la mesa de <b>@mesaParaEliminar?.MateriaNombre</b>.
             </MudText>
             <MudText Typo="Typo.caption" Style="color: #64748b; line-height: 1.4;">
-                ADVERTENCIA: Se eliminarán también las inscripciones de los alumnos asociados a este tribunal. Esta acción no se puede deshacer.
+                ADVERTENCIA: Se eliminarán también las inscripciones asociadas. Esta acción no se puede deshacer.
             </MudText>
         </div>
     </DialogContent>
@@ -293,78 +278,48 @@
     private bool loading = true;
     private bool _procesando = false;
     private List<MesaFinalDTO> mesas = new();
-
     private string searchString = "";
     private string filtroEstado = "Todas";
-
     private bool mostrarDialogoEliminar = false;
     private MesaFinalDTO? mesaParaEliminar;
     private DialogOptions optionsEliminar = new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true, BackdropClick = false, CloseButton = false };
 
-    protected override async Task OnInitializedAsync()
-    {
-        await CargarDatos();
-    }
+    protected override async Task OnInitializedAsync() => await CargarDatos();
 
     private async Task CargarDatos()
     {
         loading = true;
-        StateHasChanged();
-
         try
         {
             mesas = await MesaFinalService.GetAllAsync();
         }
-        catch (Exception)
-        {
-            Snackbar.Add("Error al comunicarse con el servidor.", Severity.Error);
-        }
-        finally
-        {
-            loading = false;
-            StateHasChanged();
-        }
+        catch { Snackbar.Add("Error de conexión.", Severity.Error); }
+        finally { loading = false; StateHasChanged(); }
     }
 
-    private void CambiarFiltro(string estado)
-    {
-        filtroEstado = estado;
-        StateHasChanged();
-    }
+    private void CambiarFiltro(string estado) { filtroEstado = estado; StateHasChanged(); }
 
     private bool FilterFunc(MesaFinalDTO m)
     {
-        // 1. Filtro de Estado
         if (filtroEstado == "Abiertas" && m.Estado != "Abierta") return false;
         if (filtroEstado == "Cerradas" && m.Estado != "Cerrada") return false;
 
-        // 2. Buscador de Texto
         if (!string.IsNullOrWhiteSpace(searchString))
         {
             var term = searchString.Trim().ToLower();
-            bool match = (m.MateriaNombre?.ToLower().Contains(term) ?? false) ||
-                         (m.CarreraNombre?.ToLower().Contains(term) ?? false) ||
-                         (m.PresidenteNombre?.ToLower().Contains(term) ?? false);
-            if (!match) return false;
+            return (m.MateriaNombre?.ToLower().Contains(term) ?? false) ||
+                   (m.CarreraNombre?.ToLower().Contains(term) ?? false) ||
+                   (m.PresidenteNombre?.ToLower().Contains(term) ?? false);
         }
-
         return true;
     }
 
     private async Task AbrirModalNuevo()
     {
-        // En tu componente DialogoMesaFinal asumo que recibe la Mesa en caso de edición,
-        // y como usas NoHeader=true, todo el diseño interno ya debería estar encapsulado allí.
         var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, NoHeader = true, BackdropClick = false };
         var dialog = await DialogService.ShowAsync<DialogoMesaFinal>("", options);
         var result = await dialog.Result;
-
-        if (!result.Canceled)
-        {
-            _procesando = true;
-            await CargarDatos();
-            _procesando = false;
-        }
+        if (!result.Canceled) await CargarDatos();
     }
 
     private async Task AbrirModalEditar(MesaFinalDTO mesa)
@@ -373,55 +328,30 @@
         var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, NoHeader = true, BackdropClick = false };
         var dialog = await DialogService.ShowAsync<DialogoMesaFinal>("", parameters, options);
         var result = await dialog.Result;
-
-        if (!result.Canceled)
-        {
-            _procesando = true;
-            await CargarDatos();
-            _procesando = false;
-        }
+        if (!result.Canceled) await CargarDatos();
     }
 
-    private void AbrirModalEliminar(MesaFinalDTO mesa)
-    {
-        mesaParaEliminar = mesa;
-        mostrarDialogoEliminar = true;
-    }
+    private void AbrirModalEliminar(MesaFinalDTO mesa) { mesaParaEliminar = mesa; mostrarDialogoEliminar = true; }
 
     private async Task ConfirmarEliminar()
     {
         if (mesaParaEliminar == null) return;
-
         _procesando = true;
-        StateHasChanged();
-
         try
         {
             var res = await MesaFinalService.DeleteAsync(mesaParaEliminar.Id);
             if (res.Exito)
             {
-                Snackbar.Add("La mesa de examen fue eliminada exitosamente.", Severity.Success);
+                Snackbar.Add("Mesa eliminada.", Severity.Success);
                 await CargarDatos();
             }
-            else
-            {
-                Snackbar.Add(res.Mensaje, Severity.Error);
-            }
-        }
-        catch (Exception)
-        {
-            Snackbar.Add("Ocurrió un error inesperado al intentar eliminar.", Severity.Error);
+            else Snackbar.Add(res.Mensaje, Severity.Error);
         }
         finally
         {
-            _procesando = false;
-            mostrarDialogoEliminar = false;
-            StateHasChanged();
+            _procesando = false; mostrarDialogoEliminar = false; StateHasChanged();
         }
     }
 
-    private void CerrarModalEliminar()
-    {
-        if (!_procesando) mostrarDialogoEliminar = false;
-    }
+    private void CerrarModalEliminar() { if (!_procesando) mostrarDialogoEliminar = false; }
 }

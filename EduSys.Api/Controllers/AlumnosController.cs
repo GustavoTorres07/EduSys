@@ -7,12 +7,13 @@ namespace EduSys.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    // 🔓 Candado Base: Requiere estar logueado (Cualquier rol).
+    // Fundamental para que el Alumno pueda consultar su propio Id en GetByUsuario.
     [Authorize]
     public class AlumnosController : ControllerBase
     {
         private readonly IAlumnoRepository _alumnoRepo;
 
-        // ✅ ¡Adiós DbContext! El controlador ahora es 100% puro.
         public AlumnosController(IAlumnoRepository alumnoRepo)
         {
             _alumnoRepo = alumnoRepo;
@@ -20,6 +21,8 @@ namespace EduSys.Api.Controllers
 
         // GET: api/alumnos
         [HttpGet]
+        // 🔒 CANDADO REAL: Solo usuarios con permiso para gestionar alumnos ven la lista
+        [Authorize(Roles = "ALU_ABM")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<AlumnoListadoDTO>))]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<ActionResult<List<AlumnoListadoDTO>>> GetAlumnos()
@@ -30,6 +33,8 @@ namespace EduSys.Api.Controllers
 
         // GET: api/alumnos/{id}
         [HttpGet("{id}")]
+        // 🔒 CANDADO REAL: Solo usuarios con permiso pueden abrir el detalle administrativo
+        [Authorize(Roles = "ALU_ABM")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(AlumnoRequestDTO))]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -43,6 +48,8 @@ namespace EduSys.Api.Controllers
 
         // POST: api/alumnos
         [HttpPost]
+        // 🔒 CANDADO REAL
+        [Authorize(Roles = "ALU_ABM")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Crear([FromBody] AlumnoRequestDTO dto)
@@ -57,6 +64,8 @@ namespace EduSys.Api.Controllers
 
         // PUT: api/alumnos
         [HttpPut]
+        // 🔒 CANDADO REAL
+        [Authorize(Roles = "ALU_ABM")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Editar([FromBody] AlumnoRequestDTO dto)
@@ -75,6 +84,8 @@ namespace EduSys.Api.Controllers
 
         // GET: api/alumnos/usuario/{idUsuario}
         [HttpGet("usuario/{idUsuario}")]
+        // 🔓 NO SE PONE ALU_ABM AQUÍ. Hereda el [Authorize] de la clase.
+        // Permite que el alumno consulte sus propios datos para operar en la web.
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(AlumnoDTO))]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<AlumnoDTO>> GetByUsuario(int idUsuario)

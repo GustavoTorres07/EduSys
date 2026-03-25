@@ -39,7 +39,7 @@ namespace EduSys.Api.Controllers
         // 1. CREAR SOLICITUD (Público)
         // ---------------------------------------------------------
         [HttpPost("solicitar")]
-        [AllowAnonymous] // 🔓 Abierto al público
+        [AllowAnonymous] // 🔓 Abierto al público aspirante
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> CrearSolicitud([FromBody] SolicitudIngresoRequestDTO dto)
@@ -122,7 +122,8 @@ namespace EduSys.Api.Controllers
         // 2. LISTAR PENDIENTES
         // ---------------------------------------------------------
         [HttpGet("pendientes")]
-        [Authorize(Roles = "Administrador, Secretaria Academica")] // 🔒
+        // 🔒 CANDADO REAL: Solo quienes gestionan solicitudes
+        [Authorize(Roles = "SOL_GESTION")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<SolicitudIngresoDTO>))]
         public async Task<ActionResult<List<SolicitudIngresoDTO>>> GetPendientes()
         {
@@ -153,7 +154,8 @@ namespace EduSys.Api.Controllers
         // 3. OBTENER DETALLE
         // ---------------------------------------------------------
         [HttpGet("{id}")]
-        [Authorize(Roles = "Administrador, Secretaria Academica")] // 🔒
+        // 🔒 CANDADO REAL
+        [Authorize(Roles = "SOL_GESTION")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(SolicitudIngresoDTO))]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<SolicitudIngresoDTO>> GetSolicitudById(int id)
@@ -194,7 +196,8 @@ namespace EduSys.Api.Controllers
         // 4. PROCESAR (APROBAR / RECHAZAR)
         // ---------------------------------------------------------
         [HttpPost("procesar")]
-        [Authorize(Roles = "Administrador, Secretaria Academica")] // 🔒
+        // 🔒 CANDADO REAL
+        [Authorize(Roles = "SOL_GESTION")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -234,7 +237,6 @@ namespace EduSys.Api.Controllers
 
                 string nuevoLegajo = $"{DateTime.Now.Year}-{solicitud.Dni}";
 
-                // 🚀 CORRECCIÓN CLAVE: Eliminamos '.ToDateTime()' de FechaNacimiento
                 var alumnoRequest = new AlumnoRequestDTO
                 {
                     Nombre = solicitud.Nombre,
@@ -244,7 +246,7 @@ namespace EduSys.Api.Controllers
                     Telefono = solicitud.Telefono,
                     Direccion = solicitud.Direccion,
 
-                    FechaNacimiento = solicitud.FechaNacimiento, // ✅ LÍNEA CORREGIDA
+                    FechaNacimiento = solicitud.FechaNacimiento,
 
                     FotoPerfilUrl = solicitud.RutaFotoPerfil,
                     IdNacionalidad = 1,
@@ -308,7 +310,8 @@ namespace EduSys.Api.Controllers
         // 5. HISTORIAL DE SOLICITUDES
         // ---------------------------------------------------------
         [HttpGet("historial")]
-        [Authorize(Roles = "Administrador, Secretaria Academica")] // 🔒
+        // 🔒 CANDADO REAL
+        [Authorize(Roles = "SOL_GESTION")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<SolicitudIngresoDTO>))]
         public async Task<ActionResult<List<SolicitudIngresoDTO>>> GetHistorial()
         {

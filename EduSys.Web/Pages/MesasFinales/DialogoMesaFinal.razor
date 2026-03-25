@@ -1,5 +1,6 @@
 ﻿@using EduSys.Shared.DTOs
 @using EduSys.Web.Services.Interfaces
+@using Microsoft.AspNetCore.Components.Authorization
 
 @inject IMesaFinalService MesaFinalService
 @inject IPeriodoService PeriodoService
@@ -9,13 +10,8 @@
 
 <style>
     /* --- ESTILOS UNIFICADOS DE MODAL --- */
-    .mud-dialog-close-icon {
-        display: none !important;
-    }
-
-    .mud-dialog-content {
-        padding: 0 !important;
-    }
+    .mud-dialog-close-icon { display: none !important; }
+    .mud-dialog-content { padding: 0 !important; }
 
     .dialog-container {
         display: flex;
@@ -25,7 +21,6 @@
         min-width: 600px;
     }
 
-    /* HEADER AZUL CORPORATIVO */
     .dialog-header-integrated {
         background: #456990;
         color: white;
@@ -52,7 +47,6 @@
         flex-shrink: 0;
     }
 
-    /* --- INPUTS FORZADOS --- */
     .force-black-text input,
     .force-black-text .mud-input-slot,
     .force-black-text .mud-select-input {
@@ -73,16 +67,9 @@
         transition: border-color 0.2s;
     }
 
-    .force-black-text:hover .mud-input-outlined-border {
-        border-color: #456990 !important;
-    }
+    .force-black-text:hover .mud-input-outlined-border { border-color: #456990 !important; }
+    .force-black-text.mud-input-control.mud-input-focused .mud-input-outlined-border { border-color: #456990 !important; border-width: 2px !important; }
 
-    .force-black-text.mud-input-control.mud-input-focused .mud-input-outlined-border {
-        border-color: #456990 !important;
-        border-width: 2px !important;
-    }
-
-    /* TÍTULOS DE SECCIÓN */
     .section-title {
         color: #456990;
         font-weight: 800;
@@ -98,140 +85,116 @@
 
 <MudDialog DisableSidePadding="true" Class="rounded-lg overflow-hidden">
     <DialogContent>
-        <div class="dialog-container">
+        @* 🔒 CANDADO: Solo personal con permiso de ABM de mesas finales *@
+        <AuthorizeView Roles="INS_FINAL_MESAS_ABM" Context="authContext">
+            <Authorized>
+                <div class="dialog-container">
+                    @* --- CABECERA --- *@
+                    <div class="dialog-header-integrated">
+                        <div class="d-flex align-center">
+                            <MudIcon Icon="@(modelo.Id == 0 ? Icons.Material.Filled.EventAvailable : Icons.Material.Filled.EditCalendar)" Class="mr-3" />
+                            <div>
+                                <MudText Typo="Typo.h6" Style="font-weight: 700; line-height: 1.2; letter-spacing: -0.5px;">
+                                    @(modelo.Id == 0 ? "Nueva Mesa de Examen" : "Editar Mesa Final")
+                                </MudText>
+                                <MudText Typo="Typo.caption" Style="opacity: 0.9;">Asignación de tribunales y fechas</MudText>
+                            </div>
+                        </div>
+                        <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" OnClick="Cancelar" Size="Size.Small" Disabled="procesando" />
+                    </div>
 
-            @* --- CABECERA DINÁMICA --- *@
-            <div class="dialog-header-integrated">
-                <div class="d-flex align-center">
-                    <MudIcon Icon="@(modelo.Id == 0 ? Icons.Material.Filled.EventAvailable : Icons.Material.Filled.EditCalendar)" Class="mr-3" />
-                    <div>
-                        <MudText Typo="Typo.h6" Style="font-weight: 700; line-height: 1.2; letter-spacing: -0.5px;">
-                            @(modelo.Id == 0 ? "Nueva Mesa de Examen" : "Editar Mesa Final")
-                        </MudText>
-                        <MudText Typo="Typo.caption" Style="opacity: 0.9;">Asignación de tribunales y fechas</MudText>
+                    @* --- CUERPO --- *@
+                    <div class="dialog-body">
+                        @if (loading)
+                        {
+                            <MudGrid Spacing="2">
+                                <MudItem xs="12"><MudSkeleton Height="30px" Width="30%" /></MudItem>
+                                <MudItem xs="12" sm="6"><MudSkeleton Height="60px" /></MudItem>
+                                <MudItem xs="12" sm="6"><MudSkeleton Height="60px" /></MudItem>
+                                <MudItem xs="12"><MudSkeleton Height="60px" /></MudItem>
+                            </MudGrid>
+                        }
+                        else
+                        {
+                            <MudForm @ref="form" ValidIsValid="true">
+                                <MudGrid Spacing="2">
+                                    <MudItem xs="12"><div class="section-title mt-0">Detalles Académicos</div></MudItem>
+
+                                    <MudItem xs="12" sm="6">
+                                        <MudSelect T="int" Label="Período de Exámenes" @bind-Value="modelo.IdPeriodo" Required="true"
+                                                   Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter"
+                                                   Class="force-black-text" Disabled="procesando">
+                                            <MudSelectItem Value="0" Disabled="true">-- Seleccione Período --</MudSelectItem>
+                                            @foreach (var p in periodos) { <MudSelectItem Value="@p.Id">@p.Nombre</MudSelectItem> }
+                                        </MudSelect>
+                                    </MudItem>
+
+                                    <MudItem xs="12" sm="6">
+                                        <MudTextField T="DateTime?" Format="s" InputType="InputType.DateTimeLocal" Label="Fecha y Hora"
+                                                      @bind-Value="fechaHoraLocal" Required="true"
+                                                      Variant="Variant.Outlined" Class="force-black-text" Disabled="procesando" />
+                                    </MudItem>
+
+                                    <MudItem xs="12">
+                                        <MudSelect T="int" Label="Asignatura" @bind-Value="modelo.IdPlanMateria" Required="true"
+                                                   Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter" SearchBox="true"
+                                                   Class="force-black-text" Disabled="procesando">
+                                            <MudSelectItem Value="0" Disabled="true">-- Seleccione la Materia --</MudSelectItem>
+                                            @foreach (var pm in planMaterias) { <MudSelectItem Value="@pm.Id">@pm.NombreMateria (@pm.AnioCursada° Año)</MudSelectItem> }
+                                        </MudSelect>
+                                    </MudItem>
+
+                                    <MudItem xs="12" Class="mt-4"><div class="section-title">Composición del Tribunal</div></MudItem>
+
+                                    <MudItem xs="12" sm="4">
+                                        <MudSelect T="int" Label="Presidente" @bind-Value="modelo.IdPresidenteMesa" Required="true"
+                                                   Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter" SearchBox="true"
+                                                   Class="force-black-text" Disabled="procesando">
+                                            @foreach (var d in docentes) { <MudSelectItem Value="@d.IdDocente">@d.NombreCompleto</MudSelectItem> }
+                                        </MudSelect>
+                                    </MudItem>
+
+                                    <MudItem xs="12" sm="4">
+                                        <MudSelect T="int?" Label="Vocal 1" @bind-Value="modelo.IdVocal1" Clearable="true"
+                                                   Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter" SearchBox="true"
+                                                   Class="force-black-text" Disabled="procesando">
+                                            <MudSelectItem T="int?" Value="null">-- Opcional --</MudSelectItem>
+                                            @foreach (var d in docentes) { <MudSelectItem T="int?" Value="@d.IdDocente">@d.NombreCompleto</MudSelectItem> }
+                                        </MudSelect>
+                                    </MudItem>
+
+                                    <MudItem xs="12" sm="4">
+                                        <MudSelect T="int?" Label="Vocal 2" @bind-Value="modelo.IdVocal2" Clearable="true"
+                                                   Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter" SearchBox="true"
+                                                   Class="force-black-text" Disabled="procesando">
+                                            <MudSelectItem T="int?" Value="null">-- Opcional --</MudSelectItem>
+                                            @foreach (var d in docentes) { <MudSelectItem T="int?" Value="@d.IdDocente">@d.NombreCompleto</MudSelectItem> }
+                                        </MudSelect>
+                                    </MudItem>
+                                </MudGrid>
+                            </MudForm>
+                        }
+                    </div>
+
+                    @* --- FOOTER --- *@
+                    <div class="actions-footer">
+                        <MudButton OnClick="Cancelar" Variant="Variant.Outlined" Disabled="procesando">Cancelar</MudButton>
+                        <MudButton OnClick="Guardar" Variant="Variant.Filled" Color="Color.Primary" Class="px-6" Disabled="procesando || loading">
+                            @if (procesando) { <MudProgressCircular Class="ms-n1 mr-2" Size="Size.Small" Indeterminate="true" /> }
+                            <span>@(modelo.Id == 0 ? "CREAR MESA" : "GUARDAR")</span>
+                        </MudButton>
                     </div>
                 </div>
-                <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" OnClick="Cancelar" Size="Size.Small" Disabled="procesando" />
-            </div>
-
-            @* --- CUERPO --- *@
-            <div class="dialog-body">
-                @if (loading)
-                {
-                    <MudGrid Spacing="2">
-                        <MudItem xs="12"><MudSkeleton Height="30px" Width="30%" /></MudItem>
-                        <MudItem xs="12" sm="6"><MudSkeleton Height="60px" /></MudItem>
-                        <MudItem xs="12" sm="6"><MudSkeleton Height="60px" /></MudItem>
-                        <MudItem xs="12"><MudSkeleton Height="60px" /></MudItem>
-                        
-                        <MudItem xs="12"><MudSkeleton Height="30px" Width="30%" Class="mt-4" /></MudItem>
-                        <MudItem xs="12" sm="4"><MudSkeleton Height="60px" /></MudItem>
-                        <MudItem xs="12" sm="4"><MudSkeleton Height="60px" /></MudItem>
-                        <MudItem xs="12" sm="4"><MudSkeleton Height="60px" /></MudItem>
-                    </MudGrid>
-                }
-                else
-                {
-                    <MudForm @ref="form" ValidIsValid="true">
-                        <MudGrid Spacing="2">
-
-                            @* 1. DATOS PRINCIPALES *@
-                            <MudItem xs="12"><div class="section-title mt-0">Detalles Académicos</div></MudItem>
-
-                            <MudItem xs="12" sm="6">
-                                <MudSelect T="int" Label="Período de Exámenes" @bind-Value="modelo.IdPeriodo" Required="true"
-                                           Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter"
-                                           Class="force-black-text" Disabled="procesando">
-                                    <MudSelectItem Value="0" Disabled="true">-- Seleccione Período --</MudSelectItem>
-                                    @foreach (var p in periodos)
-                                    {
-                                        <MudSelectItem Value="@p.Id">@p.Nombre</MudSelectItem>
-                                    }
-                                </MudSelect>
-                            </MudItem>
-
-                            <MudItem xs="12" sm="6">
-                                <MudTextField T="DateTime?" Format="s" InputType="InputType.DateTimeLocal" Label="Fecha y Hora de la Mesa"
-                                              @bind-Value="fechaHoraLocal" Required="true"
-                                              Variant="Variant.Outlined" Class="force-black-text" Disabled="procesando" />
-                            </MudItem>
-
-                            <MudItem xs="12">
-                                <MudSelect T="int" Label="Asignatura a Evaluar" @bind-Value="modelo.IdPlanMateria" Required="true"
-                                           Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter" SearchBox="true"
-                                           Class="force-black-text" Disabled="procesando">
-                                    <MudSelectItem Value="0" Disabled="true">-- Seleccione la Materia --</MudSelectItem>
-                                    @foreach (var pm in planMaterias)
-                                    {
-                                        <MudSelectItem Value="@pm.Id">@pm.NombreMateria (Plan: @pm.AnioCursada° Año)</MudSelectItem>
-                                    }
-                                </MudSelect>
-                            </MudItem>
-
-                            @* 2. TRIBUNAL EXAMINADOR *@
-                            <MudItem xs="12" Class="mt-4"><div class="section-title">Composición del Tribunal</div></MudItem>
-
-                            <MudItem xs="12" sm="4">
-                                <MudSelect T="int" Label="Docente Titular (Presidente)" @bind-Value="modelo.IdPresidenteMesa" Required="true"
-                                           Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter" SearchBox="true"
-                                           Class="force-black-text" Disabled="procesando">
-                                    <MudSelectItem Value="0" Disabled="true">-- Obligatorio --</MudSelectItem>
-                                    @foreach (var d in docentes)
-                                    {
-                                        <MudSelectItem Value="@d.IdDocente">@d.NombreCompleto</MudSelectItem>
-                                    }
-                                </MudSelect>
-                            </MudItem>
-
-                            <MudItem xs="12" sm="4">
-                                <MudSelect T="int?" Label="Vocal 1 (Adjunto)" @bind-Value="modelo.IdVocal1" Clearable="true"
-                                           Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter" SearchBox="true"
-                                           Class="force-black-text" Disabled="procesando">
-                                    <MudSelectItem T="int?" Value="null">-- Opcional --</MudSelectItem>
-                                    @foreach (var d in docentes)
-                                    {
-                                        <MudSelectItem T="int?" Value="@d.IdDocente">@d.NombreCompleto</MudSelectItem>
-                                    }
-                                </MudSelect>
-                            </MudItem>
-
-                            <MudItem xs="12" sm="4">
-                                <MudSelect T="int?" Label="Vocal 2" @bind-Value="modelo.IdVocal2" Clearable="true"
-                                           Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter" SearchBox="true"
-                                           Class="force-black-text" Disabled="procesando">
-                                    <MudSelectItem T="int?" Value="null">-- Opcional --</MudSelectItem>
-                                    @foreach (var d in docentes)
-                                    {
-                                        <MudSelectItem T="int?" Value="@d.IdDocente">@d.NombreCompleto</MudSelectItem>
-                                    }
-                                </MudSelect>
-                            </MudItem>
-
-                        </MudGrid>
-                    </MudForm>
-                }
-            </div>
-
-            @* --- FOOTER INTEGRADO --- *@
-            <div class="actions-footer">
-                <MudButton OnClick="Cancelar" Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg font-weight-bold" Disabled="procesando">
-                    Cancelar
-                </MudButton>
-                <MudButton OnClick="Guardar" Variant="Variant.Filled" Color="Color.Primary" Class="rounded-lg font-weight-bold px-6" Disabled="procesando || loading">
-                    @if (procesando)
-                    {
-                        <MudProgressCircular Class="ms-n1 mr-2" Size="Size.Small" Indeterminate="true" Color="Color.Surface" />
-                        <span>GUARDANDO...</span>
-                    }
-                    else
-                    {
-                        <MudIcon Icon="@Icons.Material.Filled.Save" Class="mr-2" />
-                        <span>@(modelo.Id == 0 ? "CREAR MESA" : "GUARDAR CAMBIOS")</span>
-                    }
-                </MudButton>
-            </div>
-
-        </div>
+            </Authorized>
+            <NotAuthorized>
+                <div class="pa-8 text-center">
+                    <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Large" Color="Color.Error" Class="mb-4" />
+                    <MudText Typo="Typo.h6">Acceso Denegado</MudText>
+                    <MudText Typo="Typo.body2">No tiene permisos para modificar mesas de examen.</MudText>
+                    <MudButton OnClick="Cancelar" Variant="Variant.Filled" Color="Color.Primary" Class="mt-4">Cerrar</MudButton>
+                </div>
+            </NotAuthorized>
+        </AuthorizeView>
     </DialogContent>
 </MudDialog>
 
@@ -241,7 +204,7 @@
 
     private MudForm form = null!;
     private MesaFinalRequestDTO modelo = new();
-    private DateTime? fechaHoraLocal = DateTime.Today.AddHours(18); // Default 18:00hs
+    private DateTime? fechaHoraLocal = DateTime.Today.AddHours(18);
     private bool procesando = false;
     private bool loading = true;
 
@@ -252,117 +215,47 @@
     protected override async Task OnInitializedAsync()
     {
         loading = true;
-        StateHasChanged();
-
-        try
-        {
-            // Ejecutar las 3 peticiones en paralelo para máxima velocidad
+        try {
             var t1 = PeriodoService.GetAllAsync();
             var t2 = DocenteService.GetDocentesAsync();
             var t3 = PlanService.GetAllMateriasAsync();
-
             await Task.WhenAll(t1, t2, t3);
             
             periodos = t1.Result ?? new();
             docentes = t2.Result ?? new();
             planMaterias = t3.Result ?? new();
 
-            if (MesaAEditar != null)
-            {
-                modelo = new MesaFinalRequestDTO
-                {
-                    Id = MesaAEditar.Id,
-                    IdPeriodo = MesaAEditar.IdPeriodo,
-                    IdPlanMateria = MesaAEditar.IdPlanMateria,
-                    IdPresidenteMesa = MesaAEditar.IdPresidenteMesa,
-                    IdVocal1 = MesaAEditar.IdVocal1,
-                    IdVocal2 = MesaAEditar.IdVocal2,
-                    Estado = MesaAEditar.Estado
+            if (MesaAEditar != null) {
+                modelo = new MesaFinalRequestDTO {
+                    Id = MesaAEditar.Id, IdPeriodo = MesaAEditar.IdPeriodo, IdPlanMateria = MesaAEditar.IdPlanMateria,
+                    IdPresidenteMesa = MesaAEditar.IdPresidenteMesa, IdVocal1 = MesaAEditar.IdVocal1,
+                    IdVocal2 = MesaAEditar.IdVocal2, Estado = MesaAEditar.Estado
                 };
                 fechaHoraLocal = MesaAEditar.FechaHora;
-            }
-            else
-            {
-                // Auto-seleccionar el periodo activo si es una nueva mesa
+            } else {
                 var periodoActivo = periodos.FirstOrDefault(p => p.Activo);
-                if (periodoActivo != null)
-                {
-                    modelo.IdPeriodo = periodoActivo.Id;
-                }
+                if (periodoActivo != null) modelo.IdPeriodo = periodoActivo.Id;
             }
-        }
-        catch (Exception)
-        {
-            Snackbar.Add("Hubo un problema al cargar los catálogos del sistema.", Severity.Error);
-        }
-        finally
-        {
-            loading = false;
-            StateHasChanged();
-        }
+        } catch { Snackbar.Add("Error al cargar catálogos.", Severity.Error); }
+        finally { loading = false; StateHasChanged(); }
     }
 
     private async Task Guardar()
     {
         await form.Validate();
-        if (!form.IsValid) return;
-
-        if (modelo.IdPlanMateria == 0)
-        {
-            Snackbar.Add("Debes seleccionar una asignatura.", Severity.Warning);
-            return;
-        }
-        if (modelo.IdPresidenteMesa == 0)
-        {
-            Snackbar.Add("Toda mesa final debe tener un tribunal (Presidente asignado).", Severity.Warning);
-            return;
-        }
-        if (fechaHoraLocal == null)
-        {
-            Snackbar.Add("La fecha y hora del examen son obligatorias.", Severity.Warning);
-            return;
-        }
+        if (!form.IsValid || modelo.IdPlanMateria == 0 || modelo.IdPresidenteMesa == 0 || fechaHoraLocal == null) return;
 
         procesando = true;
-        StateHasChanged();
-
-        try
-        {
+        try {
             modelo.FechaHora = fechaHoraLocal.Value;
-
-            ResultadoOperacionDTO res;
-            if (modelo.Id == 0)
-            {
-                res = await MesaFinalService.CreateAsync(modelo);
-            }
-            else
-            {
-                res = await MesaFinalService.UpdateAsync(modelo);
-            }
-
-            if (res.Exito)
-            {
+            var res = modelo.Id == 0 ? await MesaFinalService.CreateAsync(modelo) : await MesaFinalService.UpdateAsync(modelo);
+            if (res.Exito) {
                 Snackbar.Add(res.Mensaje, Severity.Success);
                 MudDialog.Close(DialogResult.Ok(true));
-            }
-            else
-            {
-                Snackbar.Add(res.Mensaje, Severity.Error);
-            }
-        }
-        catch (Exception)
-        {
-            Snackbar.Add("Ocurrió un error inesperado al guardar la mesa.", Severity.Error);
-        }
-        finally
-        {
-            procesando = false;
-            StateHasChanged();
-        }
+            } else Snackbar.Add(res.Mensaje, Severity.Error);
+        } catch { Snackbar.Add("Error al guardar.", Severity.Error); }
+        finally { procesando = false; }
     }
 
-    private void Cancelar()
-    {
-        if (!procesando) MudDialog.Cancel();
-    }
+    private void Cancelar() { if (!procesando) MudDialog.Cancel(); }
 }

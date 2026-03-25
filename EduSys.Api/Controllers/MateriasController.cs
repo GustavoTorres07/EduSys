@@ -8,7 +8,8 @@ namespace EduSys.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize] // Lectura permitida para cualquier usuario logueado
+    // 🔓 Candado Base: Lectura permitida para cualquier usuario logueado
+    [Authorize]
     public class MateriasController : ControllerBase
     {
         private readonly IMateriaRepository _repo;
@@ -56,7 +57,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Administrador, Secretaria Academica")] // 🔒 Restringido
+        // 🔒 CANDADO REAL: Solo personal con permiso de ABM de Materias
+        [Authorize(Roles = "ACA_MATERIA_ABM")]
         [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(MateriaDTO))]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Post([FromBody] MateriaDTO dto)
@@ -77,7 +79,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpPut]
-        [Authorize(Roles = "Administrador, Secretaria Academica")] // 🔒 Restringido
+        // 🔒 CANDADO REAL
+        [Authorize(Roles = "ACA_MATERIA_ABM")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(MateriaDTO))]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -97,7 +100,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Administrador, Secretaria Academica")] // 🔒 Restringido
+        // 🔒 CANDADO REAL
+        [Authorize(Roles = "ACA_MATERIA_ABM")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Delete(int id)

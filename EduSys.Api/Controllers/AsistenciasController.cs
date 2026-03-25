@@ -8,7 +8,8 @@ namespace EduSys.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize] // Asegura que solo usuarios autenticados accedan
+    // 🔓 Candado Base: Requiere estar logueado
+    [Authorize]
     public class AsistenciasController : ControllerBase
     {
         private readonly IAsistenciaRepository _asistenciaRepo;
@@ -19,6 +20,11 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpGet("grilla/comision/{idComision}")]
+        // 🔒 CANDADO REAL: Puede entrar quien tenga permiso para VER o CARGAR asistencias
+        [Authorize(Roles = "ASIS_VER, ASIS_CARGAR")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(AsistenciaGrillaDTO))]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<ActionResult<AsistenciaGrillaDTO>> GetGrillaComision(int idComision)
         {
             var grilla = await _asistenciaRepo.GetGrillaByComisionAsync(idComision);
@@ -26,6 +32,12 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpPost("guardar")]
+        // 🔒 CANDADO REAL: Solo puede guardar quien tenga explícitamente el permiso de CARGAR
+        [Authorize(Roles = "ASIS_CARGAR")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<ActionResult> GuardarAsistencia([FromBody] GuardarAsistenciaRequestDTO request)
         {
             if (request == null || request.IdComision <= 0)

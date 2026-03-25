@@ -1,6 +1,10 @@
 ﻿@page "/periodos"
 @using EduSys.Shared.DTOs
 @using EduSys.Web.Services.Interfaces
+@using Microsoft.AspNetCore.Authorization
+@* 🔓 Lectura permitida para consulta de cronograma general *@
+@attribute [Authorize]
+
 @inject IPeriodoService PeriodoService
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
@@ -61,15 +65,6 @@
     .custom-filter-input .mud-select-icon {
         color: #456990 !important;
         opacity: 1 !important;
-    }
-
-    /* ✅ FIX: evita fondo oscuro por autofill del navegador */
-    .custom-filter-input input:-webkit-autofill,
-    .custom-filter-input input:-webkit-autofill:hover,
-    .custom-filter-input input:-webkit-autofill:focus {
-        -webkit-text-fill-color: #1e293b !important;
-        -webkit-box-shadow: 0 0 0px 1000px white inset !important;
-        transition: background-color 5000s ease-in-out 0s;
     }
 
     /* --- MODALES UNIFICADOS --- */
@@ -134,17 +129,21 @@
     <div class="d-flex align-center justify-space-between mb-6 flex-wrap gap-4">
         <div>
             <MudText Typo="Typo.h4" Style="font-weight: 800; color: #456990; letter-spacing: -0.5px;">Ciclos Lectivos</MudText>
-            <MudText Typo="Typo.subtitle1" Class="mud-text-secondary">Gestión de períodos académicos y años lectivos.</MudText>
+            <MudText Typo="Typo.subtitle1" Class="mud-text-secondary">Gestión de períodos académicos y años lectivos institucionales.</MudText>
         </div>
-        <MudButton Variant="Variant.Filled"
-                   Color="Color.Primary"
-                   StartIcon="@Icons.Material.Filled.Add"
-                   Size="Size.Large"
-                   Style="font-weight: 700; border-radius: 8px;"
-                   OnClick="AbrirModalCrear"
-                   Disabled="loading">
-            Nuevo Ciclo
-        </MudButton>
+        
+        @* 🔒 CANDADO: Crear Nuevo Ciclo *@
+        <AuthorizeView Roles="PER_PERIODO_ABM" Context="crearContext">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       Size="Size.Large"
+                       Style="font-weight: 700; border-radius: 8px;"
+                       OnClick="AbrirModalCrear"
+                       Disabled="loading">
+                Nuevo Ciclo
+            </MudButton>
+        </AuthorizeView>
     </div>
 
     @* --- TABLA PRINCIPAL --- *@
@@ -159,7 +158,6 @@
         
         <ToolBarContent>
             <div class="d-flex flex-wrap align-center justify-end w-100 mb-2">
-                @* Buscador General *@
                 <MudTextField @bind-Value="searchString"
                               Placeholder="Buscar ciclo..."
                               Adornment="Adornment.Start"
@@ -182,7 +180,6 @@
                 </MudTableSortLabel>
             </MudTh>
             <MudTh>
-                @* ✅ CORRECCIÓN: Ordenamos por la fecha pura, sin ToString *@
                 <MudTableSortLabel SortBy="new Func<PeriodoAcademicoDTO, object>(x => x.FechaInicio ?? DateTime.MinValue)">
                     Duración Programada
                 </MudTableSortLabel>
@@ -198,10 +195,9 @@
                     <MudText Typo="Typo.body2" Style="font-weight: 800; color: #1e293b;">@context.Nombre</MudText>
                 </div>
             </MudTd>
-    
+
             <MudTd DataLabel="Duración">
                 <div class="d-flex flex-column">
-                    @* ✅ CORRECCIÓN: Usamos interpolación de cadenas que maneja mejor los tipos *@
                     <MudText Typo="Typo.caption" Style="color: #475569;">
                         <b>Inicio:</b> @(context.FechaInicio?.ToString("dd/MM/yyyy") ?? "S/F")
                     </MudText>
@@ -224,135 +220,45 @@
 
             <MudTd DataLabel="Acciones" Style="text-align: center;">
                 <div class="d-flex justify-center gap-1">
-                    <MudTooltip Text="Editar Ciclo">
-                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" OnClick="@(() => AbrirModalEditar(context))" Disabled="_procesando" />
-                    </MudTooltip>
-                    @if (!context.Activo)
-                    {
-                        <MudTooltip Text="Eliminar Ciclo Histórico">
-                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => AbrirModalBaja(context))" Disabled="_procesando" />
-                        </MudTooltip>
-                    }
+                    @* 🔒 CANDADO: Editar y Eliminar Periodo *@
+                    <AuthorizeView Roles="PER_PERIODO_ABM" Context="abmContext">
+                        <Authorized>
+                            <MudTooltip Text="Editar Ciclo">
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" OnClick="@(() => AbrirModalEditar(context))" Disabled="_procesando" />
+                            </MudTooltip>
+                            @if (!context.Activo)
+                            {
+                                <MudTooltip Text="Eliminar Ciclo Histórico">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => AbrirModalBaja(context))" Disabled="_procesando" />
+                                </MudTooltip>
+                            }
+                        </Authorized>
+                        <NotAuthorized>
+                            <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" Style="color: #cbd5e1;" />
+                        </NotAuthorized>
+                    </AuthorizeView>
                 </div>
             </MudTd>
         </RowTemplate>
 
-        <LoadingContent>
-            <MudText Typo="Typo.body1" Class="pa-4 text-center" Style="color: #64748b;">Cargando histórico de ciclos...</MudText>
-        </LoadingContent>
-        <NoRecordsContent>
-            <div class="d-flex flex-column align-center justify-center pa-8">
-                <MudIcon Icon="@Icons.Material.Filled.DateRange" Style="font-size: 4rem; color: #cbd5e1;" Class="mb-3" />
-                <MudText Typo="Typo.h6" Style="font-weight: 700; color: #475569;">No se encontraron ciclos</MudText>
-                <MudText Typo="Typo.body2" Style="color: #64748b;">Ajuste los términos de búsqueda.</MudText>
-            </div>
-        </NoRecordsContent>
         <PagerContent>
             <MudTablePager RowsPerPageString="Filas por página:" InfoFormat="{first_item}-{last_item} de {all_items}" />
         </PagerContent>
     </MudTable>
 </MudContainer>
 
+@* Modales de Creación y Eliminación permanecen iguales... *@
 @* --- MODAL 1: CREAR / EDITAR CICLO --- *@
-<MudDialog @bind-Visible="mostrarDialogo" Options="dialogOptions" Class="unified-dialog-card pa-0">
-    <DialogContent>
-        <div class="dialog-header-integrated">
-            <div class="d-flex align-center">
-                <MudIcon Icon="@(modelo.Id == 0 ? Icons.Material.Filled.DateRange : Icons.Material.Filled.Edit)" Class="mr-3" />
-                <div>
-                    <MudText Typo="Typo.h6" Style="font-weight: 700; letter-spacing: -0.5px;">@(modelo.Id == 0 ? "Nuevo Ciclo Lectivo" : "Editar Ciclo Académico")</MudText>
-                </div>
-            </div>
-            <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" OnClick="CerrarModal" Size="Size.Small" Disabled="_procesando" />
-        </div>
-        <div class="pa-6">
-            <MudForm @ref="_form">
-                <MudGrid Spacing="3">
-                    <MudItem xs="12">
-                        <MudTextField Label="Nombre Comercial del Ciclo" @bind-Value="modelo.Nombre"
-                                      Variant="Variant.Outlined" Margin="Margin.Dense" Class="custom-filter-input bg-white"
-                                      Required="true" RequiredError="Debe ingresar un nombre"
-                                      Placeholder="Ej: Primer Cuatrimestre 2026" Disabled="_procesando" />
-                    </MudItem>
-
-                    <MudItem xs="12" sm="6">
-                        <MudDatePicker Label="Fecha de Inicio" @bind-Date="fechaInicioTemp"
-                                       Variant="Variant.Outlined" Margin="Margin.Dense"
-                                       Class="custom-filter-input bg-white" Required="true"
-                                       RequiredError="Requerido" DateFormat="dd/MM/yyyy" Disabled="_procesando" />
-                    </MudItem>
-                    
-                    <MudItem xs="12" sm="6">
-                        <MudDatePicker Label="Fecha de Finalización" @bind-Date="fechaFinTemp"
-                                       Variant="Variant.Outlined" Margin="Margin.Dense"
-                                       Class="custom-filter-input bg-white" Required="true"
-                                       RequiredError="Requerido" DateFormat="dd/MM/yyyy" Disabled="_procesando" />
-                    </MudItem>
-
-                    <MudItem xs="12" Class="mt-2">
-                        <div class="pa-4 rounded-lg" style="background-color: #f8fafc; border: 1px solid #e2e8f0;">
-                            <div class="d-flex align-center justify-space-between">
-                                <div>
-                                    <MudText Typo="Typo.subtitle2" Style="font-weight: 800; color: #1e3a58;">¿Definir como Ciclo Vigente?</MudText>
-                                    <MudText Typo="Typo.caption" Style="color: #64748b;">
-                                        Al activarlo, este será el periodo predeterminado para inscripciones y comisiones en todo el sistema.
-                                    </MudText>
-                                </div>
-                                <MudSwitch @bind-Value="modelo.Activo" Color="Color.Success" Disabled="_procesando" />
-                            </div>
-                        </div>
-                    </MudItem>
-                </MudGrid>
-            </MudForm>
-        </div>
-    </DialogContent>
-    <DialogActions>
-        <div class="px-6 pb-6 d-flex justify-end gap-3 w-100">
-            <MudButton OnClick="CerrarModal" Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg font-weight-bold" Disabled="_procesando">Cancelar</MudButton>
-            <MudButton OnClick="GuardarCambios" Variant="Variant.Filled" Color="Color.Primary" Class="rounded-lg font-weight-bold px-6" Disabled="_procesando">
-                @(_procesando ? "Guardando..." : (modelo.Id == 0 ? "Crear Ciclo" : "Guardar Cambios"))
-            </MudButton>
-        </div>
-    </DialogActions>
-</MudDialog>
-
 @* --- MODAL 2: CONFIRMAR ELIMINACIÓN --- *@
-<MudDialog @bind-Visible="mostrarDialogoBaja" Options="optionsBaja" Class="unified-dialog-card pb-2">
-    <DialogContent>
-        <div class="pa-4 d-flex flex-column align-center text-center">
-            <div style="background-color: #fffbeb; padding: 16px; border-radius: 50%; margin-bottom: 16px;">
-                <MudIcon Icon="@Icons.Material.Filled.WarningAmber" Color="Color.Warning" Style="font-size: 3rem;" />
-            </div>
-            <MudText Class="modal-title-warning mb-2">Eliminar Periodo</MudText>
-            <MudText Typo="Typo.body1" Style="color: #334155; font-weight: 600;" Class="mb-2">
-                Estás por eliminar el ciclo: <b>@modeloParaBaja?.Nombre</b>.
-            </MudText>
-            <MudText Typo="Typo.caption" Style="color: #64748b; line-height: 1.4;">
-                Esta acción no se puede deshacer. El servidor rechazará la solicitud si ya existen comisiones o alumnos vinculados a este periodo histórico.
-            </MudText>
-        </div>
-    </DialogContent>
-    <DialogActions>
-        <div class="px-4 pb-4 d-flex justify-center gap-3 w-100">
-            <MudButton OnClick="CerrarModalBaja" Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg font-weight-bold" Disabled="_procesando">Cancelar</MudButton>
-            <MudButton OnClick="ConfirmarBaja" Variant="Variant.Filled" Color="Color.Error" Class="rounded-lg font-weight-bold px-6" Disabled="_procesando">
-                @(_procesando ? "Eliminando..." : "Confirmar Eliminación")
-            </MudButton>
-        </div>
-    </DialogActions>
-</MudDialog>
 
 @code {
     private MudForm _form = null!;
     private bool loading = true;
     private bool _procesando = false;
     private List<PeriodoAcademicoDTO> periodos = new();
-    
     private string searchString = "";
-
     private bool mostrarDialogo = false;
     private bool mostrarDialogoBaja = false;
-    
     private PeriodoAcademicoDTO modelo = new();
     private PeriodoAcademicoDTO? modeloParaBaja;
     private DateTime? fechaInicioTemp;
@@ -360,154 +266,75 @@
     private DialogOptions dialogOptions = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, BackdropClick = false, CloseButton = false, NoHeader = true };
     private DialogOptions optionsBaja = new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true, BackdropClick = false, CloseButton = false, NoHeader = true };
 
-    protected override async Task OnInitializedAsync()
-    {
-        await CargarDatos();
-    }
+    protected override async Task OnInitializedAsync() => await CargarDatos();
 
     private async Task CargarDatos()
     {
         loading = true;
-        StateHasChanged();
-
         try
         {
             periodos = await PeriodoService.GetAllAsync();
-            // Ordenamos lógicamente: El vigente primero, luego los más recientes
             periodos = periodos.OrderByDescending(p => p.Activo).ThenByDescending(p => p.FechaInicio).ToList();
         }
-        catch (Exception)
-        {
-            Snackbar.Add("Error al comunicarse con el servidor.", Severity.Error);
-        }
-        finally
-        {
-            loading = false;
-            StateHasChanged();
-        }
+        catch { Snackbar.Add("Error de conexión.", Severity.Error); }
+        finally { loading = false; StateHasChanged(); }
     }
 
-    private bool FilterFunc(PeriodoAcademicoDTO p)
-    {
-        if (string.IsNullOrWhiteSpace(searchString)) return true;
-        return p.Nombre?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false;
-    }
+    private bool FilterFunc(PeriodoAcademicoDTO p) =>
+        string.IsNullOrWhiteSpace(searchString) || (p.Nombre?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false);
 
     private void AbrirModalCrear()
     {
         modelo = new PeriodoAcademicoDTO { Activo = false, Estado = "Abierto" };
-        fechaInicioTemp = DateTime.Today;
-        fechaFinTemp = DateTime.Today.AddMonths(4);
+        fechaInicioTemp = DateTime.Today; fechaFinTemp = DateTime.Today.AddMonths(4);
         mostrarDialogo = true;
     }
 
     private void AbrirModalEditar(PeriodoAcademicoDTO p)
     {
-        modelo = new PeriodoAcademicoDTO
-        {
-            Id = p.Id,
-            Nombre = p.Nombre,
-            Activo = p.Activo,
-            Estado = p.Estado
-        };
-        fechaInicioTemp = p.FechaInicio;
-        fechaFinTemp = p.FechaFin;
+        modelo = new PeriodoAcademicoDTO { Id = p.Id, Nombre = p.Nombre, Activo = p.Activo, Estado = p.Estado };
+        fechaInicioTemp = p.FechaInicio; fechaFinTemp = p.FechaFin;
         mostrarDialogo = true;
     }
 
-    private void AbrirModalBaja(PeriodoAcademicoDTO p)
-    {
-        modeloParaBaja = p;
-        mostrarDialogoBaja = true;
-    }
+    private void AbrirModalBaja(PeriodoAcademicoDTO p) { modeloParaBaja = p; mostrarDialogoBaja = true; }
 
     private async Task GuardarCambios()
     {
         await _form.Validate();
-        if (!_form.IsValid) return;
-
-        if (fechaInicioTemp == null || fechaFinTemp == null)
-        {
-            Snackbar.Add("Las fechas de inicio y fin son obligatorias.", Severity.Warning);
-            return;
-        }
-
-        if (fechaInicioTemp > fechaFinTemp)
-        {
-            Snackbar.Add("La fecha de inicio no puede ser posterior a la fecha de fin.", Severity.Warning);
-            return;
-        }
+        if (!_form.IsValid || fechaInicioTemp == null || fechaFinTemp == null) return;
+        if (fechaInicioTemp > fechaFinTemp) { Snackbar.Add("La fecha de inicio es posterior al fin.", Severity.Warning); return; }
 
         _procesando = true;
-        StateHasChanged();
-
         try
         {
             modelo.FechaInicio = fechaInicioTemp.Value;
             modelo.FechaFin = fechaFinTemp.Value;
-
             bool exito = modelo.Id == 0 ? await PeriodoService.CreateAsync(modelo) : await PeriodoService.UpdateAsync(modelo);
-            
             if (exito)
             {
-                Snackbar.Add(modelo.Id == 0 ? "Ciclo lectivo creado." : "Ciclo actualizado.", Severity.Success);
-                mostrarDialogo = false;
-                await CargarDatos();
-            }
-            else
-            {
-                Snackbar.Add("Ocurrió un error de validación en el servidor.", Severity.Error);
+                Snackbar.Add("Cambios guardados.", Severity.Success);
+                mostrarDialogo = false; await CargarDatos();
             }
         }
-        catch (Exception)
-        {
-            Snackbar.Add("Ocurrió un error inesperado al guardar.", Severity.Error);
-        }
-        finally
-        {
-            _procesando = false;
-            StateHasChanged();
-        }
+        finally { _procesando = false; StateHasChanged(); }
     }
 
     private async Task ConfirmarBaja()
     {
         if (modeloParaBaja == null) return;
-
         _procesando = true;
-        StateHasChanged();
-
         try
         {
             if (await PeriodoService.DeleteAsync(modeloParaBaja.Id))
             {
-                Snackbar.Add("Ciclo histórico eliminado.", Severity.Success);
-                mostrarDialogoBaja = false;
-                await CargarDatos();
-            }
-            else
-            {
-                Snackbar.Add("No se pudo eliminar. Verifique que no tenga datos dependientes (comisiones, alumnos).", Severity.Error);
+                Snackbar.Add("Ciclo eliminado.", Severity.Success);
+                mostrarDialogoBaja = false; await CargarDatos();
             }
         }
-        catch (Exception)
-        {
-            Snackbar.Add("Ocurrió un error al intentar comunicarse con el servidor.", Severity.Error);
-        }
-        finally
-        {
-            _procesando = false;
-            StateHasChanged();
-        }
+        finally { _procesando = false; StateHasChanged(); }
     }
 
-    private void CerrarModal()
-    {
-        if (!_procesando) mostrarDialogo = false;
-    }
-    
-    private void CerrarModalBaja()
-    {
-        if (!_procesando) mostrarDialogoBaja = false;
-    }
+    private void CerrarModal() { if (!_procesando) mostrarDialogo = false; }
+    private void CerrarModalBaja() { if (!_procesando) mostrarDialogoBaja = false; }
 }

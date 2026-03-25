@@ -8,7 +8,8 @@ namespace EduSys.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize] // 🔒 Aseguramos que solo usuarios del sistema vean los horarios
+    // 🔓 Candado Base: Aseguramos que solo usuarios del sistema vean los horarios
+    [Authorize]
     public class HorariosController : ControllerBase
     {
         private readonly IHorarioRepository _repo;
@@ -41,7 +42,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Administrador, Secretaria Academica")] // 🔒 Solo gestión puede asignar horarios
+        // 🔒 CANDADO REAL: Solo personal con permiso para editar horarios
+        [Authorize(Roles = "COM_HORARIOS_EDIT")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status409Conflict)] // Para cuando el aula está ocupada
@@ -74,7 +76,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Administrador, Secretaria Academica")] // 🔒 Solo gestión puede borrar
+        // 🔒 CANDADO REAL
+        [Authorize(Roles = "COM_HORARIOS_EDIT")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Delete(int id)

@@ -7,6 +7,7 @@ namespace EduSys.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    // 🔓 Candado Base: Requiere autenticación
     [Authorize]
     public class MesasFinalesController : ControllerBase
     {
@@ -18,7 +19,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "Administrador, Secretaria Academica, Coordinador")]
+        // 🔒 CANDADO REAL: Ver todas las mesas (para el panel administrativo de ABM o Actas)
+        [Authorize(Roles = "INS_FINAL_MESAS_ABM, FINAL_CARGAR_RESULTADO")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<MesaFinalDTO>))]
         public async Task<ActionResult<List<MesaFinalDTO>>> Get()
         {
@@ -26,6 +28,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpGet("periodo/{idPeriodo}")]
+        // 🔓 LECTURA GENERAL: Hereda [Authorize]. 
+        // Se deja abierto para que alumnos y docentes puedan ver la oferta de mesas disponibles.
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<MesaFinalDTO>))]
         public async Task<ActionResult<List<MesaFinalDTO>>> GetByPeriodo(int idPeriodo)
         {
@@ -33,7 +37,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Administrador, Secretaria Academica")]
+        // 🔒 CANDADO REAL: Solo personal con permiso para crear/editar Mesas de Finales
+        [Authorize(Roles = "INS_FINAL_MESAS_ABM")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ResultadoOperacionDTO))]
         [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ResultadoOperacionDTO))]
         public async Task<ActionResult<ResultadoOperacionDTO>> Post([FromBody] MesaFinalRequestDTO dto)
@@ -46,7 +51,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpPut]
-        [Authorize(Roles = "Administrador, Secretaria Academica")]
+        // 🔒 CANDADO REAL
+        [Authorize(Roles = "INS_FINAL_MESAS_ABM")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ResultadoOperacionDTO))]
         [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ResultadoOperacionDTO))]
         public async Task<ActionResult<ResultadoOperacionDTO>> Put([FromBody] MesaFinalRequestDTO dto)
@@ -59,7 +65,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Administrador, Secretaria Academica")]
+        // 🔒 CANDADO REAL
+        [Authorize(Roles = "INS_FINAL_MESAS_ABM")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ResultadoOperacionDTO))]
         [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ResultadoOperacionDTO))]
         public async Task<ActionResult<ResultadoOperacionDTO>> Delete(int id)
@@ -74,7 +81,9 @@ namespace EduSys.Api.Controllers
         // ==================================================================
 
         [HttpGet("{idMesa}/acta")]
-        [ProducesResponseType(StatusCodes.Status200OK)] // Puedes cambiar a typeof(ActaMesaFinalDTO)
+        // 🔒 CANDADO MIXTO: Permite a los administrativos de actas o al Docente a cargo de la mesa
+        [Authorize(Roles = "FINAL_CARGAR_RESULTADO, Docente")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetActaMesaFinal(int idMesa)
         {
@@ -86,6 +95,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpPut("inscripcion/{idInscripcion}/nota")]
+        // 🔒 CANDADO MIXTO
+        [Authorize(Roles = "FINAL_CARGAR_RESULTADO, Docente")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> GuardarNotaFinal(int idInscripcion, [FromBody] decimal? nota)
@@ -97,6 +108,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpPost("{idMesa}/cerrar-acta")]
+        // 🔒 CANDADO MIXTO
+        [Authorize(Roles = "FINAL_CARGAR_RESULTADO, Docente")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> CerrarActaFinal(int idMesa, [FromBody] CierreActaDTO dto)

@@ -172,12 +172,14 @@
     {
         try
         {
+            _saliendo = true;
             await AuthService.LogoutAsync();
             Navigation.NavigateTo("/", forceLoad: true);
         }
         catch (Exception)
         {
             Snackbar.Add("Ocurrió un problema al cerrar sesión.", Severity.Error);
+            _saliendo = false;
         }
     }
 
@@ -187,24 +189,12 @@
         var user = authState.User;
         
         if (user.IsInRole("Docente"))
-        {
             Navigation.NavigateTo("/docente/mi-perfil");
-        }
         else if (user.IsInRole("Alumno"))
-        {
             Navigation.NavigateTo("/alumno/perfil");
-        }
         else
         {
-            var options = new DialogOptions
-            {
-                MaxWidth = MaxWidth.Small,
-                FullWidth = true,
-                NoHeader = true,
-                CloseButton = false,
-                BackdropClick = true
-            };
-            
+            var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, NoHeader = true, CloseButton = false, BackdropClick = true };
             DialogService.Show<DialogoPerfil>("", options);
         }
     }
@@ -229,26 +219,31 @@
         return foto;
     }
 
-    // 🚀 MODIFICADO: Determina color en base a multirroles
+    // 🚀 FIX: Lógica de colores adaptada a la coexistencia de Permisos + Roles
     private Color GetAvatarColor(ClaimsPrincipal user)
     {
-        if (user.FindAll(ClaimTypes.Role).Count() > 1) return Color.Dark;
+        if (user.IsInRole("Administrador") && user.IsInRole("Docente")) return Color.Dark;
         if (user.IsInRole("Docente")) return Color.Tertiary;
         if (user.IsInRole("Alumno")) return Color.Secondary;
         return Color.Primary;
     }
 
-    // 🚀 MODIFICADO: Genera etiqueta para Multirroles
+    // 🚀 FIX: Etiqueta de Rol filtrando Permisos Granulares
     private string GetRoleLabel(ClaimsPrincipal user)
     {
-        var rolesCount = user.FindAll(ClaimTypes.Role).Count();
-        if (rolesCount > 1) return "MULTIRROL";
+        var structuralRoles = new[] { "Administrador", "Secretaria Academica", "Coordinador", "Docente", "Alumno" };
+        var assignedStructuralRoles = user.FindAll(ClaimTypes.Role)
+                                          .Select(c => c.Value)
+                                          .Where(r => structuralRoles.Contains(r))
+                                          .ToList();
 
-        if (user.IsInRole("Docente")) return "DOCENTE";
-        if (user.IsInRole("Alumno")) return "ALUMNO REGULAR";
+        if (assignedStructuralRoles.Count > 1) return "MULTIRROL";
+
         if (user.IsInRole("Administrador")) return "ADMINISTRADOR";
         if (user.IsInRole("Secretaria Academica")) return "SECRETARÍA";
         if (user.IsInRole("Coordinador")) return "COORDINADOR";
+        if (user.IsInRole("Docente")) return "DOCENTE";
+        if (user.IsInRole("Alumno")) return "ALUMNO REGULAR";
         
         return "USUARIO";
     }

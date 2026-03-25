@@ -9,6 +9,8 @@ namespace EduSys.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    // 🔓 Candado Base: Exige autenticación
+    [Authorize]
     public class DocentesController : ControllerBase
     {
         private readonly IDocenteRepository _docenteRepository;
@@ -22,11 +24,11 @@ namespace EduSys.Api.Controllers
 
         // =================================================================================
         // SECCIÓN 1: MÉTODOS ADMINISTRATIVOS (ABM)
-        // Solo para Administradores y Secretaría
         // =================================================================================
 
         [HttpGet]
-        [Authorize(Roles = "Administrador, Secretaria Academica")]
+        // 🔒 CANDADO REAL: Solo personal con permiso de gestionar docentes
+        [Authorize(Roles = "DOC_ABM")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<DocenteListadoDTO>))]
         public async Task<ActionResult<List<DocenteListadoDTO>>> Get()
         {
@@ -34,7 +36,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpGet("{id}")]
-        [Authorize(Roles = "Administrador, Secretaria Academica")]
+        // 🔒 CANDADO REAL
+        [Authorize(Roles = "DOC_ABM")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(DocenteRequestDTO))]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<DocenteRequestDTO>> Get(int id)
@@ -45,7 +48,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Administrador, Secretaria Academica")]
+        // 🔒 CANDADO REAL
+        [Authorize(Roles = "DOC_ABM")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Post(DocenteRequestDTO dto)
@@ -91,7 +95,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpPut]
-        [Authorize(Roles = "Administrador, Secretaria Academica")]
+        // 🔒 CANDADO REAL
+        [Authorize(Roles = "DOC_ABM")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -106,7 +111,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Administrador, Secretaria Academica")]
+        // 🔒 CANDADO REAL
+        [Authorize(Roles = "DOC_ABM")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Delete(int id)
@@ -119,11 +125,12 @@ namespace EduSys.Api.Controllers
 
         // =================================================================================
         // SECCIÓN 2: MÉTODOS DEL DOCENTE (Dashboard y Gestión)
-        // Accesibles por el rol Docente
+        // Accesibles por el rol base estructural "Docente"
         // =================================================================================
 
         [HttpGet("mis-comisiones")]
-        [Authorize(Roles = "Docente, Administrador")]
+        // 🔒 Candado Estructural: Solo usuarios que sean Docentes pueden ver sus propias comisiones
+        [Authorize(Roles = "Docente")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<ComisionDocenteDTO>))]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<ActionResult<List<ComisionDocenteDTO>>> GetMisComisiones()
@@ -137,10 +144,8 @@ namespace EduSys.Api.Controllers
             return Ok(comisiones);
         }
 
-        // Asegúrate de tener este using arriba en el controlador:
-        // using System.Security.Claims;
-
         [HttpGet("mi-perfil")]
+        // 🔒 Candado Estructural: Solo usuarios que sean Docentes
         [Authorize(Roles = "Docente")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(DocenteRequestDTO))]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]

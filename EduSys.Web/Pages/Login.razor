@@ -291,10 +291,10 @@
         }
     }
 
-    /// <summary>
+/// <summary>
     /// Determina a dónde redirigir al usuario tras el login.
-    /// Si hay un returnUrl válido Y el rol tiene acceso a esa ruta → lo usa.
-    /// De lo contrario → redirige al dashboard propio del rol.
+    /// Si hay un returnUrl válido, lo usa y delega la seguridad a la página de destino.
+    /// De lo contrario → redirige al dashboard propio del rol estructural.
     /// </summary>
     private string ResolverDestino(string rol, bool debeCambiarPass, string? returnUrl)
     {
@@ -302,41 +302,16 @@
         if (debeCambiarPass)
             return "/cambiar-clave";
 
-        // 2. Rutas permitidas por rol (prefijos en minúsculas)
-        var rutasPermitidas = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+        // 2. Si hay un returnUrl, confiamos en él y redirigimos.
+        // La etiqueta [Authorize(Roles="...")] de la página destino se encargará de 
+        // bloquear el acceso si el usuario no tiene el permiso granular adecuado.
+        if (!string.IsNullOrWhiteSpace(returnUrl))
         {
-            ["Alumno"] = new[]
-            {
-                "alumno", "inscripcion-materias", "historia-academica",
-                "tramites", "dashboard-alumno", "soporte"
-            },
-            ["Docente"] = new[]
-            {
-                "docente", "mis-comisiones", "dashboard-docente",
-                "soporte", "asistencia"
-            },
-            ["Administrador"] = new[]
-            {
-                "home", "admin", "carreras", "planes", "materias", "sedes",
-                "comisiones", "alumnos", "docentes", "periodos", "horarios",
-                "evaluaciones", "notas", "reportes", "emails", "usuarios",
-                "modalidades", "regimenes", "calendario", "mesas-finales",
-                "resultados-finales", "soporte", "institucion", "asistencia"
-            },
-            ["Secretaria Academica"] = new[]
-            {
-                "home", "admin", "carreras", "planes", "materias", "sedes",
-                "comisiones", "alumnos", "docentes", "periodos", "horarios",
-                "evaluaciones", "notas", "reportes", "emails", "soporte",
-                "mesas-finales", "resultados-finales", "asistencia"
-            },
-            ["Coordinador"] = new[]
-            {
-                "home", "comisiones", "horarios", "evaluaciones", "notas", "soporte"
-            }
-        };
+            var rutaLimpia = Uri.UnescapeDataString(returnUrl).TrimStart('/');
+            return "/" + rutaLimpia;
+        }
 
-        // 3. Dashboard por defecto para cada rol
+        // 3. Dashboard por defecto para cada rol estructural base
         var dashboards = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["Alumno"]               = "/dashboard-alumno?login=exito",
@@ -346,31 +321,8 @@
             ["Coordinador"]          = "/Home?login=exito"
         };
 
-        var dashboardDefault = dashboards.TryGetValue(rol, out var db) ? db : "/";
-
-        // 4. Si no hay returnUrl → ir directo al dashboard del rol
-        if (string.IsNullOrWhiteSpace(returnUrl))
-            return dashboardDefault;
-
-        // 5. Decodificar y limpiar el returnUrl
-        var rutaLimpia = Uri.UnescapeDataString(returnUrl)
-                            .TrimStart('/')
-                            .ToLowerInvariant();
-
-        // 6. Verificar si el rol tiene acceso al primer segmento de la ruta
-        if (rutasPermitidas.TryGetValue(rol, out var permitidas))
-        {
-            bool tieneAcceso = permitidas.Any(prefijo =>
-                rutaLimpia.Equals(prefijo, StringComparison.OrdinalIgnoreCase) ||
-                rutaLimpia.StartsWith(prefijo + "/", StringComparison.OrdinalIgnoreCase) ||
-                rutaLimpia.StartsWith(prefijo + "?", StringComparison.OrdinalIgnoreCase));
-
-            if (tieneAcceso)
-                return "/" + rutaLimpia;
-        }
-
-        // 7. Sin acceso → dashboard del rol (sin parámetro login=exito para no confundir)
-        return dashboardDefault;
+        // Si el rol estructural no está en la lista, lo mandamos al Home por defecto.
+        return dashboards.TryGetValue(rol, out var db) ? db : "/Home?login=exito";
     }
 
     private async Task EnviarCorreoRecuperacion()

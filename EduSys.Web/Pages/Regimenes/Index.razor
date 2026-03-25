@@ -1,6 +1,10 @@
 ﻿@page "/regimenes"
 @using EduSys.Shared.DTOs
 @using EduSys.Web.Services.Interfaces
+@using Microsoft.AspNetCore.Authorization
+@* 🔓 Lectura permitida para consulta general *@
+@attribute [Authorize]
+
 @inject IRegimenService RegimenService
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
@@ -42,7 +46,6 @@
         font-weight: 600;
     }
 
-    /* ✅ FIX PRINCIPAL: texto visible en todos los tipos de input */
     .custom-filter-input input,
     .custom-filter-input textarea,
     .custom-filter-input .mud-select-input,
@@ -55,7 +58,6 @@
         -webkit-text-fill-color: #1e293b !important;
     }
 
-    /* ✅ FIX: Visibilidad de iconos en los inputs (Adornments y Selects) */
     .custom-filter-input .mud-icon-root,
     .custom-filter-input .mud-input-adornment .mud-icon-root,
     .custom-filter-input .mud-select-icon {
@@ -63,16 +65,6 @@
         opacity: 1 !important;
     }
 
-    /* ✅ FIX: evita fondo oscuro por autofill del navegador */
-    .custom-filter-input input:-webkit-autofill,
-    .custom-filter-input input:-webkit-autofill:hover,
-    .custom-filter-input input:-webkit-autofill:focus {
-        -webkit-text-fill-color: #1e293b !important;
-        -webkit-box-shadow: 0 0 0px 1000px white inset !important;
-        transition: background-color 5000s ease-in-out 0s;
-    }
-
-    /* Botones de Filtro Tipo Segmented Control */
     .filter-group {
         display: flex;
         background-color: #f1f5f9;
@@ -130,15 +122,19 @@
             <MudText Typo="Typo.h4" Style="font-weight: 800; color: #456990; letter-spacing: -0.5px;">Gestión de Regímenes</MudText>
             <MudText Typo="Typo.subtitle1" Class="mud-text-secondary">Modalidades de temporalidad de cursada (Anual, Cuatrimestral, etc.).</MudText>
         </div>
-        <MudButton Variant="Variant.Filled"
-                   Color="Color.Primary"
-                   StartIcon="@Icons.Material.Filled.Add"
-                   Size="Size.Large"
-                   Style="font-weight: 700; border-radius: 8px;"
-                   OnClick="AbrirModalCrear"
-                   Disabled="loading">
-            Nuevo Régimen
-        </MudButton>
+        
+        @* 🔒 CANDADO: Solo los que pueden configurar parámetros académicos ven el botón *@
+        <AuthorizeView Roles="CFG_PARAMETROS_ACA" Context="crearContext">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       Size="Size.Large"
+                       Style="font-weight: 700; border-radius: 8px;"
+                       OnClick="AbrirModalCrear"
+                       Disabled="loading">
+                Nuevo Régimen
+            </MudButton>
+        </AuthorizeView>
     </div>
 
     @* --- TABLA PRINCIPAL --- *@
@@ -154,8 +150,6 @@
         
         <ToolBarContent>
             <div class="d-flex flex-wrap align-center gap-4 w-100 mb-2">
-                
-                @* 1. Filtro Estado (Segmented Control) *@
                 <div class="filter-group">
                     <MudButton OnClick="@(() => CambiarFiltro("Todos"))" Variant="@(filtroEstado == "Todos" ? Variant.Filled : Variant.Text)" Color="@(filtroEstado == "Todos" ? Color.Primary : Color.Default)" Size="Size.Small" Class="filter-btn" DisableElevation="true">Todos</MudButton>
                     <MudButton OnClick="@(() => CambiarFiltro("Activos"))" Variant="@(filtroEstado == "Activos" ? Variant.Filled : Variant.Text)" Color="@(filtroEstado == "Activos" ? Color.Success : Color.Default)" Size="Size.Small" Class="filter-btn" DisableElevation="true">Activos</MudButton>
@@ -164,7 +158,6 @@
 
                 <MudSpacer />
 
-                @* 2. Buscador General *@
                 <MudTextField @bind-Value="searchString"
                               Placeholder="Buscar régimen..."
                               Adornment="Adornment.Start"
@@ -204,33 +197,31 @@
 
             <MudTd DataLabel="Acciones" Style="text-align: center;">
                 <div class="d-flex justify-center gap-1">
-                    <MudTooltip Text="Editar">
-                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" OnClick="@(() => AbrirModalEditar(context))" Disabled="_procesando" />
-                    </MudTooltip>
-                    @if (context.Activo)
-                    {
-                        <MudTooltip Text="Dar de Baja">
-                            <MudIconButton Icon="@Icons.Material.Filled.Block" Color="Color.Warning" Size="Size.Small" OnClick="@(() => AbrirModalBaja(context))" Disabled="_procesando" />
-                        </MudTooltip>
-                    }
-                    else
-                    {
-                        <MudIconButton Icon="@Icons.Material.Filled.Circle" Size="Size.Small" Color="Color.Default" Disabled="true" Style="opacity: 0.3;" />
-                    }
+                    @* 🔒 CANDADO: Acciones de gestión protegidas *@
+                    <AuthorizeView Roles="CFG_PARAMETROS_ACA" Context="abmContext">
+                        <Authorized>
+                            <MudTooltip Text="Editar">
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" OnClick="@(() => AbrirModalEditar(context))" Disabled="_procesando" />
+                            </MudTooltip>
+                            @if (context.Activo)
+                            {
+                                <MudTooltip Text="Dar de Baja">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Block" Color="Color.Warning" Size="Size.Small" OnClick="@(() => AbrirModalBaja(context))" Disabled="_procesando" />
+                                </MudTooltip>
+                            }
+                            else
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.Circle" Size="Size.Small" Color="Color.Default" Disabled="true" Style="opacity: 0.3;" />
+                            }
+                        </Authorized>
+                        <NotAuthorized>
+                            <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" Style="color: #cbd5e1;" />
+                        </NotAuthorized>
+                    </AuthorizeView>
                 </div>
             </MudTd>
         </RowTemplate>
 
-        <LoadingContent>
-            <MudText Typo="Typo.body1" Class="pa-4 text-center" Style="color: #64748b;">Cargando catálogo de regímenes...</MudText>
-        </LoadingContent>
-        <NoRecordsContent>
-            <div class="d-flex flex-column align-center justify-center pa-8">
-                <MudIcon Icon="@Icons.Material.Filled.Schedule" Style="font-size: 4rem; color: #cbd5e1;" Class="mb-3" />
-                <MudText Typo="Typo.h6" Style="font-weight: 700; color: #475569;">No se encontraron registros</MudText>
-                <MudText Typo="Typo.body2" Style="color: #64748b;">No hay regímenes que coincidan con los filtros actuales.</MudText>
-            </div>
-        </NoRecordsContent>
         <PagerContent>
             <MudTablePager RowsPerPageString="Filas por página:" InfoFormat="{first_item}-{last_item} de {all_items}" />
         </PagerContent>
@@ -363,7 +354,6 @@
 
     private bool FilterFunc(RegimenDTO reg)
     {
-        // 1. Filtro Estado
         bool matchEstado = filtroEstado switch
         {
             "Activos" => reg.Activo,
@@ -372,7 +362,6 @@
         };
         if (!matchEstado) return false;
 
-        // 2. Buscador de Texto
         if (!string.IsNullOrWhiteSpace(searchString))
         {
             var term = searchString.Trim().ToLower();
@@ -383,7 +372,6 @@
         return true;
     }
 
-    // --- CRUD ---
     private void AbrirModalCrear()
     {
         regimenModel = new RegimenDTO { Activo = true };

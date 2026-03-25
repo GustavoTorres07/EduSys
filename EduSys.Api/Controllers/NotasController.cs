@@ -7,7 +7,8 @@ namespace EduSys.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Roles = "Docente, Administrador, Secretaria Academica")]
+    // 🔓 Candado Base: Exige autenticación, pero los permisos se delegan método por método.
+    [Authorize]
     public class NotasController : ControllerBase
     {
         private readonly INotasRepository _notasRepo;
@@ -18,6 +19,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpGet("planilla/{idComision}")]
+        // 🔒 CANDADO MIXTO: El Docente ve su planilla, y los administrativos de Notas/Actas/Evaluaciones también
+        [Authorize(Roles = "Docente, EVA_CARGAR_NOTAS, ACTA_VER, EVA_ABM")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PlanillaNotasDTO))]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<PlanillaNotasDTO>> GetPlanilla(int idComision)
@@ -31,6 +34,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpPost("guardar")]
+        // 🔒 CANDADO MIXTO
+        [Authorize(Roles = "Docente, EVA_CARGAR_NOTAS")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> GuardarNota([FromBody] GuardarNotaDTO dto)
@@ -46,6 +51,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpPost("nueva-evaluacion/{idComision}")]
+        // 🔒 CANDADO MIXTO
+        [Authorize(Roles = "Docente, EVA_ABM")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> CrearEvaluacion(int idComision, [FromBody] EvaluacionDTO dto)
@@ -59,6 +66,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpPut("editar-evaluacion")]
+        // 🔒 CANDADO MIXTO
+        [Authorize(Roles = "Docente, EVA_ABM")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> EditarEvaluacion([FromBody] EvaluacionDTO dto)
@@ -71,45 +80,9 @@ namespace EduSys.Api.Controllers
             return BadRequest(new { message = "Error al editar. Puede que el acta ya esté cerrada." });
         }
 
-        [HttpPost("cerrar-acta")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> CerrarActa([FromBody] CierreActaDTO dto)
-        {
-            if (!ModelState.IsValid) return BadRequest(ModelState);
-
-            var exito = await _notasRepo.CerrarActaAsync(dto);
-            if (exito) return Ok(new { message = "Acta cerrada correctamente." });
-
-            return BadRequest(new { message = "Error al cerrar el acta. Verifique los datos ingresados." });
-        }
-
-        // ⚠️ Recomendación de seguridad: Quizás este endpoint solo debería usarlo Admin/Secretaría
-        [HttpPost("reabrir-acta/{id}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult> ReabrirActa(int id)
-        {
-            var exito = await _notasRepo.ReabrirActaAsync(id);
-
-            if (!exito) return BadRequest(new { message = "No se pudo reabrir el acta o no existe." });
-            return Ok(new { message = "Acta reabierta exitosamente." });
-        }
-
-        [HttpPost("cerrar-cursada")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> CerrarCursada([FromBody] CierreCursadaDTO dto)
-        {
-            if (!ModelState.IsValid) return BadRequest(ModelState);
-
-            var exito = await _notasRepo.CerrarActaComisionAsync(dto.IdComision, dto.Libro, dto.Folio);
-            if (exito) return Ok(new { message = "Cursada cerrada y promedios calculados correctamente." });
-
-            return BadRequest(new { message = "Error al cerrar el acta de la comisión." });
-        }
-
         [HttpDelete("evaluacion/{id}")]
+        // 🔒 CANDADO MIXTO
+        [Authorize(Roles = "Docente, EVA_ABM")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> EliminarEvaluacion([FromRoute] int id)
@@ -124,8 +97,56 @@ namespace EduSys.Api.Controllers
             return Ok(new { message = "Evaluación eliminada correctamente." });
         }
 
-        // ⚠️ Recomendación de seguridad: Quizás este endpoint solo debería usarlo Admin/Secretaría
+        [HttpPost("cerrar-acta")]
+        // 🔒 CANDADO MIXTO: Ambos pueden cerrar el acta normal de una evaluación
+        [Authorize(Roles = "Docente, EVA_CARGAR_NOTAS")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> CerrarActa([FromBody] CierreActaDTO dto)
+        {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
+            var exito = await _notasRepo.CerrarActaAsync(dto);
+            if (exito) return Ok(new { message = "Acta cerrada correctamente." });
+
+            return BadRequest(new { message = "Error al cerrar el acta. Verifique los datos ingresados." });
+        }
+
+        [HttpPost("cerrar-cursada")]
+        // 🔒 CANDADO MIXTO: Cierre final de la materia
+        [Authorize(Roles = "Docente, EVA_CARGAR_NOTAS")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> CerrarCursada([FromBody] CierreCursadaDTO dto)
+        {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
+            var exito = await _notasRepo.CerrarActaComisionAsync(dto.IdComision, dto.Libro, dto.Folio);
+            if (exito) return Ok(new { message = "Cursada cerrada y promedios calculados correctamente." });
+
+            return BadRequest(new { message = "Error al cerrar el acta de la comisión." });
+        }
+
+        // ===================================================================================
+        // ⚠️ ZONA ADMINISTRATIVA RESTRINGIDA (Sin acceso para el Rol Docente)
+        // ===================================================================================
+
+        [HttpPost("reabrir-acta/{id}")]
+        // 🔒 CANDADO ESTRICTO: Solo Secretaría / Admin pueden deshacer cierres de actas
+        [Authorize(Roles = "EVA_CARGAR_NOTAS, ACTA_VER")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult> ReabrirActa(int id)
+        {
+            var exito = await _notasRepo.ReabrirActaAsync(id);
+
+            if (!exito) return BadRequest(new { message = "No se pudo reabrir el acta o no existe." });
+            return Ok(new { message = "Acta reabierta exitosamente." });
+        }
+
         [HttpPost("inscripcion/{id}/toggle-cierre")]
+        // 🔒 CANDADO ESTRICTO
+        [Authorize(Roles = "EVA_CARGAR_NOTAS, ACTA_VER")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> ToggleCierreIndividual(int id)
@@ -136,8 +157,9 @@ namespace EduSys.Api.Controllers
             return Ok(new { message = "Estado de cierre alternado exitosamente." });
         }
 
-        // ⚠️ Recomendación de seguridad: Quizás este endpoint solo debería usarlo Admin/Secretaría
         [HttpPost("comision/{idComision}/reabrir")]
+        // 🔒 CANDADO ESTRICTO
+        [Authorize(Roles = "EVA_CARGAR_NOTAS, ACTA_VER")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> ReabrirComision(int idComision)

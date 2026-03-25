@@ -7,7 +7,8 @@ namespace EduSys.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize] // Requiere estar logueado
+    // 🔓 Candado Base: Requiere estar logueado
+    [Authorize]
     public class InscripcionesController : ControllerBase
     {
         private readonly IInscripcionRepository _inscripcionRepository;
@@ -18,9 +19,11 @@ namespace EduSys.Api.Controllers
         }
 
         // =========================================================================
-        // 1. INSCRIBIRSE (Acción principal)
+        // 1. INSCRIBIRSE (Acción principal de Autogestión)
         // =========================================================================
         [HttpPost("inscribir")]
+        // 🔒 CANDADO ESTRUCTURAL: Solo los alumnos pueden usar la autogestión
+        [Authorize(Roles = "Alumno")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ResultadoInscripcionDTO))]
         [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ResultadoInscripcionDTO))]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -48,9 +51,11 @@ namespace EduSys.Api.Controllers
         }
 
         // =========================================================================
-        // 2. VER OFERTA (Para que el alumno elija)
+        // 2. VER OFERTA (Para que el alumno elija o el admin consulte)
         // =========================================================================
         [HttpGet("oferta/{idAlumno}")]
+        // 🔒 CANDADO MIXTO: Entra el Alumno (para inscribirse) o el Administrativo (para forzar inscripción)
+        [Authorize(Roles = "Alumno, INS_CURSADA_GESTION")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<ComisionDTO>))]
         public async Task<ActionResult<List<ComisionDTO>>> GetOferta(int idAlumno, [FromQuery] int idPeriodo)
         {
@@ -59,9 +64,11 @@ namespace EduSys.Api.Controllers
         }
 
         // =========================================================================
-        // 3. VER MIS INSCRIPCIONES (Para que el alumno vea qué cursa)
+        // 3. VER MIS INSCRIPCIONES (Autogestión)
         // =========================================================================
         [HttpGet("alumno/{idAlumno}/periodo/{idPeriodo}")]
+        // 🔒 CANDADO ESTRUCTURAL
+        [Authorize(Roles = "Alumno")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<InscripcionCursadaListadoDTO>))]
         public async Task<ActionResult<List<InscripcionCursadaListadoDTO>>> GetPorAlumno(int idAlumno, int idPeriodo)
         {
@@ -83,6 +90,8 @@ namespace EduSys.Api.Controllers
         // 4. DARSE DE BAJA
         // =========================================================================
         [HttpDelete("{id}")]
+        // 🔒 CANDADO MIXTO: El alumno se puede dar de baja a sí mismo, o el administrativo puede darle la baja
+        [Authorize(Roles = "Alumno, INS_CURSADA_GESTION")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -110,7 +119,8 @@ namespace EduSys.Api.Controllers
         // 5. INSCRIBIR ADMIN (Con Overrides / Excepciones)
         // =========================================================================
         [HttpPost("admin/inscribir")]
-        [Authorize(Roles = "Administrador, Secretaria Academica")]
+        // 🔒 CANDADO REAL: Exclusivo para gestión administrativa
+        [Authorize(Roles = "INS_CURSADA_GESTION")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ResultadoInscripcionDTO))]
         [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ResultadoInscripcionDTO))]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -141,7 +151,8 @@ namespace EduSys.Api.Controllers
         // 6. VER INSCRIPCIONES (ADMIN)
         // =========================================================================
         [HttpGet("admin/alumno/{idAlumno}")]
-        [Authorize(Roles = "Administrador, Secretaria Academica")]
+        // 🔒 CANDADO REAL: Exclusivo para gestión administrativa
+        [Authorize(Roles = "INS_CURSADA_GESTION")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<InscripcionCursadaListadoDTO>))]
         public async Task<ActionResult<List<InscripcionCursadaListadoDTO>>> GetInscripcionesAlumno(int idAlumno)
         {

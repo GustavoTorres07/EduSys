@@ -8,7 +8,8 @@ namespace EduSys.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize] // 🔒 Protección base: Requiere login para leer
+    // 🔓 Candado Base: Requiere login para leer (excepto los endpoints con AllowAnonymous)
+    [Authorize]
     public class SedesController : ControllerBase
     {
         private readonly IInfrastructureRepository _repo;
@@ -18,8 +19,7 @@ namespace EduSys.Api.Controllers
             _repo = repo;
         }
 
-
-        [AllowAnonymous] 
+        [AllowAnonymous]
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(IEnumerable<SedeDTO>))]
         public async Task<ActionResult<IEnumerable<SedeDTO>>> GetAll()
@@ -58,7 +58,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Administrador, Secretaria Academica")] // 🔒
+        // 🔒 CANDADO REAL: Gestión de Sedes
+        [Authorize(Roles = "CFG_SEDES_ABM")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Create([FromBody] SedeDTO dto)
@@ -77,7 +78,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpPut]
-        [Authorize(Roles = "Administrador, Secretaria Academica")] // 🔒
+        // 🔒 CANDADO REAL
+        [Authorize(Roles = "CFG_SEDES_ABM")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -101,7 +103,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Administrador, Secretaria Academica")] // 🔒
+        // 🔒 CANDADO REAL
+        [Authorize(Roles = "CFG_SEDES_ABM")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Delete(int id)
@@ -133,7 +136,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpPost("aulas")]
-        [Authorize(Roles = "Administrador, Secretaria Academica")] // 🔒
+        // 🔒 CANDADO REAL: Gestión específica de Aulas
+        [Authorize(Roles = "CFG_AULAS_ABM")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> CreateAula([FromBody] AulaDTO dto)
@@ -152,7 +156,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpPut("aulas")]
-        [Authorize(Roles = "Administrador, Secretaria Academica")] // 🔒
+        // 🔒 CANDADO REAL
+        [Authorize(Roles = "CFG_AULAS_ABM")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -175,7 +180,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpDelete("aulas/{id}")]
-        [Authorize(Roles = "Administrador, Secretaria Academica")] // 🔒
+        // 🔒 CANDADO REAL
+        [Authorize(Roles = "CFG_AULAS_ABM")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> DeleteAula(int id)

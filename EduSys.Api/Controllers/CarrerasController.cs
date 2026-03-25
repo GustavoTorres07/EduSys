@@ -20,7 +20,7 @@ namespace EduSys.Api.Controllers
 
         // GET: api/carreras
         [HttpGet]
-        [AllowAnonymous]
+        [AllowAnonymous] // Permitido para que el público vea la oferta académica
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<CarreraDTO>))]
         public async Task<ActionResult<List<CarreraDTO>>> Get()
         {
@@ -36,13 +36,11 @@ namespace EduSys.Api.Controllers
                 Descripcion = c.Descripcion,
                 ResolucionMinisterial = c.ResolucionMinisterial,
 
-                // Modalidades
                 Modalidades = c.CarreraModalidads
                                .Where(cm => cm.IdModalidadNavigation.Activo == true)
                                .Select(cm => cm.IdModalidadNavigation.Nombre)
                                .ToList(),
 
-                // Sedes
                 NombresSedes = c.CarreraSedes
                                 .Where(cs => cs.Activo == true && cs.IdSedeNavigation.Activo == true)
                                 .Select(cs => cs.IdSedeNavigation.Nombre)
@@ -82,6 +80,8 @@ namespace EduSys.Api.Controllers
 
         // POST: api/carreras
         [HttpPost]
+        // 🔒 CANDADO REAL: Solo personal con permiso de ABM de Carreras
+        [Authorize(Roles = "ACA_CARRERA_ABM")]
         [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(CarreraDTO))]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Post([FromBody] CarreraDTO dto)
@@ -117,6 +117,8 @@ namespace EduSys.Api.Controllers
 
         // PUT: api/carreras
         [HttpPut]
+        // 🔒 CANDADO REAL
+        [Authorize(Roles = "ACA_CARRERA_ABM")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(CarreraDTO))]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -148,6 +150,8 @@ namespace EduSys.Api.Controllers
 
         // DELETE: api/carreras/5
         [HttpDelete("{id}")]
+        // 🔒 CANDADO REAL
+        [Authorize(Roles = "ACA_CARRERA_ABM")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Delete(int id)
@@ -163,7 +167,7 @@ namespace EduSys.Api.Controllers
         // ---------------------------------------------------------
 
         [HttpGet("{id}/sedes")]
-        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<int>))]
+        // Se deja en Authorize general para consulta interna de formularios
         public async Task<ActionResult<List<int>>> GetSedes(int id)
         {
             var listaIds = await _repo.GetSedesIdsByCarreraAsync(id);
@@ -171,6 +175,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpPost("{id}/sedes")]
+        // 🔒 CANDADO REAL
+        [Authorize(Roles = "ACA_CARRERA_ABM")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> UpdateSedes(int id, [FromBody] List<int> idsSedes)
@@ -181,7 +187,6 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpGet("{id}/modalidades")]
-        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<int>))]
         public async Task<ActionResult<List<int>>> GetModalidades(int id)
         {
             var listaIds = await _repo.GetModalidadesIdsByCarreraAsync(id);
@@ -189,6 +194,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpPost("{id}/modalidades")]
+        // 🔒 CANDADO REAL
+        [Authorize(Roles = "ACA_CARRERA_ABM")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> UpdateModalidades(int id, [FromBody] List<int> idsModalidades)

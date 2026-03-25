@@ -1,6 +1,10 @@
 ﻿@page "/sedes"
 @using EduSys.Shared.DTOs
 @using EduSys.Web.Services.Interfaces
+@using Microsoft.AspNetCore.Authorization
+@* 🔓 Permitimos la entrada general a cualquier usuario logueado para consulta *@
+@attribute [Authorize]
+
 @inject ISedeService SedeService
 @inject NavigationManager Navigation
 @inject IDialogService DialogService
@@ -43,7 +47,6 @@
         font-weight: 600;
     }
 
-    /* ✅ FIX PRINCIPAL: texto visible en todos los tipos de input */
     .custom-filter-input input,
     .custom-filter-input textarea,
     .custom-filter-input .mud-select-input,
@@ -56,7 +59,6 @@
         -webkit-text-fill-color: #1e293b !important;
     }
 
-    /* ✅ FIX: Visibilidad de iconos en los inputs (Adornments y Selects) */
     .custom-filter-input .mud-icon-root,
     .custom-filter-input .mud-input-adornment .mud-icon-root,
     .custom-filter-input .mud-select-icon {
@@ -64,28 +66,6 @@
         opacity: 1 !important;
     }
 
-    /* ✅ FIX: evita fondo oscuro por autofill del navegador */
-    .custom-filter-input input:-webkit-autofill,
-    .custom-filter-input input:-webkit-autofill:hover,
-    .custom-filter-input input:-webkit-autofill:focus {
-        -webkit-text-fill-color: #1e293b !important;
-        -webkit-box-shadow: 0 0 0px 1000px white inset !important;
-        transition: background-color 5000s ease-in-out 0s;
-    }
-
-    /* ✅ FIX: campos numéricos alineados */
-    .custom-filter-input .mud-input input[type="number"] {
-        padding-top: 4px !important;
-        padding-bottom: 4px !important;
-    }
-
-    .custom-filter-input input[type="number"]::-webkit-outer-spin-button,
-    .custom-filter-input input[type="number"]::-webkit-inner-spin-button {
-        -webkit-appearance: none;
-        margin: 0;
-    }
-
-    /* Botones de Filtro Tipo Segmented Control */
     .filter-group {
         display: flex;
         background-color: #f1f5f9;
@@ -117,11 +97,6 @@
         justify-content: space-between;
         flex-shrink: 0;
         border-radius: 16px 16px 0 0;
-    }
-
-    .dialog-body {
-        padding: 24px;
-        overflow-y: auto;
     }
 
     .actions-footer {
@@ -158,15 +133,19 @@
             <MudText Typo="Typo.h4" Style="font-weight: 800; color: #456990; letter-spacing: -0.5px;">Gestión de Sedes</MudText>
             <MudText Typo="Typo.subtitle1" Class="mud-text-secondary">Administración de campus, ubicaciones y control de aulas.</MudText>
         </div>
-        <MudButton Variant="Variant.Filled"
-                   Color="Color.Primary"
-                   StartIcon="@Icons.Material.Filled.Add"
-                   Size="Size.Large"
-                   Style="font-weight: 700; border-radius: 8px;"
-                   OnClick="AbrirModalCrear"
-                   Disabled="loading">
-            Nueva Sede
-        </MudButton>
+        
+        @* 🔒 CANDADO: Solo los que pueden hacer ABM de sedes ven el botón de creación *@
+        <AuthorizeView Roles="CFG_SEDES_ABM" Context="crearContext">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       Size="Size.Large"
+                       Style="font-weight: 700; border-radius: 8px;"
+                       OnClick="AbrirModalCrear"
+                       Disabled="loading">
+                Nueva Sede
+            </MudButton>
+        </AuthorizeView>
     </div>
 
     @* --- TABLA PRINCIPAL --- *@
@@ -182,8 +161,6 @@
         
         <ToolBarContent>
             <div class="d-flex flex-wrap align-center gap-4 w-100 mb-2">
-                
-                @* 1. Filtro Estado (Segmented Control) *@
                 <div class="filter-group">
                     <MudButton OnClick="@(() => CambiarFiltro("Todos"))" Variant="@(filtroEstado == "Todos" ? Variant.Filled : Variant.Text)" Color="@(filtroEstado == "Todos" ? Color.Primary : Color.Default)" Size="Size.Small" Class="filter-btn" DisableElevation="true">Todas</MudButton>
                     <MudButton OnClick="@(() => CambiarFiltro("Activas"))" Variant="@(filtroEstado == "Activas" ? Variant.Filled : Variant.Text)" Color="@(filtroEstado == "Activas" ? Color.Success : Color.Default)" Size="Size.Small" Class="filter-btn" DisableElevation="true">Activas</MudButton>
@@ -192,7 +169,6 @@
 
                 <MudSpacer />
 
-                @* 2. Buscador General *@
                 <MudTextField @bind-Value="searchString"
                               Placeholder="Buscar sede, dirección..."
                               Adornment="Adornment.Start"
@@ -253,38 +229,28 @@
 
             <MudTd DataLabel="Acciones" Style="text-align: center;">
                 <div class="d-flex justify-center gap-1">
+                    @* 🔓 Todos pueden ver el detalle de aulas (Lectura) *@
                     <MudTooltip Text="Gestionar Aulas">
                         <MudIconButton Icon="@Icons.Material.Filled.MeetingRoom" Color="Color.Secondary" Size="Size.Small" OnClick="@(() => IrADetalle(context.Id))" Disabled="_procesando" />
                     </MudTooltip>
 
-                    <MudTooltip Text="Editar Sede">
-                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" OnClick="@(() => AbrirModalEditar(context))" Disabled="_procesando" />
-                    </MudTooltip>
-
-                    @if (context.Activo)
-                    {
-                        <MudTooltip Text="Dar de Baja">
-                            <MudIconButton Icon="@Icons.Material.Filled.Block" Color="Color.Warning" Size="Size.Small" OnClick="@(() => AbrirModalBaja(context))" Disabled="_procesando" />
+                    @* 🔒 CANDADO: Solo los que pueden hacer ABM ven editar y borrar *@
+                    <AuthorizeView Roles="CFG_SEDES_ABM" Context="abmContext">
+                        <MudTooltip Text="Editar Sede">
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" OnClick="@(() => AbrirModalEditar(context))" Disabled="_procesando" />
                         </MudTooltip>
-                    }
-                    else
-                    {
-                        <MudIconButton Icon="@Icons.Material.Filled.Circle" Size="Size.Small" Color="Color.Default" Disabled="true" Style="opacity: 0.3;" />
-                    }
+
+                        @if (context.Activo)
+                        {
+                            <MudTooltip Text="Dar de Baja">
+                                <MudIconButton Icon="@Icons.Material.Filled.Block" Color="Color.Warning" Size="Size.Small" OnClick="@(() => AbrirModalBaja(context))" Disabled="_procesando" />
+                            </MudTooltip>
+                        }
+                    </AuthorizeView>
                 </div>
             </MudTd>
         </RowTemplate>
 
-        <LoadingContent>
-            <MudText Typo="Typo.body1" Class="pa-4 text-center" Style="color: #64748b;">Cargando sedes de la institución...</MudText>
-        </LoadingContent>
-        <NoRecordsContent>
-            <div class="d-flex flex-column align-center justify-center pa-8">
-                <MudIcon Icon="@Icons.Material.Filled.Business" Style="font-size: 4rem; color: #cbd5e1;" Class="mb-3" />
-                <MudText Typo="Typo.h6" Style="font-weight: 700; color: #475569;">No se encontraron sedes</MudText>
-                <MudText Typo="Typo.body2" Style="color: #64748b;">No hay registros que coincidan con los filtros actuales.</MudText>
-            </div>
-        </NoRecordsContent>
         <PagerContent>
             <MudTablePager RowsPerPageString="Filas por página:" InfoFormat="{first_item}-{last_item} de {all_items}" />
         </PagerContent>
@@ -313,21 +279,18 @@
                                       Required="true" RequiredError="El nombre es obligatorio" Disabled="_procesando"
                                       Placeholder="Ej: Campus Central" />
                     </MudItem>
-                    
                     <MudItem xs="12" sm="8">
                         <MudTextField Label="Dirección Física" @bind-Value="sedeModel.Direccion"
                                       Variant="Variant.Outlined" Margin="Margin.Dense" Class="custom-filter-input bg-white"
                                       Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Place"
                                       Placeholder="Ej: Av. Principal 123" Disabled="_procesando" />
                     </MudItem>
-
                     <MudItem xs="12" sm="4">
                         <MudTextField Label="Código Postal" @bind-Value="sedeModel.CodigoPostal"
                                       Variant="Variant.Outlined" Margin="Margin.Dense" Class="custom-filter-input bg-white"
                                       Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.MarkunreadMailbox"
                                       Placeholder="Ej: 6300" Disabled="_procesando" />
                     </MudItem>
-
                     @if (esEdicion)
                     {
                         <MudItem xs="12" Class="mt-2">
@@ -425,12 +388,11 @@
     private void CambiarFiltro(string nuevoEstado)
     {
         filtroEstado = nuevoEstado;
-        StateHasChanged(); // Fuerzo renderizado de MudTable
+        StateHasChanged();
     }
 
     private bool FilterFunc(SedeDTO sede)
     {
-        // 1. Filtro Estado
         bool matchEstado = filtroEstado switch
         {
             "Activas" => sede.Activo,
@@ -439,7 +401,6 @@
         };
         if (!matchEstado) return false;
 
-        // 2. Buscador de Texto (Case-insensitive)
         if (!string.IsNullOrWhiteSpace(searchString))
         {
             var term = searchString.Trim().ToLower();
@@ -452,7 +413,6 @@
         return true;
     }
 
-    // --- CRUD ---
     private void AbrirModalCrear()
     {
         sedeModel = new SedeDTO { Activo = true };

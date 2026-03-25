@@ -132,7 +132,8 @@ namespace EduSys.Api.Repositories
 
                 foreach (var permiso in permisosUnicos)
                 {
-                    claims.Add(new Claim("Permiso", permiso));
+                    // ✅ LA CORRECCIÓN MÁGICA: Ahora los permisos se inyectan como Roles
+                    claims.Add(new Claim(ClaimTypes.Role, permiso));
                 }
             }
 
@@ -171,7 +172,7 @@ namespace EduSys.Api.Repositories
         public async Task<Usuario?> GetByIdAsync(int id)
         {
             return await _context.Usuarios
-                .Include(u => u.IdRols) // 🚀 MODIFICADO: Ahora es una colección
+                .Include(u => u.IdRols)
                 .Include(u => u.IdNacionalidadNavigation)
                 .FirstOrDefaultAsync(u => u.Id == id);
         }

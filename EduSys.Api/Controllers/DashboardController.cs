@@ -7,9 +7,8 @@ namespace EduSys.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    // 🔒 Recomendación: Restringir acceso solo a personal administrativo
-    // [Authorize(Roles = "Administrador, Secretaria Academica")] 
-    [Authorize]
+    // 🔒 CANDADO REAL: Permite el acceso si el usuario tiene al menos UNO de estos permisos
+    [Authorize(Roles = "REP_VER, ALU_ABM, ACA_CARRERA_ABM, COM_COMISION_ABM")]
     public class DashboardController : ControllerBase
     {
         private readonly IDashboardRepository _repo;
@@ -23,7 +22,7 @@ namespace EduSys.Api.Controllers
         // 💡 Reemplaza 'object' por tu DTO real (ej. typeof(DashboardResumenDTO)) si lo tienes
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(object))]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)] // Útil si activas los roles
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> GetResumen()
         {
             var datos = await _repo.GetResumenAsync();

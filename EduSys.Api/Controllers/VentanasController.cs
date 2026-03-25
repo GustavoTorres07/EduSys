@@ -8,7 +8,8 @@ namespace EduSys.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize] // 🔒 Protección base
+    // 🔓 Candado Base: Requiere autenticación (para que alumnos y docentes puedan verificar si están en fecha)
+    [Authorize]
     public class VentanasController : ControllerBase
     {
         private readonly IVentanaOperativaRepository _repo;
@@ -42,7 +43,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Administrador, Secretaria Academica")] // 🔒 Solo gestión
+        // 🔒 CANDADO REAL: Solo personal que gestiona el calendario y periodos
+        [Authorize(Roles = "PER_PERIODO_ABM")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Create([FromBody] VentanaOperativaDTO dto)
@@ -70,7 +72,8 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Administrador, Secretaria Academica")] // 🔒 Solo gestión
+        // 🔒 CANDADO REAL
+        [Authorize(Roles = "PER_PERIODO_ABM")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Delete(int id)
