@@ -1,0 +1,241 @@
+﻿@page "/usuarios"
+@using EduSys.Shared.DTOs
+@using EduSys.Web.Pages.Admin.Components
+@using EduSys.Web.Services.Interfaces
+@using Microsoft.AspNetCore.Authorization
+
+@* 🔒 Protegemos la vista con la llave de ABM de Usuarios *@
+@attribute [Authorize(Roles = "SEG_USUARIOS_ABM")]
+
+@inject IUsuarioService UsuarioService
+@inject IRolService RolService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<style>
+    .table-header-custom .mud-table-head .mud-table-cell { color: #456990 !important; font-weight: 800 !important; background-color: #f8fafc !important; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px; }
+    .row-hover-effect:hover { background-color: #f1f5f9 !important; }
+    .custom-filter-input .mud-input-outlined-border { border-color: #cbd5e1 !important; transition: border-color 0.2s; }
+    .custom-filter-input:hover .mud-input-outlined-border { border-color: #456990 !important; }
+    .custom-filter-input.mud-input-control.mud-input-focused .mud-input-outlined-border { border-color: #456990 !important; border-width: 2px !important; }
+    .custom-filter-input input, .custom-filter-input .mud-select-input { color: #1e293b !important; font-weight: 600 !important; -webkit-text-fill-color: #1e293b !important; }
+    .custom-filter-input .mud-icon-root { color: #456990 !important; opacity: 1 !important; }
+
+    .unified-dialog-card { background-color: white !important; border-radius: 16px !important; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1) !important; }
+    .dialog-header-integrated { background: #456990; color: white; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; border-radius: 16px 16px 0 0; }
+    .actions-footer { padding: 16px 24px; border-top: 1px solid #e2e8f0; background-color: #f8fafc; display: flex; justify-content: flex-end; gap: 12px; border-radius: 0 0 16px 16px; }
+</style>
+
+<MudOverlay Visible="_procesando" DarkBackground="true" Absolute="false" ZIndex="9999">
+    <MudStack AlignItems="AlignItems.Center">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+        <MudText Typo="Typo.h6" Style="color: white; font-weight: 600;">Procesando...</MudText>
+    </MudStack>
+</MudOverlay>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-6 mb-10">
+
+    <div class="d-flex align-center justify-space-between mb-6 flex-wrap gap-4">
+        <div>
+            <MudText Typo="Typo.h4" Style="font-weight: 800; color: #456990; letter-spacing: -0.5px;">Gestión de Usuarios</MudText>
+            <MudText Typo="Typo.subtitle1" Class="mud-text-secondary">Control de cuentas de acceso y asignación de roles.</MudText>
+        </div>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PersonAdd" Size="Size.Large" Style="font-weight: 700; border-radius: 8px;" OnClick="AbrirModalCrear" Disabled="loading">
+            Nuevo Administrativo
+        </MudButton>
+    </div>
+
+    <MudTable Items="@usuarios" Hover="true" Loading="@loading" RowsPerPage="15" Filter="new Func<UsuarioDTO, bool>(FilterFunc)" Elevation="2" Class="rounded-lg table-header-custom overflow-hidden" RowClass="row-hover-effect">
+        <ToolBarContent>
+            <MudSpacer />
+            <MudTextField @bind-Value="searchString" Placeholder="Buscar por nombre, email o DNI..." Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" AdornmentColor="Color.Primary" Variant="Variant.Outlined" Margin="Margin.Dense" Class="custom-filter-input mt-0" Style="min-width: 320px; background-color: white;" Immediate="true" Clearable="true" />
+        </ToolBarContent>
+
+        <HeaderContent>
+            <MudTh><MudTableSortLabel SortBy="new Func<UsuarioDTO, object>(x => x.Apellido ?? string.Empty)">Usuario</MudTableSortLabel></MudTh>
+            <MudTh>DNI</MudTh>
+            <MudTh>Email</MudTh>
+            <MudTh>Roles Asignados</MudTh>
+            <MudTh Style="text-align: center;">Estado</MudTh>
+            <MudTh Style="width: 100px; text-align: center;">Acciones</MudTh>
+        </HeaderContent>
+
+        <RowTemplate>
+            <MudTd DataLabel="Usuario">
+                <div class="d-flex align-center gap-3">
+                    <MudAvatar Color="Color.Primary" Size="Size.Small">
+                        @(context.Nombre?.Length > 0 ? context.Nombre.Substring(0, 1) : "")@(context.Apellido?.Length > 0 ? context.Apellido.Substring(0, 1) : "")
+                    </MudAvatar>
+                    <MudText Typo="Typo.body2" Style="font-weight: 700; color: #1e293b;">@context.Apellido, @context.Nombre</MudText>
+                </div>
+            </MudTd>
+            <MudTd DataLabel="DNI">@context.Dni</MudTd>
+            <MudTd DataLabel="Email">@context.Email</MudTd>
+            <MudTd DataLabel="Roles">
+                @if (context.NombresRoles != null && context.NombresRoles.Any())
+                {
+                    @foreach (var rol in context.NombresRoles)
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Info" Class="ma-1" Style="font-weight: 700;">@rol</MudChip>
+                    }
+                }
+                else
+                {
+                    <MudText Typo="Typo.caption" Style="color: #94a3b8; font-style: italic;">Sin roles</MudText>
+                }
+            </MudTd>
+            <MudTd DataLabel="Estado" Style="text-align: center;">
+                <MudChip T="string" Color="@(context.Activo == true ? Color.Success : Color.Error)" Size="Size.Small" Variant="Variant.Outlined" Style="font-weight: 700;">
+                    @(context.Activo == true ? "ACTIVO" : "INACTIVO")
+                </MudChip>
+            </MudTd>
+            <MudTd DataLabel="Acciones" Style="text-align: center;">
+                <MudTooltip Text="Gestionar Roles">
+                    <MudIconButton Icon="@Icons.Material.Filled.AdminPanelSettings" Color="Color.Warning" Size="Size.Small" OnClick="@(() => AbrirModalRoles(context))" />
+                </MudTooltip>
+            </MudTd>
+        </RowTemplate>
+        <PagerContent><MudTablePager RowsPerPageString="Filas:" /></PagerContent>
+    </MudTable>
+</MudContainer>
+
+@* --- MODAL: GESTIONAR ROLES --- *@
+<MudDialog @bind-Visible="mostrarDialogoRoles" Options="dialogOptionsRoles" Class="unified-dialog-card pa-0">
+    <DialogContent>
+        <div class="dialog-header-integrated">
+            <div class="d-flex align-center">
+                <MudIcon Icon="@Icons.Material.Filled.Security" Class="mr-3" />
+                <MudText Typo="Typo.h6" Style="font-weight: 700;">Asignar Roles</MudText>
+            </div>
+            <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" OnClick="CerrarModalRoles" Size="Size.Small" />
+        </div>
+        <div class="pa-6">
+            <MudText Typo="Typo.body1" Class="mb-4">Seleccione los roles para <b>@usuarioSeleccionado?.Nombre @usuarioSeleccionado?.Apellido</b>:</MudText>
+            
+            @* ✅ FIX AQUÍ: Agregamos MultiSelectionTextFunc para transformar los IDs visualmente *@
+            <MudSelect T="int" 
+                       MultiSelection="true" 
+                       @bind-SelectedValues="rolesSeleccionados" 
+                       Placeholder="Seleccione roles..." 
+                       Variant="Variant.Outlined" 
+                       AnchorOrigin="Origin.BottomCenter" 
+                       Class="custom-filter-input"
+                       MultiSelectionTextFunc="@ObtenerTextoRoles">
+                @foreach (var r in catalogoRoles)
+                {
+                    <MudSelectItem T="int" Value="@r.Id">@r.Nombre</MudSelectItem>
+                }
+            </MudSelect>
+        </div>
+        <div class="actions-footer">
+            <MudButton OnClick="CerrarModalRoles" Variant="Variant.Outlined" Disabled="_procesando">Cancelar</MudButton>
+            <MudButton OnClick="GuardarRoles" Variant="Variant.Filled" Color="Color.Primary" Disabled="_procesando">Guardar Roles</MudButton>
+        </div>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    private List<UsuarioDTO> usuarios = new();
+    private List<RolRequestDTO> catalogoRoles = new();
+    private bool loading = true;
+    private bool _procesando = false;
+    private string searchString = "";
+
+    private UsuarioDTO? usuarioSeleccionado;
+    private IEnumerable<int> rolesSeleccionados = new List<int>();
+    
+    private bool mostrarDialogoRoles = false;
+    private DialogOptions dialogOptionsRoles = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, NoHeader = true };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarDatos();
+    }
+
+    private async Task CargarDatos()
+    {
+        loading = true;
+        try
+        {
+            usuarios = await UsuarioService.GetAllAsync() ?? new();
+            catalogoRoles = await RolService.GetAllAsync() ?? new();
+            
+            catalogoRoles = catalogoRoles.Where(r => r.Activo).ToList();
+        }
+        catch { Snackbar.Add("Error al cargar datos.", Severity.Error); }
+        finally { loading = false; }
+    }
+
+    private bool FilterFunc(UsuarioDTO u)
+    {
+        if (string.IsNullOrWhiteSpace(searchString)) return true;
+        var term = searchString.Trim().ToLower();
+        return (u.Nombre?.ToLower().Contains(term) ?? false) ||
+               (u.Apellido?.ToLower().Contains(term) ?? false) ||
+               (u.Email?.ToLower().Contains(term) ?? false) ||
+               (u.Dni?.Contains(term) ?? false);
+    }
+
+    private void AbrirModalRoles(UsuarioDTO user)
+    {
+        usuarioSeleccionado = user;
+        
+        if (user.IdRoles != null && user.IdRoles.Any())
+        {
+            rolesSeleccionados = user.IdRoles.ToList();
+        }
+        else
+        {
+            rolesSeleccionados = new List<int>();
+        }
+        
+        mostrarDialogoRoles = true;
+    }
+
+    // ✅ MÉTODO NUEVO: Toma la lista de IDs seleccionados (que vienen como strings internos) y devuelve los nombres
+    private string ObtenerTextoRoles(List<string> selectedValues)
+    {
+        if (!selectedValues.Any()) return "Ningún rol seleccionado";
+
+        // Convertimos los values que llegan como string a int para buscarlos
+        var ids = selectedValues.Select(v => int.TryParse(v, out var id) ? id : 0).ToList();
+        
+        // Buscamos los nombres en el catálogo
+        var nombres = catalogoRoles.Where(r => ids.Contains(r.Id)).Select(r => r.Nombre);
+        
+        return string.Join(", ", nombres);
+    }
+
+    private async Task GuardarRoles()
+    {
+        if (usuarioSeleccionado == null) return;
+        _procesando = true;
+        try
+        {
+            var exito = await UsuarioService.UpdateRolesAsync(usuarioSeleccionado.Id, rolesSeleccionados.ToList());
+            
+            if (exito)
+            {
+                Snackbar.Add("Roles actualizados con éxito.", Severity.Success);
+                mostrarDialogoRoles = false;
+                await CargarDatos(); 
+            }
+            else Snackbar.Add("Error al actualizar roles.", Severity.Error);
+        }
+        finally { _procesando = false; }
+    }
+
+    private void CerrarModalRoles() => mostrarDialogoRoles = false;
+    
+    private async Task AbrirModalCrear()
+    {
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, NoHeader = true, BackdropClick = false };
+        var dialog = await DialogService.ShowAsync<DialogoUsuarioAdmin>("", options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await CargarDatos();
+        }
+    }
+}

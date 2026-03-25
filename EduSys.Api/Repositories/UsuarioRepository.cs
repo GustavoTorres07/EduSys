@@ -183,5 +183,52 @@ namespace EduSys.Api.Repositories
             var resultado = await _context.SaveChangesAsync();
             return resultado > 0;
         }
+
+        // =========================================================
+        // 👇 NUEVOS MÉTODOS PARA EL ABM DE USUARIOS EN GENERAL 👇
+        // =========================================================
+
+        public async Task<IEnumerable<Usuario>> GetAllAsync()
+        {
+            // Traemos a todos los usuarios, incluyendo sus roles asociados para mostrarlos en la grilla
+            return await _context.Usuarios
+                .Include(u => u.IdRols)
+                .AsNoTracking() // Optimización: Solo lectura
+                .OrderBy(u => u.Apellido).ThenBy(u => u.Nombre)
+                .ToListAsync();
+        }
+
+        public async Task<bool> ActualizarRolesAsync(int idUsuario, List<int> rolesIds)
+        {
+            // 1. Buscamos el usuario, incluyendo su lista actual de roles
+            var usuario = await _context.Usuarios
+                .Include(u => u.IdRols)
+                .FirstOrDefaultAsync(u => u.Id == idUsuario);
+
+            if (usuario == null) return false;
+
+            // 2. Limpiamos todos los roles que tiene actualmente
+            usuario.IdRols.Clear();
+
+            // 3. Si mandaron una lista de IDs de roles, buscamos esos roles en la BD
+            if (rolesIds != null && rolesIds.Any())
+            {
+                var nuevosRoles = await _context.Rols
+                    .Where(r => rolesIds.Contains(r.Id))
+                    .ToListAsync();
+
+                // 4. Asignamos los nuevos roles encontrados al usuario
+                foreach (var rol in nuevosRoles)
+                {
+                    usuario.IdRols.Add(rol);
+                }
+            }
+
+            // 5. Guardamos los cambios (EF Core se encarga mágicamente de insertar/borrar 
+            // los registros en la tabla intermedia UsuarioRol).
+            await _context.SaveChangesAsync();
+
+            return true;
+        }
     }
 }

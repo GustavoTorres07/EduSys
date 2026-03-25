@@ -330,7 +330,7 @@
                     @if (HasPermission(authContext.User, "SOL_GESTION")) @RenderNavLink("/solicitudes/bandeja", "Mesa de Entradas", Icons.Material.Filled.Inbox)
                 }
 
-                @* Sistema *@
+                @* Sistema (Aquí está Usuarios) *@
                 @if (HasPermission(authContext.User, "REP_VER", "EMAIL_MASIVO", "CFG_INSTITUCION_EDIT", "SEG_USUARIOS_ABM", "SEG_ROLES_ABM"))
                 {
                     <div class="nav-section-header">Sistema</div>
@@ -346,6 +346,7 @@
                     @if (HasPermission(authContext.User, "SEG_USUARIOS_ABM", "SEG_ROLES_ABM"))
                     {
                         <div class="nav-section-header">Seguridad Avanzada</div>
+                        @* 🚀 AQUÍ ESTÁ EL ENLACE A LA VISTA USUARIOS *@
                         @if (HasPermission(authContext.User, "SEG_USUARIOS_ABM")) @RenderNavLink("/usuarios", "Usuarios y Cuentas", Icons.Material.Filled.Security)
                         @if (HasPermission(authContext.User, "SEG_ROLES_ABM")) @RenderNavLink("/admin/roles", "Roles y Permisos", Icons.Material.Filled.AdminPanelSettings)
                     }
@@ -620,6 +621,8 @@
         if (HasPermission(user, "REP_VER")) allCommands.Add(new CommandItem { Title = "Reportes", Category = "Sistema", Url = "/reportes/operativos", Icon = Icons.Material.Filled.BarChart });
         if (HasPermission(user, "EMAIL_MASIVO")) allCommands.Add(new CommandItem { Title = "Comunicación", Category = "Sistema", Url = "/emails/masivos", Icon = Icons.Material.Filled.Email });
         if (HasPermission(user, "CFG_INSTITUCION_EDIT")) allCommands.Add(new CommandItem { Title = "Configuración Base", Category = "Sistema", Url = "/institucion", Icon = Icons.Material.Filled.Settings });
+        
+        // 🚀 AQUÍ ESTÁ EL ENLACE A LA VISTA USUARIOS EN LA PALETA DE COMANDOS
         if (HasPermission(user, "SEG_USUARIOS_ABM")) allCommands.Add(new CommandItem { Title = "Usuarios y Cuentas", Category = "Seguridad Avanzada", Url = "/usuarios", Icon = Icons.Material.Filled.Security });
         if (HasPermission(user, "SEG_ROLES_ABM")) allCommands.Add(new CommandItem { Title = "Roles y Permisos", Category = "Seguridad Avanzada", Url = "/admin/roles", Icon = Icons.Material.Filled.AdminPanelSettings });
 

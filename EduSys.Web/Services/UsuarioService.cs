@@ -1,5 +1,6 @@
 ﻿using System.Net.Http.Json;
 using EduSys.Shared.DTOs;
+using EduSys.Shared.Models;
 using EduSys.Web.Services.Interfaces;
 
 namespace EduSys.Web.Services
@@ -13,34 +14,77 @@ namespace EduSys.Web.Services
             _httpClient = httpClient;
         }
 
+        // GET: api/usuarios
+        public async Task<List<UsuarioDTO>> GetAllAsync()
+        {
+            try
+            {
+                var usuarios = await _httpClient.GetFromJsonAsync<List<UsuarioDTO>>("api/usuarios");
+                return usuarios ?? new List<UsuarioDTO>();
+            }
+            catch (Exception)
+            {
+                // En caso de error (ej. 403 Forbidden o sin conexión), devolvemos lista vacía
+                return new List<UsuarioDTO>();
+            }
+        }
+
+        // GET: api/usuarios/{id}
         public async Task<UsuarioDTO?> GetByIdAsync(int id)
         {
             try
             {
-                // Hace una petición GET a tu API: ej. https://localhost:7000/api/usuarios/5
                 return await _httpClient.GetFromJsonAsync<UsuarioDTO>($"api/usuarios/{id}");
             }
             catch (Exception)
             {
-                // Si la API falla o devuelve 404, retornamos null de forma segura
                 return null;
             }
         }
 
+        // POST: api/usuarios
+        public async Task<Usuario?> CrearAsync(Usuario usuario)
+        {
+            try
+            {
+                var response = await _httpClient.PostAsJsonAsync("api/usuarios", usuario);
+                if (response.IsSuccessStatusCode)
+                {
+                    return await response.Content.ReadFromJsonAsync<Usuario>();
+                }
+                return null;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        // PUT: api/usuarios/{id}
         public async Task<bool> UpdateAsync(UsuarioDTO usuario)
         {
             try
             {
-                // Hace una petición PUT enviando el DTO modificado
-                // Nota: Usamos usuario.Id en la URL o en el cuerpo según cómo esté tu API. 
-                // Lo más estándar es mandar el ID por la URL y el objeto en el body:
                 var response = await _httpClient.PutAsJsonAsync($"api/usuarios/{usuario.Id}", usuario);
-
                 return response.IsSuccessStatusCode;
             }
             catch (Exception)
             {
-                // Si hay error de red, devolvemos falso
+                return false;
+            }
+        }
+
+        // PUT: api/usuarios/{id}/roles
+        // 🚀 NUEVO: Envía la lista de IDs de roles al backend para reemplazar los actuales
+        public async Task<bool> UpdateRolesAsync(int idUsuario, List<int> rolesIds)
+        {
+            try
+            {
+                var response = await _httpClient.PutAsJsonAsync($"api/usuarios/{idUsuario}/roles", rolesIds);
+                return response.IsSuccessStatusCode;
+            }
+            catch (Exception)
+            {
                 return false;
             }
         }

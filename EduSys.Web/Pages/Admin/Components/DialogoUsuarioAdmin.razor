@@ -1,0 +1,388 @@
+﻿@using EduSys.Shared.Models
+@using EduSys.Web.Services.Interfaces
+@inject IUsuarioService UsuarioService
+@inject ISnackbar Snackbar
+
+<style>
+.mud-dialog-close-icon { display: none !important; }
+.mud-dialog-content    { padding: 0 !important; }
+
+.dialog-wrap {
+    display: flex; flex-direction: column;
+    background: white;
+    min-width: 480px;
+    max-width: 540px;
+    border-radius: 12px;
+    overflow: hidden;
+    font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* ── HEAD ─────────────────────────────────────────────────────── */
+.dialog-head {
+    background: linear-gradient(135deg, #344f6e 0%, #456990 100%);
+    padding: 20px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0;
+}
+.dialog-head-left { display: flex; align-items: center; gap: 12px; }
+.dialog-head-ico  {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: rgba(255,255,255,0.12);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+.dialog-head-title { font-family: 'Source Serif 4', Georgia, serif; font-size: 1.05rem; font-weight: 700; color: #fff; line-height: 1.2; }
+.dialog-head-sub   { font-size: 0.72rem; color: rgba(255,255,255,0.6); margin-top: 2px; }
+
+/* ── BODY ─────────────────────────────────────────────────────── */
+.dialog-body {
+    padding: 24px;
+    overflow-y: auto;
+    max-height: calc(70vh - 140px);
+    scrollbar-width: thin;
+    scrollbar-color: #dde3ea transparent;
+}
+.dialog-body::-webkit-scrollbar { width: 4px; }
+.dialog-body::-webkit-scrollbar-thumb { background: #dde3ea; border-radius: 2px; }
+
+/* Separador de sección */
+.section-sep {
+    display: flex; align-items: center; gap: 10px;
+    margin: 20px 0 14px;
+}
+.section-sep:first-child { margin-top: 0; }
+.section-sep-label {
+    font-size: 0.62rem; font-weight: 800; letter-spacing: 2px;
+    text-transform: uppercase; color: #456990; white-space: nowrap;
+}
+.section-sep-line { flex: 1; height: 1px; background: #dde3ea; }
+
+/* Grid de campos */
+.fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.field-full  { grid-column: 1 / -1; }
+
+/* Campo */
+.field-group { display: flex; flex-direction: column; gap: 4px; }
+.field-label {
+    font-size: 0.65rem; font-weight: 700; letter-spacing: 1.2px;
+    text-transform: uppercase; color: #8a9ab0;
+}
+.field-input, .field-select {
+    appearance: none;
+    background: #f7f9fc;
+    border: 1.5px solid #dde3ea;
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 0.875rem; font-weight: 500; color: #1a2733;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+    width: 100%;
+}
+.field-input:focus, .field-select:focus {
+    border-color: #456990;
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(69,105,144,0.12);
+}
+.field-input::placeholder { color: #b0bec5; }
+.field-input.error  { border-color: #EF767A; }
+.field-error { font-size: 0.65rem; font-weight: 600; color: #EF767A; margin-top: 2px; }
+.field-hint  { font-size: 0.65rem; color: #8a9ab0; margin-top: 2px; }
+
+/* Selector con chevron */
+.field-sel-wrap { position: relative; }
+.field-sel-wrap .field-select { padding-right: 34px; cursor: pointer; }
+.field-sel-chev { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; color: #8a9ab0; font-size: 16px; }
+
+/* Campo contraseña con toggle ojo */
+.field-pass-wrap { position: relative; }
+.field-pass-wrap .field-input { padding-right: 40px; }
+.field-pass-toggle {
+    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; cursor: pointer; color: #8a9ab0;
+    display: flex; align-items: center; padding: 2px;
+    transition: color 0.15s;
+}
+.field-pass-toggle:hover { color: #456990; }
+
+/* Toggle forzar cambio */
+.toggle-row {
+    display: flex; align-items: center; justify-content: space-between;
+    background: #f7f9fc; border: 1.5px solid #dde3ea;
+    border-radius: 8px; padding: 10px 14px;
+    gap: 12px; cursor: pointer; transition: background 0.12s, border-color 0.12s;
+}
+.toggle-row:hover { background: #edf2f7; border-color: #c4cdd8; }
+.toggle-row.active { background: #edf2f7; border-color: #456990; }
+.toggle-label { font-size: 0.82rem; font-weight: 600; color: #1a2733; }
+.toggle-sub   { font-size: 0.67rem; color: #8a9ab0; margin-top: 2px; }
+
+/* Switch visual nativo */
+.toggle-switch {
+    position: relative; width: 36px; height: 20px; flex-shrink: 0;
+}
+.toggle-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+.toggle-track {
+    position: absolute; inset: 0; border-radius: 10px;
+    background: #dde3ea; transition: background 0.2s;
+    cursor: pointer;
+}
+.toggle-track::after {
+    content: ''; position: absolute;
+    top: 3px; left: 3px;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: white; transition: transform 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.toggle-switch input:checked + .toggle-track { background: #456990; }
+.toggle-switch input:checked + .toggle-track::after { transform: translateX(16px); }
+
+/* ── FOOTER ───────────────────────────────────────────────────── */
+.dialog-footer {
+    padding: 14px 24px;
+    border-top: 1px solid #dde3ea;
+    background: #f7f9fc;
+    display: flex; justify-content: flex-end; gap: 10px;
+    flex-shrink: 0;
+}
+.btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 0.78rem; font-weight: 700;
+    padding: 9px 20px; border-radius: 8px;
+    cursor: pointer; border: none; transition: all 0.15s;
+    white-space: nowrap; letter-spacing: 0.3px;
+}
+.btn:disabled { opacity: 0.4; pointer-events: none; }
+.btn-ghost  { background: transparent; border: 1.5px solid #dde3ea; color: #4a5568; }
+.btn-ghost:hover { border-color: #456990; color: #456990; }
+.btn-solid  { background: #456990; border: 1.5px solid #456990; color: white; }
+.btn-solid:hover { background: #344f6e; border-color: #344f6e; }
+.btn-solid.loading { background: #5a7fa8; border-color: #5a7fa8; }
+
+.btn-spinner {
+    width: 13px; height: 13px; border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: white; border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+}
+@@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+
+<MudDialog DisableSidePadding="true" Class="rounded-lg">
+    <DialogContent>
+        <div class="dialog-wrap">
+
+            <!-- ── HEAD ────────────────────────────────────────── -->
+            <div class="dialog-head">
+                <div class="dialog-head-left">
+                    <div class="dialog-head-ico">
+                        <MudIcon Icon="@Icons.Material.Filled.PersonAdd"
+                                 Style="font-size:1.3rem;color:white;" />
+                    </div>
+                    <div>
+                        <div class="dialog-head-title">Crear Nuevo Usuario</div>
+                        <div class="dialog-head-sub">Completá los datos para registrar el acceso</div>
+                    </div>
+                </div>
+                <MudIconButton Icon="@Icons.Material.Filled.Close"
+                               Color="Color.Inherit"
+                               OnClick="Cancelar"
+                               Size="Size.Small"
+                               Style="color:rgba(255,255,255,0.7);" />
+            </div>
+
+            <!-- ── BODY ────────────────────────────────────────── -->
+            <div class="dialog-body">
+
+                <!-- Datos Personales -->
+                <div class="section-sep">
+                    <span class="section-sep-label">Datos Personales</span>
+                    <div class="section-sep-line"></div>
+                </div>
+
+                <div class="fields-grid">
+
+                    <div class="field-group">
+                        <label class="field-label">Nombres *</label>
+                        <input class="field-input @(mostrarErrores && string.IsNullOrWhiteSpace(_usuario.Nombre) ? "error" : "")"
+                               placeholder="Ej: Juan Manuel"
+                               value="@_usuario.Nombre"
+                               @oninput="e => _usuario.Nombre = e.Value?.ToString() ?? string.Empty" />
+                        @if (mostrarErrores && string.IsNullOrWhiteSpace(_usuario.Nombre))
+                        {
+                            <span class="field-error">Requerido</span>
+                        }
+                    </div>
+
+                    <div class="field-group">
+                        <label class="field-label">Apellidos *</label>
+                        <input class="field-input @(mostrarErrores && string.IsNullOrWhiteSpace(_usuario.Apellido) ? "error" : "")"
+                               placeholder="Ej: García"
+                               value="@_usuario.Apellido"
+                               @oninput="e => _usuario.Apellido = e.Value?.ToString() ?? string.Empty" />
+                        @if (mostrarErrores && string.IsNullOrWhiteSpace(_usuario.Apellido))
+                        {
+                            <span class="field-error">Requerido</span>
+                        }
+                    </div>
+
+                    <div class="field-group">
+                        <label class="field-label">DNI *</label>
+                        <input class="field-input @(mostrarErrores && string.IsNullOrWhiteSpace(_usuario.Dni) ? "error" : "")"
+                               placeholder="Ej: 30123456"
+                               value="@_usuario.Dni"
+                               @oninput="e => _usuario.Dni = e.Value?.ToString() ?? string.Empty" />
+                        @if (mostrarErrores && string.IsNullOrWhiteSpace(_usuario.Dni))
+                        {
+                            <span class="field-error">Requerido</span>
+                        }
+                    </div>
+
+                    <div class="field-group">
+                        <label class="field-label">Nacionalidad *</label>
+                        <div class="field-sel-wrap">
+<select class="field-select" @bind="_usuario.IdNacionalidad">
+    <option value="1">Argentina</option>
+    <option value="2">Uruguay</option>
+    <option value="3">Chile</option>
+    <option value="4">Paraguay</option>
+    <option value="5">Brasil</option>
+    <option value="6">Bolivia</option>
+</select>
+                            <MudIcon Icon="@Icons.Material.Filled.UnfoldMore" Class="field-sel-chev" />
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Credenciales -->
+                <div class="section-sep">
+                    <span class="section-sep-label">Credenciales de Acceso</span>
+                    <div class="section-sep-line"></div>
+                </div>
+
+                <div class="fields-grid">
+
+                    <div class="field-group field-full">
+                        <label class="field-label">Correo Electrónico *</label>
+                        <input class="field-input @(mostrarErrores && string.IsNullOrWhiteSpace(_usuario.Email) ? "error" : "")"
+                               type="email"
+                               placeholder="usuario@institucion.edu.ar"
+                               value="@_usuario.Email"
+                               @oninput="e => _usuario.Email = e.Value?.ToString() ?? string.Empty" />
+                        @if (mostrarErrores && string.IsNullOrWhiteSpace(_usuario.Email))
+                        {
+                            <span class="field-error">Requerido</span>
+                        }
+                    </div>
+
+                    <div class="field-group field-full">
+                        <label class="field-label">Contraseña Temporal *</label>
+                        <div class="field-pass-wrap">
+                            <input class="field-input @(mostrarErrores && string.IsNullOrWhiteSpace(_claveTemporal) ? "error" : "")"
+                                   type="@(_mostrarPass ? "text" : "password")"
+                                   placeholder="Mínimo 8 caracteres"
+                                   value="@_claveTemporal"
+                                   @oninput="e => _claveTemporal = e.Value?.ToString() ?? string.Empty" />
+                            <button class="field-pass-toggle" type="button"
+                                    @onclick="() => _mostrarPass = !_mostrarPass">
+                                <MudIcon Icon="@(_mostrarPass ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                                         Style="font-size:18px;" />
+                            </button>
+                        </div>
+                        @if (mostrarErrores && string.IsNullOrWhiteSpace(_claveTemporal))
+                        {
+                            <span class="field-error">Requerido</span>
+                        }
+                        else
+                        {
+                            <span class="field-hint">El usuario deberá cambiarla al primer inicio de sesión.</span>
+                        }
+                    </div>
+
+                    <!-- Toggle forzar cambio de contraseña -->
+                    <div class="field-full">
+                        <label class="toggle-row @(_usuario.DebeCambiarPass ? "active" : "")"
+                               style="cursor:pointer;">
+                            <div>
+                                <div class="toggle-label">Forzar cambio de contraseña</div>
+                                <div class="toggle-sub">El usuario deberá definir una nueva clave al ingresar por primera vez.</div>
+                            </div>
+                            <div class="toggle-switch">
+                                <input type="checkbox"
+                                       checked="@_usuario.DebeCambiarPass"
+                                       @onchange="e => _usuario.DebeCambiarPass = (bool)(e.Value ?? true)" />
+                                <div class="toggle-track"></div>
+                            </div>
+                        </label>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- ── FOOTER ───────────────────────────────────────── -->
+            <div class="dialog-footer">
+                <button class="btn btn-ghost" @onclick="Cancelar" disabled="@_procesando">
+                    Cancelar
+                </button>
+                <button class="btn btn-solid @(_procesando ? "loading" : "")"
+                        @onclick="Guardar"
+                        disabled="@_procesando">
+                    @if (_procesando)
+                    {
+                        <div class="btn-spinner"></div>
+                        <span>Guardando…</span>
+                    }
+                    else
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.PersonAdd" Style="font-size:15px;" />
+                        <span>Crear Usuario</span>
+                    }
+                </button>
+            </div>
+
+        </div>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = null!;
+
+    private Usuario _usuario      = new() { IdNacionalidad = 1, DebeCambiarPass = true, Activo = true };
+    private string  _claveTemporal = string.Empty;
+    private bool    _procesando    = false;
+    private bool    _mostrarPass   = false;
+    private bool    mostrarErrores = false;
+
+    private bool FormValido =>
+        !string.IsNullOrWhiteSpace(_usuario.Nombre)    &&
+        !string.IsNullOrWhiteSpace(_usuario.Apellido)  &&
+        !string.IsNullOrWhiteSpace(_usuario.Dni)       &&
+        !string.IsNullOrWhiteSpace(_usuario.Email)     &&
+        !string.IsNullOrWhiteSpace(_claveTemporal);
+
+    private async Task Guardar()
+    {
+        mostrarErrores = true;
+        if (!FormValido) return;
+
+        _procesando = true;
+        try
+        {
+            _usuario.ClaveHash = _claveTemporal;
+            var result = await UsuarioService.CrearAsync(_usuario);
+            if (result != null)
+            {
+                Snackbar.Add("Usuario creado exitosamente.", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+            {
+                Snackbar.Add("Error al crear el usuario. Verificá si el correo o DNI ya existen.", Severity.Error);
+            }
+        }
+        finally { _procesando = false; }
+    }
+
+    private void Cancelar() => MudDialog.Cancel();
+}
