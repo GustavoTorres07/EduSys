@@ -7,5 +7,6 @@ namespace EduSys.Web.Services.Interfaces
     {
         Task<AsistenciaGrillaDTO> GetGrillaByComisionAsync(int idComision);
         Task<bool> GuardarGrillaAsync(GuardarAsistenciaRequestDTO request);
+        Task<string?> SubirCertificadoAsync(string base64Content, string fileName);
     }
 }

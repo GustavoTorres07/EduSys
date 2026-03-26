@@ -1,0 +1,656 @@
+﻿@page "/asistencia"
+
+@using Microsoft.AspNetCore.Components.Forms
+@using EduSys.Shared.DTOs
+@using EduSys.Web.Services.Interfaces
+@using Microsoft.AspNetCore.Authorization
+
+@* 🔒 Protegemos la vista: Solo administrativos con permisos *@
+@attribute [Authorize(Roles = "ASIS_VER, ASIS_CARGAR")]
+
+@inject ISedeService SedeService
+@inject ICarreraService CarreraService
+@inject IPeriodoService PeriodoService
+@inject IComisionService ComisionService
+@inject IAsistenciaService AsistenciaService
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS 
+
+<style>
+    :root {
+        --admin-primary: #1e3a58;
+        --admin-accent: #49BEAA;
+        --admin-warn: #EEB868;
+        --admin-danger: #EF767A;
+        --admin-purple: #9c27b0;
+        --bg-light: #f8fafc;
+        --border-color: #e2e8f0;
+    }
+
+    .admin-header {
+        background: linear-gradient(135deg, var(--admin-primary) 0%, #2b4162 100%);
+        color: white; padding: 2rem; border-radius: 16px; margin-bottom: 1.5rem;
+        box-shadow: 0 10px 25px rgba(30,58,88,0.15);
+    }
+
+    /* 🔥 CORRECCIÓN VISUAL: INPUTS Y LABELS OSCUROS */
+    .admin-filter-select .mud-input-label {
+        color: var(--admin-primary) !important;
+        font-weight: 700 !important;
+    }
+    
+    .admin-filter-select .mud-input-label-outlined {
+        background-color: white !important;
+        padding: 0 4px !important;
+    }
+
+    .admin-filter-select input, 
+    .admin-filter-select .mud-select-input, 
+    .admin-filter-select .mud-input-slot { 
+        color: #1e293b !important; 
+        font-weight: 600 !important;
+        -webkit-text-fill-color: #1e293b !important;
+    }
+
+    .admin-filter-select .mud-input-outlined-border {
+        border-color: #cbd5e1 !important;
+        transition: border-color 0.2s;
+    }
+
+    .admin-filter-select:hover .mud-input-outlined-border {
+        border-color: var(--admin-primary) !important;
+    }
+
+    .admin-filter-select.mud-input-control.mud-input-focused .mud-input-outlined-border {
+        border-color: var(--admin-primary) !important;
+        border-width: 2px !important;
+    }
+
+    .filter-card { 
+        background: white; border-radius: 12px; border: 1px solid var(--border-color); 
+        padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }
+
+    /* --- ESTILOS DE LA GRILLA --- */
+    .matrix-container {
+        background: white; border: 1px solid var(--border-color); border-radius: 12px;
+        overflow-x: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+    }
+
+    .matrix-table { width: 100%; border-collapse: collapse; min-width: 800px; }
+    .matrix-table th, .matrix-table td { border: 1px solid var(--border-color); padding: 0; text-align: center; vertical-align: middle; }
+    .matrix-table th { background-color: var(--bg-light); color: var(--admin-primary); font-weight: 800; font-size: 0.75rem; text-transform: uppercase; padding: 12px 8px; }
+
+    .sticky-col { position: sticky; left: 0; background-color: white; z-index: 10; text-align: left !important; padding: 12px 16px !important; min-width: 250px; border-right: 2px solid var(--border-color) !important; }
+    .sticky-header { z-index: 11 !important; background-color: var(--bg-light) !important; }
+
+    .alumno-name { font-weight: 700; color: #1e293b; font-size: 0.9rem; }
+    .alumno-legajo { font-size: 0.75rem; color: #64748b; font-weight: 600; }
+
+    .cell-attendance {
+        height: 60px; width: 90px; min-width: 90px;
+        cursor: pointer; display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        transition: all 0.2s; position: relative;
+    }
+    .cell-attendance:hover { background-color: #f1f5f9; }
+    .state-icon { font-size: 1.5rem; }
+    .cell-attendance:active .state-icon { transform: scale(0.8); }
+
+    .state-presente { color: var(--admin-accent); }
+    .state-ausente { color: var(--admin-danger); }
+    .state-justificado { color: var(--admin-purple); }
+    .state-vacio { color: #cbd5e1; }
+    
+    .action-badge {
+        position: absolute; top: 2px; right: 2px;
+        background: white; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    /* Modal Styles */
+    .unified-dialog-card { background-color: white !important; border-radius: 16px !important; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1) !important; }
+    .dialog-header-integrated { padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; border-radius: 16px 16px 0 0; color: white; }
+    .actions-footer { padding: 16px 24px; border-top: 1px solid var(--border-color); background-color: var(--bg-light); display: flex; justify-content: flex-end; gap: 12px; border-radius: 0 0 16px 16px; }
+</style>
+
+<MudOverlay Visible="procesando" DarkBackground="true" Absolute="false" ZIndex="9999">
+    <MudStack AlignItems="AlignItems.Center">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+        <MudText Typo="Typo.h6" Style="color: white; font-weight: 600;">Procesando operación...</MudText>
+    </MudStack>
+</MudOverlay>
+
+<div class="pa-4">
+    @* --- HEADER --- *@
+    <div class="admin-header">
+        <MudText Typo="Typo.h4" Style="font-weight: 800; letter-spacing: -1px;">Auditoría y Gestión de Asistencias</MudText>
+        <MudText Typo="Typo.subtitle1" Style="opacity: 0.9;">Supervisa registros, corrige errores, añade clases y justifica inasistencias.</MudText>
+    </div>
+
+    @* --- PANEL DE FILTROS --- *@
+    <div class="filter-card">
+        <MudGrid Spacing="3" Justify="Justify.FlexStart" AlignItems="AlignItems.Center">
+            <MudItem xs="12" sm="6" md="3">
+                <MudSelect T="int" Label="Sede" Value="idSede" ValueChanged="OnSedeChanged" 
+                           Class="admin-filter-select bg-white" AnchorOrigin="Origin.BottomCenter" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true">
+                    <MudSelectItem Value="0">Seleccione Sede...</MudSelectItem>
+                    @foreach (var s in sedes) { <MudSelectItem Value="@s.Id">@s.Nombre</MudSelectItem> }
+                </MudSelect>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="3">
+                <MudSelect T="int" Label="Carrera" Value="idCarrera" ValueChanged="OnCarreraChanged" 
+                           Class="admin-filter-select bg-white" AnchorOrigin="Origin.BottomCenter" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true">
+                    <MudSelectItem Value="0">Seleccione Carrera...</MudSelectItem>
+                    @foreach (var c in carreras) { <MudSelectItem Value="@c.Id">@c.Nombre</MudSelectItem> }
+                </MudSelect>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="2">
+                <MudSelect T="int" Label="Período" Value="idPeriodo" ValueChanged="OnPeriodoChanged" 
+                           Class="admin-filter-select bg-white" AnchorOrigin="Origin.BottomCenter" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true">
+                    <MudSelectItem Value="0">Seleccione Período...</MudSelectItem>
+                    @foreach (var p in periodos) { <MudSelectItem Value="@p.Id">@p.Nombre</MudSelectItem> }
+                </MudSelect>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="4">
+                <MudSelect T="int" Label="Comisión / Materia" Value="idComisionSeleccionada" ValueChanged="OnComisionChanged" 
+                           Disabled="@(idSede == 0 || idPeriodo == 0)"
+                           Class="admin-filter-select bg-white" Variant="Variant.Outlined" Margin="Margin.Dense" AdornmentIcon="@Icons.Material.Filled.Search">
+                    <MudSelectItem Value="0">Seleccione comisión...</MudSelectItem>
+                    @foreach (var com in comisionesFiltradas)
+                    {
+                        <MudSelectItem Value="@com.Id">@com.Codigo - @(string.IsNullOrEmpty(com.MateriaNombre) ? com.Materia : com.MateriaNombre)</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
+
+        @if (idComisionSeleccionada > 0 && !cargandoGrilla)
+        {
+            <div class="d-flex justify-end mt-4 gap-3">
+                <AuthorizeView Roles="ASIS_CARGAR">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" 
+                               StartIcon="@Icons.Material.Filled.Add" Style="font-weight: 700; border-radius: 8px;"
+                               OnClick="AbrirModalNuevaClase">
+                        NUEVA CLASE
+                    </MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" 
+                               StartIcon="@Icons.Material.Filled.Save" Style="font-weight: 700; border-radius: 8px;"
+                               OnClick="GuardarCambiosBD">
+                        GUARDAR AUDITORÍA
+                    </MudButton>
+                </AuthorizeView>
+            </div>
+        }
+    </div>
+
+    @* --- RESULTADOS: GRILLA --- *@
+    @if (cargandoGrilla)
+    {
+        <div class="d-flex justify-center pa-10"><MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" /></div>
+    }
+    else if (idComisionSeleccionada > 0)
+    {
+        <div class="matrix-container animate__animated animate__fadeIn">
+            <table class="matrix-table">
+                <thead>
+                    <tr>
+                        <th class="sticky-col sticky-header">
+                            <div class="d-flex align-center gap-2">
+                                <MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Small" />
+                                <span>ALUMNO / LEGAJO</span>
+                            </div>
+                        </th>
+                        <th style="min-width: 80px; background-color: #f1f5f9;">% ASIST.</th>
+                        @foreach (var fecha in fechasClase.OrderBy(f => f))
+                        {
+                            <th style="min-width: 100px;">
+                                <div class="d-flex flex-column align-center justify-center">
+                                    <span style="font-size: 0.85rem;">@fecha.ToString("dd/MM")</span>
+                                    <span style="font-size: 0.6rem; opacity: 0.7;">@fecha.ToString("ddd").ToUpper()</span>
+                                    
+                                    <AuthorizeView Roles="ASIS_CARGAR">
+                                        <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true" Color="Color.Primary">
+                                            <MudMenuItem OnClick="@(() => AccionMasiva(fecha, 1))">
+                                                <div class="d-flex align-center gap-2 text-success">
+                                                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small"/> Marcar Todos Presentes
+                                                </div>
+                                            </MudMenuItem>
+                                            <MudMenuItem OnClick="@(() => AccionMasiva(fecha, 2))">
+                                                <div class="d-flex align-center gap-2 text-error">
+                                                    <MudIcon Icon="@Icons.Material.Filled.Cancel" Size="Size.Small"/> Marcar Todos Ausentes
+                                                </div>
+                                            </MudMenuItem>
+                                            <MudDivider />
+                                            <MudMenuItem OnClick="@(() => EliminarFecha(fecha))">
+                                                <div class="d-flex align-center gap-2 text-muted">
+                                                    <MudIcon Icon="@Icons.Material.Filled.Delete" Size="Size.Small"/> Eliminar Columna
+                                                </div>
+                                            </MudMenuItem>
+                                        </MudMenu>
+                                    </AuthorizeView>
+                                </div>
+                            </th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var alumno in alumnos)
+                    {
+                        <tr>
+                            <td class="sticky-col">
+                                <div class="alumno-name">@alumno.NombreCompleto</div>
+                                <div class="alumno-legajo">Leg: @alumno.Legajo</div>
+                            </td>
+                            
+                            @{ var porcentaje = CalcularPorcentaje(alumno.IdInscripcionCursada); }
+                            <td style="background-color: #f8fafc; font-weight: 800; color: @(porcentaje >= 80 ? "var(--admin-accent)" : (porcentaje >= 60 ? "var(--admin-warn)" : "var(--admin-danger)"))">
+                                @porcentaje.ToString("0")%
+                            </td>
+
+                            @foreach (var fecha in fechasClase.OrderBy(f => f))
+                            {
+                                var estado = ObtenerEstado(alumno.IdInscripcionCursada, fecha);
+                                <td>
+                                    <div class="cell-attendance" @onclick="() => ToggleAsistenciaAdmin(alumno.IdInscripcionCursada, fecha)">
+                                        @if (estado.EstaPresente) 
+                                        { 
+                                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Class="state-icon state-presente" /> 
+                                        }
+                                        else if (estado.EsJustificado)
+                                        {
+                                            <MudIcon Icon="@Icons.Material.Filled.Shield" Class="state-icon state-justificado" />
+                                            <MudText Style="font-size: 0.55rem; font-weight: 800; color: var(--admin-purple); margin-top: 2px;">JUSTIFICADO</MudText>
+                                            
+                                            @if (!string.IsNullOrEmpty(estado.UrlCertificado))
+                                            {
+                                                <div class="action-badge" @onclick:stopPropagation="true">
+                                                    <MudTooltip Text="Ver Certificado">
+                                                        <MudIconButton Icon="@Icons.Material.Filled.Visibility" Color="Color.Primary" Size="Size.Small" Style="padding: 4px;" OnClick="@(() => AbrirCertificado(estado.UrlCertificado))"/>
+                                                    </MudTooltip>
+                                                </div>
+                                            }
+                                        }
+                                        else if (estado.Registrado) 
+                                        { 
+                                            <MudIcon Icon="@Icons.Material.Filled.Cancel" Class="state-icon state-ausente" /> 
+                                        }
+                                        else 
+                                        { 
+                                            <MudIcon Icon="@Icons.Material.Filled.Remove" Class="state-icon state-vacio" /> 
+                                        }
+
+                                        <AuthorizeView Roles="ASIS_CARGAR" Context="authContext">
+                                            <Authorized>
+                                                @if (!estado.EstaPresente && !estado.EsJustificado && estado.Registrado)
+                                                {
+                                                    <div class="action-badge" @onclick:stopPropagation="true">
+                                                        <MudTooltip Text="Justificar Falta">
+                                                            <MudIconButton Icon="@Icons.Material.Filled.UploadFile" Color="Color.Warning" Size="Size.Small" Style="padding: 4px;" OnClick="@(() => AbrirModalJustificar(alumno, fecha, estado))"/>
+                                                        </MudTooltip>
+                                                    </div>
+                                                }
+                                            </Authorized>
+                                        </AuthorizeView>
+                                    </div>
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else
+    {
+        <div class="d-flex flex-column align-center justify-center pa-10" style="background: white; border-radius: 12px; border: 1px dashed var(--border-color);">
+            <MudIcon Icon="@Icons.Material.Filled.Search" Style="font-size: 4rem; color: #cbd5e1;" Class="mb-4" />
+            <MudText Typo="Typo.h5" Style="font-weight: 700; color: #334155;">Auditoría de Asistencias</MudText>
+            <MudText Typo="Typo.body1" Style="color: #64748b;" Class="mt-2">Complete los filtros superiores para cargar la información de la comisión.</MudText>
+        </div>
+    }
+</div>
+
+@* --- MODAL: AGREGAR NUEVA CLASE --- *@
+<MudDialog @bind-Visible="mostrarModalClase" Options="dialogOptions" DisableSidePadding="true" Class="rounded-lg overflow-hidden">
+    <DialogContent>
+        <div class="dialog-header-integrated">
+            <div class="d-flex align-center">
+                <MudIcon Icon="@Icons.Material.Filled.Event" Class="mr-3" />
+                <div>
+                    <MudText Typo="Typo.h6" Style="font-weight: 700; line-height: 1.2;">Crear Nueva Clase (Admin)</MudText>
+                    <MudText Typo="Typo.caption" Style="opacity: 0.9;">Añade una columna al registro histórico</MudText>
+                </div>
+            </div>
+            <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" OnClick="() => mostrarModalClase = false" Size="Size.Small" />
+        </div>
+
+        <div class="pa-6">
+            <MudDatePicker @bind-Date="nuevaFechaSeleccionada" Label="Fecha a auditar/dictada" Variant="Variant.Outlined" 
+                           Required="true" Color="Color.Primary" Class="admin-filter-select mt-2" Margin="Margin.Dense" />
+        </div>
+
+        <div class="actions-footer">
+            <MudButton OnClick="() => mostrarModalClase = false" Variant="Variant.Outlined" Color="Color.Default">Cancelar</MudButton>
+            <MudButton OnClick="ConfirmarNuevaClase" Variant="Variant.Filled" Color="Color.Primary">Agregar Columna</MudButton>
+        </div>
+    </DialogContent>
+</MudDialog>
+
+@* --- MODAL: JUSTIFICAR FALTA (ADMIN) --- *@
+<MudDialog @bind-Visible="mostrarModalJustificar" Options="dialogOptions" Class="unified-dialog-card pa-0">
+    <DialogContent>
+        <div class="dialog-header-integrated" style="background: var(--admin-purple);">
+            <div class="d-flex align-center">
+                <MudIcon Icon="@Icons.Material.Filled.Gavel" Class="mr-3" />
+                <div>
+                    <MudText Typo="Typo.h6" Style="font-weight: 700; line-height: 1.2;">Justificación Administrativa</MudText>
+                    <MudText Typo="Typo.caption" Style="opacity: 0.9;">Anexar comprobante oficial</MudText>
+                </div>
+            </div>
+            <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" OnClick="() => mostrarModalJustificar = false" Size="Size.Small" />
+        </div>
+
+        <div class="pa-6">
+            @if(alumnoParaJustificar != null)
+            {
+                <div class="pa-4 mb-4 rounded-lg" style="background-color: #fdf4ff; border: 1px solid #f5d0fe;">
+                    <MudText Typo="Typo.body2" Style="color: var(--admin-purple); font-weight: 600;">Alumno: @alumnoParaJustificar.NombreCompleto</MudText>
+                    <MudText Typo="Typo.caption" Style="color: #86198f;">Fecha de inasistencia: @fechaParaJustificar.ToString("dd/MM/yyyy")</MudText>
+                </div>
+
+                <MudTextField @bind-Value="observacionJustificacion" Label="Resolución / Expediente / Observaciones" Variant="Variant.Outlined" Lines="2" Class="mb-4 admin-filter-select" Margin="Margin.Dense" />
+
+                <MudFileUpload T="IBrowserFile" FilesChanged="UploadFiles" Accept=".pdf,.png,.jpg,.jpeg">
+                    <ActivatorContent>
+                        <MudButton HtmlTag="label" Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.CloudUpload" Style="font-weight: 700; width: 100%;" Disabled="subiendoArchivo">
+                            @(subiendoArchivo ? "Procesando archivo..." : "Adjuntar Comprobante (PDF/JPG)")
+                        </MudButton>
+                    </ActivatorContent>
+                </MudFileUpload>
+
+                @if (archivoCertificado != null)
+                {
+                    <div class="mt-3 pa-2 d-flex align-center gap-2" style="background: #f1f5f9; border-radius: 8px; border: 1px dashed #cbd5e1;">
+                        <MudIcon Icon="@Icons.Material.Filled.AttachFile" Size="Size.Small" Style="color: #64748b;" />
+                        <MudText Typo="Typo.body2" Style="color: #475569; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 80%;">@archivoCertificado.Name</MudText>
+                        @if (!string.IsNullOrEmpty(base64Certificado)) { <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" Color="Color.Success" Class="ml-auto" /> }
+                    </div>
+                }
+            }
+        </div>
+
+        <div class="actions-footer">
+            <MudButton OnClick="() => mostrarModalJustificar = false" Variant="Variant.Outlined" Disabled="subiendoArchivo">Cancelar</MudButton>
+            <MudButton OnClick="ConfirmarJustificacion" Variant="Variant.Filled" Color="Color.Secondary" Disabled="@(archivoCertificado == null || string.IsNullOrEmpty(base64Certificado) || subiendoArchivo)">Aplicar Justificación</MudButton>
+        </div>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    private List<SedeDTO> sedes = new();
+    private List<CarreraDTO> carreras = new();
+    private List<PeriodoAcademicoDTO> periodos = new();
+    private List<ComisionDTO> todasLasComisiones = new();
+    private List<ComisionDTO> comisionesFiltradas = new();
+
+    private int idSede;
+    private int idCarrera;
+    private int idPeriodo;
+    private int idComisionSeleccionada;
+
+    private bool procesando = false;
+    private bool cargandoGrilla = false;
+    private List<DateTime> fechasClase = new();
+    private List<AlumnoAsistenciaFilaDTO> alumnos = new();
+    private Dictionary<int, Dictionary<DateTime, AsistenciaDetalleDTO>> matrizAsistencia = new();
+
+    // Modales y Archivos
+    private DialogOptions dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true, NoHeader = true, CloseOnEscapeKey = true };
+    private bool mostrarModalClase = false;
+    private DateTime? nuevaFechaSeleccionada = DateTime.Today;
+
+    private bool mostrarModalJustificar = false;
+    private AlumnoAsistenciaFilaDTO? alumnoParaJustificar;
+    private DateTime fechaParaJustificar;
+    private AsistenciaDetalleDTO? estadoParaJustificar;
+    private string observacionJustificacion = "";
+    
+    private IBrowserFile? archivoCertificado;
+    private string base64Certificado = "";
+    private bool subiendoArchivo = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var tasks = new List<Task> {
+                CargarSedes(),
+                CargarCarreras(),
+                CargarPeriodos(),
+                CargarTodasLasComisiones()
+            };
+            await Task.WhenAll(tasks);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Error al cargar los catálogos.", Severity.Error);
+        }
+    }
+
+    private async Task CargarSedes() => sedes = await SedeService.GetAllAsync() ?? new();
+    private async Task CargarCarreras() => carreras = await CarreraService.GetAllAsync() ?? new();
+    private async Task CargarPeriodos() => periodos = await PeriodoService.GetAllAsync() ?? new();
+    private async Task CargarTodasLasComisiones() => todasLasComisiones = await ComisionService.GetAllAsync() ?? new();
+
+    private void OnSedeChanged(int val) { idSede = val; LimpiarGrilla(); ActualizarFiltroComisiones(); }
+    private void OnCarreraChanged(int val) { idCarrera = val; LimpiarGrilla(); ActualizarFiltroComisiones(); }
+    private void OnPeriodoChanged(int val) { idPeriodo = val; LimpiarGrilla(); ActualizarFiltroComisiones(); }
+
+    private void ActualizarFiltroComisiones()
+    {
+        idComisionSeleccionada = 0; 
+        if (idSede > 0 && idPeriodo > 0)
+        {
+            comisionesFiltradas = todasLasComisiones
+                .Where(x => x.IdSede == idSede && x.IdPeriodo == idPeriodo)
+                .ToList();
+        }
+        else
+        {
+            comisionesFiltradas.Clear();
+        }
+    }
+
+    private void LimpiarGrilla()
+    {
+        idComisionSeleccionada = 0;
+        alumnos.Clear();
+        fechasClase.Clear();
+        matrizAsistencia.Clear();
+    }
+
+    private async Task OnComisionChanged(int value)
+    {
+        idComisionSeleccionada = value;
+        if (value > 0) await CargarGrillaReal();
+        else LimpiarGrilla();
+    }
+
+    private async Task CargarGrillaReal()
+    {
+        cargandoGrilla = true;
+        try
+        {
+            var grilla = await AsistenciaService.GetGrillaByComisionAsync(idComisionSeleccionada);
+            fechasClase = grilla.Fechas ?? new();
+            alumnos = grilla.Alumnos ?? new();
+            matrizAsistencia.Clear();
+            
+            foreach (var alu in alumnos)
+            {
+                matrizAsistencia[alu.IdInscripcionCursada] = new();
+                foreach (var f in fechasClase)
+                {
+                    var reg = alu.Asistencias?.FirstOrDefault(a => a.Fecha.Date == f.Date);
+                    matrizAsistencia[alu.IdInscripcionCursada][f] = reg ?? new AsistenciaDetalleDTO { IdInscripcionCursada = alu.IdInscripcionCursada, Fecha = f };
+                }
+            }
+        }
+        finally { cargandoGrilla = false; }
+    }
+
+    private AsistenciaDetalleDTO ObtenerEstado(int id, DateTime f) => matrizAsistencia.ContainsKey(id) && matrizAsistencia[id].ContainsKey(f) ? matrizAsistencia[id][f] : new();
+
+    private double CalcularPorcentaje(int id)
+    {
+        if (!matrizAsistencia.ContainsKey(id)) return 100;
+        int totales = 0, presentes = 0;
+        foreach (var a in matrizAsistencia[id].Values) 
+        { 
+            if (a.Registrado) 
+            { 
+                totales++; 
+                if (a.EstaPresente || a.EsJustificado) presentes++; 
+            } 
+        }
+        return totales == 0 ? 100 : ((double)presentes / totales) * 100;
+    }
+
+    // GESTIÓN ADMIN: Click en Celda
+    private void ToggleAsistenciaAdmin(int id, DateTime f)
+    {
+        var est = matrizAsistencia[id][f];
+        
+        if(est.EsJustificado)
+        {
+            est.EsJustificado = false;
+            est.EstaPresente = true;
+            est.Registrado = true;
+            return;
+        }
+
+        if (!est.Registrado) { est.Registrado = true; est.EstaPresente = true; }
+        else if (est.EstaPresente) { est.EstaPresente = false; }
+        else { est.EstaPresente = true; est.EsJustificado = false; }
+    }
+
+    // GESTIÓN ADMIN: Nueva Clase
+    private void AbrirModalNuevaClase() { nuevaFechaSeleccionada = DateTime.Today; mostrarModalClase = true; }
+    
+    private void ConfirmarNuevaClase()
+    {
+        if (nuevaFechaSeleccionada.HasValue && !fechasClase.Contains(nuevaFechaSeleccionada.Value))
+        {
+            DateTime f = nuevaFechaSeleccionada.Value;
+            fechasClase.Add(f);
+            foreach (var alu in alumnos)
+            {
+                matrizAsistencia[alu.IdInscripcionCursada][f] = new AsistenciaDetalleDTO 
+                { 
+                    IdInscripcionCursada = alu.IdInscripcionCursada, Fecha = f, Registrado = false, EstaPresente = false 
+                };
+            }
+            mostrarModalClase = false;
+            Snackbar.Add("Nueva clase agregada. Guarde los cambios para asentar.", Severity.Success);
+        }
+    }
+
+    // GESTIÓN ADMIN: Masivo y Eliminar
+    private void AccionMasiva(DateTime fecha, int accion)
+    {
+        foreach (var alu in alumnos)
+        {
+            var estado = matrizAsistencia[alu.IdInscripcionCursada][fecha];
+            estado.Registrado = true;
+            estado.EsJustificado = false; 
+            if (accion == 1) estado.EstaPresente = true;  
+            if (accion == 2) estado.EstaPresente = false; 
+        }
+        Snackbar.Add(accion == 1 ? "Todos marcados como Presente" : "Todos marcados como Ausente", Severity.Info);
+    }
+
+    private void EliminarFecha(DateTime fecha)
+    {
+        fechasClase.Remove(fecha);
+        foreach (var alu in alumnos) matrizAsistencia[alu.IdInscripcionCursada].Remove(fecha);
+        Snackbar.Add("Columna eliminada. Guarde los cambios.", Severity.Normal);
+    }
+
+    // GESTIÓN ADMIN: Justificar
+    private void AbrirModalJustificar(AlumnoAsistenciaFilaDTO alu, DateTime fecha, AsistenciaDetalleDTO estado)
+    {
+        alumnoParaJustificar = alu; fechaParaJustificar = fecha; estadoParaJustificar = estado;
+        archivoCertificado = null; base64Certificado = "";
+        observacionJustificacion = estado.Observacion ?? "";
+        mostrarModalJustificar = true;
+    }
+
+    private async Task UploadFiles(IBrowserFile file)
+    {
+        if (file == null) return;
+        subiendoArchivo = true; archivoCertificado = file; StateHasChanged();
+
+        try
+        {
+            if (file.Size > 5 * 1024 * 1024) 
+            { 
+                Snackbar.Add("El archivo es muy pesado. Máximo 5MB.", Severity.Error); 
+                archivoCertificado = null; 
+                return; 
+            }
+            var buffer = new byte[file.Size];
+            await file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024).ReadAsync(buffer);
+            base64Certificado = $"data:{file.ContentType};base64,{Convert.ToBase64String(buffer)}";
+        }
+        catch { Snackbar.Add("Error al procesar el archivo.", Severity.Error); }
+        finally { subiendoArchivo = false; StateHasChanged(); }
+    }
+
+    private async Task ConfirmarJustificacion()
+    {
+        if (estadoParaJustificar != null && !string.IsNullOrEmpty(base64Certificado) && archivoCertificado != null)
+        {
+            procesando = true;
+            try
+            {
+                var urlCloudinary = await AsistenciaService.SubirCertificadoAsync(base64Certificado, archivoCertificado.Name);
+                if (string.IsNullOrEmpty(urlCloudinary)) 
+                { Snackbar.Add("Error subiendo el certificado.", Severity.Error); return; }
+
+                estadoParaJustificar.EsJustificado = true;
+                estadoParaJustificar.Observacion = observacionJustificacion;
+                estadoParaJustificar.UrlCertificado = urlCloudinary;
+                
+                mostrarModalJustificar = false;
+                Snackbar.Add("Certificado subido exitosamente. Guarde los cambios en la auditoría.", Severity.Success);
+            }
+            catch { Snackbar.Add("Error inesperado justificando la inasistencia.", Severity.Error); }
+            finally { procesando = false; }
+        }
+    }
+
+    private async Task AbrirCertificado(string url) => await JS.InvokeVoidAsync("window.open", url, "_blank");
+
+    // GESTIÓN ADMIN: Guardar Todo
+    private async Task GuardarCambiosBD()
+    {
+        procesando = true; StateHasChanged();
+        try
+        {
+            var request = new GuardarAsistenciaRequestDTO { IdComision = idComisionSeleccionada };
+            foreach (var fila in matrizAsistencia.Values)
+                foreach (var asis in fila.Values) 
+                    if (asis.Registrado) request.Asistencias.Add(asis);
+
+            if (await AsistenciaService.GuardarGrillaAsync(request)) 
+                Snackbar.Add("Auditoría guardada correctamente.", Severity.Success);
+            else 
+                Snackbar.Add("Hubo un problema al guardar.", Severity.Error);
+        }
+        catch { Snackbar.Add("Error de conexión.", Severity.Error); }
+        finally { procesando = false; StateHasChanged(); }
+    }
+}

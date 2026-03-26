@@ -53,5 +53,32 @@ namespace EduSys.Web.Services
                 return false;
             }
         }
+
+        // 🚀 AQUÍ SÍ VA EL MÉTODO PARA SUBIR EL ARCHIVO
+        public async Task<string?> SubirCertificadoAsync(string base64Content, string fileName)
+        {
+            try
+            {
+                var request = new { Base64Content = base64Content, FileName = fileName };
+                var response = await _http.PostAsJsonAsync("api/files/upload-certificado", request);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var result = await response.Content.ReadFromJsonAsync<FileUploadResponse>();
+                    return result?.Url;
+                }
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al subir el certificado.");
+                return null;
+            }
+        }
+
+        private class FileUploadResponse
+        {
+            public string Url { get; set; } = string.Empty;
+        }
     }
 }

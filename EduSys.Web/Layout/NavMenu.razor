@@ -306,7 +306,9 @@
                 {
                     <div class="nav-section-header">Operaciones de Cursada</div>
                     @if (HasPermission(authContext.User, "INS_CURSADA_GESTION")) @RenderNavLink("/admin/inscripciones", "Forzar Inscripciones", Icons.Material.Filled.HowToReg)
-                    @if (HasPermission(authContext.User, "ASIS_VER", "ASIS_CARGAR")) @RenderNavLink("/asistencia", "Asistencias", Icons.Material.Filled.FactCheck)
+                    
+                    @* 🚀 ESTE ES EL ACCESO ADMINISTRATIVO A ASISTENCIAS *@
+                    @if (HasPermission(authContext.User, "ASIS_VER", "ASIS_CARGAR")) @RenderNavLink("/asistencia", "Auditoría Asistencias", Icons.Material.Filled.FactCheck)
                 }
 
                 @* Evaluaciones y Actas *@
@@ -330,7 +332,7 @@
                     @if (HasPermission(authContext.User, "SOL_GESTION")) @RenderNavLink("/solicitudes/bandeja", "Mesa de Entradas", Icons.Material.Filled.Inbox)
                 }
 
-                @* Sistema (Aquí está Usuarios) *@
+                @* Sistema *@
                 @if (HasPermission(authContext.User, "REP_VER", "EMAIL_MASIVO", "CFG_INSTITUCION_EDIT", "SEG_USUARIOS_ABM", "SEG_ROLES_ABM"))
                 {
                     <div class="nav-section-header">Sistema</div>
@@ -346,7 +348,6 @@
                     @if (HasPermission(authContext.User, "SEG_USUARIOS_ABM", "SEG_ROLES_ABM"))
                     {
                         <div class="nav-section-header">Seguridad Avanzada</div>
-                        @* 🚀 AQUÍ ESTÁ EL ENLACE A LA VISTA USUARIOS *@
                         @if (HasPermission(authContext.User, "SEG_USUARIOS_ABM")) @RenderNavLink("/usuarios", "Usuarios y Cuentas", Icons.Material.Filled.Security)
                         @if (HasPermission(authContext.User, "SEG_ROLES_ABM")) @RenderNavLink("/admin/roles", "Roles y Permisos", Icons.Material.Filled.AdminPanelSettings)
                     }
@@ -371,7 +372,10 @@
                     <div class="nav-section-header" style="color: var(--mud-palette-tertiary);">Mi Espacio Docente</div>
                     @RenderNavLink("/dashboard-docente", "Inicio", Icons.Material.Filled.Home, true)
                     @RenderNavLink("/mis-comisiones", "Mis Comisiones", Icons.Material.Filled.Groups)
-                    @RenderNavLink("/docente/tomar-asistencia", "Tomar Asistencia", Icons.Material.Filled.HowToReg)
+                    
+                    @* 🚀 ACCESO DOCENTE A ASISTENCIAS *@
+                    @RenderNavLink("/docente/tomar-asistencia", "Pasar Asistencia", Icons.Material.Filled.HowToReg)
+                    
                     @RenderNavLink("/docente/evaluaciones", "Planificar Exámenes", Icons.Material.Filled.Assignment)
                     @RenderNavLink("/docente/cargar-notas", "Cargar Notas", Icons.Material.Filled.EditNote)
                     @RenderNavLink("/docente/actas", "Cerrar Actas", Icons.Material.Filled.Description)
@@ -440,6 +444,8 @@
     private ElementReference commandInputRef;
     private List<CommandItem> allCommands = new();
     private List<CommandItem> filteredCommands = new();
+    
+    // ✅ CORRECCIÓN EXACTA AQUÍ
     private DotNetObjectReference<NavMenu>? _dotNetRef;
 
     private List<NavPage> favoritePages = new();
@@ -465,7 +471,8 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _dotNetRef = DotNetObjectReference.Create(this); 
+        // ✅ CORRECCIÓN DE INICIALIZACIÓN
+        _dotNetRef = DotNetObjectReference.Create(this);
 
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
@@ -604,7 +611,9 @@
         if (HasPermission(user, "COM_HORARIOS_EDIT")) allCommands.Add(new CommandItem { Title = "Horarios", Category = "Planificación", Url = "/horarios", Icon = Icons.Material.Filled.AccessTime });
 
         if (HasPermission(user, "INS_CURSADA_GESTION")) allCommands.Add(new CommandItem { Title = "Forzar Inscripciones", Category = "Operaciones de Cursada", Url = "/admin/inscripciones", Icon = Icons.Material.Filled.HowToReg });
-        if (HasPermission(user, "ASIS_VER", "ASIS_CARGAR")) allCommands.Add(new CommandItem { Title = "Asistencias", Category = "Operaciones de Cursada", Url = "/asistencia", Icon = Icons.Material.Filled.FactCheck });
+        
+        // 🚀 ACCESO ADMINISTRATIVO A ASISTENCIAS EN LA PALETA
+        if (HasPermission(user, "ASIS_VER", "ASIS_CARGAR")) allCommands.Add(new CommandItem { Title = "Auditoría Asistencias", Category = "Operaciones de Cursada", Url = "/asistencia", Icon = Icons.Material.Filled.FactCheck });
 
         if (HasPermission(user, "EVA_ABM")) allCommands.Add(new CommandItem { Title = "Parciales", Category = "Evaluaciones", Url = "/evaluaciones", Icon = Icons.Material.Filled.Assignment });
         if (HasPermission(user, "EVA_CARGAR_NOTAS")) allCommands.Add(new CommandItem { Title = "Carga de Notas", Category = "Evaluaciones", Url = "/notas", Icon = Icons.Material.Filled.Grade });
@@ -622,7 +631,6 @@
         if (HasPermission(user, "EMAIL_MASIVO")) allCommands.Add(new CommandItem { Title = "Comunicación", Category = "Sistema", Url = "/emails/masivos", Icon = Icons.Material.Filled.Email });
         if (HasPermission(user, "CFG_INSTITUCION_EDIT")) allCommands.Add(new CommandItem { Title = "Configuración Base", Category = "Sistema", Url = "/institucion", Icon = Icons.Material.Filled.Settings });
         
-        // 🚀 AQUÍ ESTÁ EL ENLACE A LA VISTA USUARIOS EN LA PALETA DE COMANDOS
         if (HasPermission(user, "SEG_USUARIOS_ABM")) allCommands.Add(new CommandItem { Title = "Usuarios y Cuentas", Category = "Seguridad Avanzada", Url = "/usuarios", Icon = Icons.Material.Filled.Security });
         if (HasPermission(user, "SEG_ROLES_ABM")) allCommands.Add(new CommandItem { Title = "Roles y Permisos", Category = "Seguridad Avanzada", Url = "/admin/roles", Icon = Icons.Material.Filled.AdminPanelSettings });
 
@@ -641,7 +649,10 @@
         {
             allCommands.Add(new CommandItem { Title = "Inicio Docente", Category = "Mi Espacio", Url = "/dashboard-docente", Icon = Icons.Material.Filled.Home });
             allCommands.Add(new CommandItem { Title = "Mis Comisiones", Category = "Mi Espacio", Url = "/mis-comisiones", Icon = Icons.Material.Filled.Groups });
+            
+            // 🚀 ACCESO DOCENTE A ASISTENCIAS EN LA PALETA
             allCommands.Add(new CommandItem { Title = "Tomar Asistencia", Category = "Mi Espacio", Url = "/docente/tomar-asistencia", Icon = Icons.Material.Filled.HowToReg });
+            
             allCommands.Add(new CommandItem { Title = "Planificar Exámenes", Category = "Mi Espacio", Url = "/docente/evaluaciones", Icon = Icons.Material.Filled.Assignment });
             allCommands.Add(new CommandItem { Title = "Cargar Notas", Category = "Mi Espacio", Url = "/docente/cargar-notas", Icon = Icons.Material.Filled.EditNote });
             allCommands.Add(new CommandItem { Title = "Cerrar Actas", Category = "Mi Espacio", Url = "/docente/actas", Icon = Icons.Material.Filled.Description });

@@ -10,6 +10,7 @@
 @inject IAsistenciaService AsistenciaService
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
+@inject IJSRuntime JS 
 
 @attribute [Authorize(Roles = "Docente")]
 
@@ -324,6 +325,19 @@
                                         {
                                             <MudIcon Icon="@Icons.Material.Filled.Shield" Class="state-icon state-justificado" />
                                             <MudText Style="font-size: 0.55rem; font-weight: 800; color: var(--edusys-purple); margin-top: 2px;">JUSTIFICADO</MudText>
+                                            
+                                            @if (!string.IsNullOrEmpty(estado.UrlCertificado))
+                                            {
+                                                <div class="justificar-btn" @onclick:stopPropagation="true">
+                                                    <MudTooltip Text="Ver Certificado Cargado">
+                                                        <MudIconButton Icon="@Icons.Material.Filled.Visibility" 
+                                                                       Color="Color.Primary" 
+                                                                       Size="Size.Small" 
+                                                                       Style="padding: 4px;"
+                                                                       OnClick="@(() => AbrirCertificado(estado.UrlCertificado))"/>
+                                                    </MudTooltip>
+                                                </div>
+                                            }
                                         }
                                         else if (estado.Registrado) 
                                         {
@@ -337,7 +351,7 @@
                                         @if (!estado.EstaPresente && !estado.EsJustificado && estado.Registrado)
                                         {
                                             <div class="justificar-btn" @onclick:stopPropagation="true">
-                                                <MudTooltip Text="Justificar Falta (Adjuntar PDF)">
+                                                <MudTooltip Text="Justificar Falta (Adjuntar PDF/Imagen)">
                                                     <MudIconButton Icon="@Icons.Material.Filled.UploadFile" 
                                                                    Color="Color.Warning" 
                                                                    Size="Size.Small" 
@@ -437,14 +451,16 @@
                     <MudTextField @bind-Value="observacionJustificacion" Label="Motivo / Observaciones" 
                                   Variant="Variant.Outlined" Lines="2" Class="force-black-text mb-4" Margin="Margin.Dense" />
 
-                    <MudFileUpload T="IBrowserFile" FilesChanged="UploadFiles">
+                    @* 🚀 MODIFICADO: Aceptamos imágenes y PDFs, usamos un botón de estado *@
+                    <MudFileUpload T="IBrowserFile" FilesChanged="UploadFiles" Accept=".pdf,.png,.jpg,.jpeg">
                         <ActivatorContent>
                             <MudButton HtmlTag="label"
                                        Variant="Variant.Filled"
                                        Color="Color.Secondary"
                                        StartIcon="@Icons.Material.Filled.CloudUpload"
-                                       Style="font-weight: 700; width: 100%;">
-                                Adjuntar Certificado (PDF/JPG)
+                                       Style="font-weight: 700; width: 100%;"
+                                       Disabled="subiendoArchivo">
+                                @(subiendoArchivo ? "Procesando archivo..." : "Adjuntar Certificado (PDF/JPG)")
                             </MudButton>
                         </ActivatorContent>
                     </MudFileUpload>
@@ -456,16 +472,20 @@
                             <MudText Typo="Typo.body2" Style="color: #475569; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                 @archivoCertificado.Name
                             </MudText>
+                            @if (!string.IsNullOrEmpty(base64Certificado))
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" Color="Color.Success" Class="ml-auto" />
+                            }
                         </div>
                     }
                 }
             </div>
 
             <div class="actions-footer">
-                <MudButton OnClick="() => mostrarModalJustificar = false" Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg font-weight-bold">
+                <MudButton OnClick="() => mostrarModalJustificar = false" Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg font-weight-bold" Disabled="subiendoArchivo">
                     Cancelar
                 </MudButton>
-                <MudButton OnClick="ConfirmarJustificacion" Variant="Variant.Filled" Color="Color.Secondary" Class="rounded-lg font-weight-bold px-6" Disabled="archivoCertificado == null">
+                <MudButton OnClick="ConfirmarJustificacion" Variant="Variant.Filled" Color="Color.Secondary" Class="rounded-lg font-weight-bold px-6" Disabled="@(archivoCertificado == null || string.IsNullOrEmpty(base64Certificado) || subiendoArchivo)">
                     Justificar Falta
                 </MudButton>
             </div>
@@ -491,12 +511,17 @@
     private bool mostrarModalClase = false;
     private DateTime? nuevaFechaSeleccionada = DateTime.Today;
 
+    // Modal Justificación
     private bool mostrarModalJustificar = false;
     private AlumnoAsistenciaFilaDTO? alumnoParaJustificar;
     private DateTime fechaParaJustificar;
     private AsistenciaDetalleDTO? estadoParaJustificar;
     private string observacionJustificacion = "";
+    
+    // Archivos
     private IBrowserFile? archivoCertificado;
+    private string base64Certificado = "";
+    private bool subiendoArchivo = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -677,26 +702,89 @@
         fechaParaJustificar = fecha;
         estadoParaJustificar = estado;
         archivoCertificado = null;
+        base64Certificado = "";
         observacionJustificacion = estado.Observacion ?? "";
         mostrarModalJustificar = true;
     }
 
-    private void UploadFiles(IBrowserFile file)
+    // 🚀 NUEVO: Preparamos el archivo en Base64 para mandarlo a la API
+    private async Task UploadFiles(IBrowserFile file)
     {
+        if (file == null) return;
+        
+        subiendoArchivo = true;
         archivoCertificado = file;
+        StateHasChanged();
+
+        try
+        {
+            // Limitar a 5MB
+            if (file.Size > 5 * 1024 * 1024)
+            {
+                Snackbar.Add("El archivo es muy pesado. Máximo 5MB.", Severity.Error);
+                archivoCertificado = null;
+                return;
+            }
+
+            var buffer = new byte[file.Size];
+            await file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024).ReadAsync(buffer);
+            
+            // Añadimos el prefijo MIME para que Cloudinary sepa qué es
+            var mimeType = file.ContentType;
+            base64Certificado = $"data:{mimeType};base64,{Convert.ToBase64String(buffer)}";
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Error al procesar el archivo adjunto.", Severity.Error);
+        }
+        finally
+        {
+            subiendoArchivo = false;
+            StateHasChanged();
+        }
     }
 
     private async Task ConfirmarJustificacion()
     {
-        if (estadoParaJustificar != null)
+        if (estadoParaJustificar != null && !string.IsNullOrEmpty(base64Certificado) && archivoCertificado != null)
         {
-            estadoParaJustificar.EsJustificado = true;
-            estadoParaJustificar.Observacion = observacionJustificacion;
-            estadoParaJustificar.UrlCertificado = "certificado_subido.pdf"; 
-        }
+            procesando = true;
+            try
+            {
+                // 1. Subimos el certificado a la API
+                var urlCloudinary = await AsistenciaService.SubirCertificadoAsync(base64Certificado, archivoCertificado.Name);
+                
+                if (string.IsNullOrEmpty(urlCloudinary))
+                {
+                    Snackbar.Add("Hubo un error subiendo el certificado a la nube. Intente nuevamente.", Severity.Error);
+                    return;
+                }
 
-        mostrarModalJustificar = false;
-        Snackbar.Add("Falta justificada exitosamente.", Severity.Success);
+                // 2. Modificamos el estado visual
+                estadoParaJustificar.EsJustificado = true;
+                estadoParaJustificar.Observacion = observacionJustificacion;
+                estadoParaJustificar.UrlCertificado = urlCloudinary;
+                
+                mostrarModalJustificar = false;
+                Snackbar.Add("Certificado subido y falta justificada exitosamente. ¡No olvides guardar los cambios de la grilla!", Severity.Success);
+            }
+            catch (Exception)
+            {
+                Snackbar.Add("Error inesperado justificando la inasistencia.", Severity.Error);
+            }
+            finally
+            {
+                procesando = false;
+            }
+        }
+    }
+
+    private async Task AbrirCertificado(string url)
+    {
+        if (!string.IsNullOrWhiteSpace(url))
+        {
+            await JS.InvokeVoidAsync("window.open", url, "_blank");
+        }
     }
 
     private async Task GuardarCambiosBD()
