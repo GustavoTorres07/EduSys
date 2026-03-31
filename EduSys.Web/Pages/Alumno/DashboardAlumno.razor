@@ -13,6 +13,7 @@
 @inject IReportesService ReportesService
 @inject IPeriodoService PeriodoService
 @inject IAlumnoService AlumnoService
+@inject INotificacionApiService NotificacionService
 @inject ISnackbar Snackbar
 
 <style>
@@ -34,16 +35,16 @@
         box-shadow: 0 10px 25px rgba(30, 58, 88, 0.2);
     }
 
-        .welcome-card::after {
-            content: '';
-            position: absolute;
-            top: -50px;
-            right: -50px;
-            width: 200px;
-            height: 200px;
-            background: rgba(255,255,255,0.05);
-            border-radius: 50%;
-        }
+    .welcome-card::after {
+        content: '';
+        position: absolute;
+        top: -50px;
+        right: -50px;
+        width: 200px;
+        height: 200px;
+        background: rgba(255,255,255,0.05);
+        border-radius: 50%;
+    }
 
     /* --- TARJETAS DE INFORMACIÓN --- */
     .info-card {
@@ -67,7 +68,6 @@
     /* --- ITEMS DE CLASE --- */
     .class-item {
         background-color: #f8fafc;
-        border-left: 5px solid var(--dash-primary);
         border-radius: 8px;
         padding: 1rem;
         height: 100%;
@@ -76,9 +76,9 @@
         border-left: 5px solid var(--dash-primary);
     }
 
-        .class-item:hover {
-            transform: scale(1.02);
-        }
+    .class-item:hover {
+        transform: scale(1.02);
+    }
 
     .class-time {
         font-weight: 800;
@@ -106,16 +106,107 @@
         height: 100%;
     }
 
-        .quick-btn:hover {
-            background-color: #f0f9ff;
-            border-color: var(--dash-primary);
-            transform: translateY(-5px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-        }
+    .quick-btn:hover {
+        background-color: #f0f9ff;
+        border-color: var(--dash-primary);
+        transform: translateY(-5px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
 
     .quick-icon {
         font-size: 2.2rem;
         color: var(--dash-primary);
+    }
+
+    /* --- FEED VERTICAL DE NOTIFICACIONES (ASIMÉTRICO) --- */
+    .noti-feed-container {
+        max-height: 500px;
+        overflow-y: auto;
+        padding-right: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    /* Scrollbar personalizado para el feed */
+    .noti-feed-container::-webkit-scrollbar { width: 6px; }
+    .noti-feed-container::-webkit-scrollbar-track { background: transparent; }
+    .noti-feed-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    .noti-feed-container::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    .noti-feed-card {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 1.25rem;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        transition: transform 0.2s;
+        position: relative;
+    }
+
+    .noti-feed-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Decoración asimétrica: Borde grueso a la izquierda */
+    .noti-feed-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 6px;
+        border-radius: 12px 0 0 12px;
+    }
+
+    .noti-feed-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 0.75rem;
+        gap: 1rem;
+    }
+
+    .noti-title-container {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+
+    .noti-feed-title {
+        font-weight: 800;
+        color: #1e293b;
+        font-size: 0.95rem;
+        line-height: 1.3;
+    }
+
+    .noti-feed-datetime {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        flex-shrink: 0;
+    }
+
+    .noti-feed-date {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #64748b;
+    }
+
+    .noti-feed-time {
+        font-size: 0.7rem;
+        color: #94a3b8;
+        font-weight: 600;
+    }
+
+    .noti-feed-body {
+        color: #334155;
+        font-size: 0.85rem;
+        line-height: 1.6;
+        white-space: pre-wrap; /* Permite saltos de línea naturales */
+        word-break: break-word; /* Evita que palabras largas rompan el diseño */
+        margin-top: 0.5rem;
     }
 </style>
 
@@ -149,7 +240,7 @@
         </MudItem>
 
         @* --- COLUMNA PRINCIPAL --- *@
-        <MudItem xs="12" md="8">
+        <MudItem xs="12" md="7" lg="8">
             <MudGrid>
                 @* CURSADA DE HOY *@
                 <MudItem xs="12">
@@ -236,32 +327,61 @@
             </MudGrid>
         </MudItem>
 
-        @* --- COLUMNA DERECHA (AVISOS) --- *@
-        <MudItem xs="12" md="4">
-            <div class="info-card animate__animated animate__fadeInRight">
-                <div class="card-header-dash">
+        @* --- COLUMNA DERECHA (FEED DE NOTIFICACIONES) --- *@
+        <MudItem xs="12" md="5" lg="4">
+            <div class="info-card animate__animated animate__fadeInRight d-flex flex-column" style="background-color: #f1f5f9;">
+                <div class="card-header-dash mb-4 border-0">
                     <div style="background-color: #fff7ed; padding: 8px; border-radius: 10px;">
                         <MudIcon Icon="@Icons.Material.Filled.Campaign" Style="color: #f59e0b;" />
                     </div>
-                    <MudText Typo="Typo.h6" Style="font-weight: 800; color: #1e3a58;">Cartelera Virtual</MudText>
+                    <div>
+                        <MudText Typo="Typo.h6" Style="font-weight: 800; color: #1e3a58; line-height: 1.1;">Avisos Recientes</MudText>
+                        <MudText Typo="Typo.caption" Style="color: #64748b; font-weight: 600;">Muro Informativo</MudText>
+                    </div>
                 </div>
                 
-                <MudTimeline TimelinePosition="TimelinePosition.Start" Dense="true">
-                    <MudTimelineItem Color="Color.Info" Size="Size.Small">
-                        <ItemContent>
-                            <MudText Typo="Typo.subtitle2" Style="font-weight: 700;">Inicio de Cuatrimestre</MudText>
-                            <MudText Typo="Typo.caption" Class="d-block">Las clases inician el próximo lunes 10/03.</MudText>
-                        </ItemContent>
-                    </MudTimelineItem>
-                    <MudTimelineItem Color="Color.Warning" Size="Size.Small">
-                        <ItemContent>
-                            <MudText Typo="Typo.subtitle2" Style="font-weight: 700;">Encuesta Docente</MudText>
-                            <MudText Typo="Typo.caption" Class="d-block">Recuerda completar la encuesta de satisfacción.</MudText>
-                        </ItemContent>
-                    </MudTimelineItem>
-                </MudTimeline>
+                <div class="noti-feed-container flex-grow-1">
+                    @if (cargandoNotificaciones)
+                    {
+                        <div class="d-flex justify-center align-center h-100 pa-10">
+                            <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                        </div>
+                    }
+                    else if (notificacionesRecientes.Any())
+                    {
+                        @foreach (var noti in notificacionesRecientes.Take(10))
+                        {
+                            <div class="noti-feed-card" style="background-color: @(noti.Leida ? "#ffffff" : "#fdfffc");">
+                                @* Aplicamos el color decorativo dinámico usando ::before mediante un div de fondo absoluto por compatibilidad *@
+                                <div style="position: absolute; top: 0; left: 0; bottom: 0; width: 6px; border-radius: 12px 0 0 12px; background-color: @GetColorHex(noti.Tipo);"></div>
+                                
+                                <div class="noti-feed-header">
+                                    <div class="noti-title-container">
+                                        <MudIcon Icon="@GetIcono(noti.Tipo)" Size="Size.Small" Style="@($"color: {GetColorHex(noti.Tipo)}; margin-top: 2px;")" />
+                                        <div class="noti-feed-title">@noti.Titulo</div>
+                                    </div>
+                                    
+                                    <div class="noti-feed-datetime">
+                                        <span class="noti-feed-date">@noti.Fecha.ToString("dd MMM yyyy")</span>
+                                        <span class="noti-feed-time">@noti.Fecha.ToString("HH:mm") hs</span>
+                                    </div>
+                                </div>
 
-                <MudButton Variant="Variant.Text" Color="Color.Primary" FullWidth="true" Class="mt-4" Style="font-weight: 700;">Ver todos los avisos</MudButton>
+                                <div class="noti-feed-body">
+                                    @noti.Mensaje
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="d-flex flex-column align-center justify-center h-100 pa-8 text-center border-dashed rounded-lg bg-white" style="border-color: #cbd5e1;">
+                            <MudIcon Icon="@Icons.Material.Filled.CheckCircleOutline" Size="Size.Large" Style="color: #49BEAA;" Class="mb-3" />
+                            <MudText Typo="Typo.body1" Style="color: #334155; font-weight: 700;">¡Todo al día!</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #64748b;" Class="mt-1">No hay comunicados ni notificaciones recientes para mostrar.</MudText>
+                        </div>
+                    }
+                </div>
             </div>
         </MudItem>
     </MudGrid>
@@ -271,9 +391,15 @@
     private string NombreAlumno = "Alumno";
     private string CarreraNombre = "";
     private string Legajo = "---";
+    
+    // Variables para Clases
     private bool cargandoClases = true;
     private List<HorarioVisualizacionDTO> clasesDeHoy = new();
     private string diaSemanaActual = "";
+
+    // Variables para Notificaciones
+    private bool cargandoNotificaciones = true;
+    private List<NotificacionDTO> notificacionesRecientes = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -283,6 +409,7 @@
             Snackbar.Add("¡Bienvenido! Acceso concedido.", Severity.Success);
             NavigationManager.NavigateTo(uri.GetLeftPart(UriPartial.Path), replace: true);
         }
+        
         try
         {
             var authState = await AuthStateProvider.GetAuthenticationStateAsync();
@@ -294,14 +421,18 @@
 
                 if (int.TryParse(userIdClaim, out int idUsuario))
                 {
-                    // Obtenemos el perfil en paralelo con el periodo para ganar milisegundos
+                    // LANZAMOS LAS PETICIONES EN PARALELO PARA MÁXIMO RENDIMIENTO
                     var alumnoTask = AlumnoService.GetByUsuarioIdAsync(idUsuario);
                     var periodoTask = PeriodoService.GetAllAsync();
+                    var notificacionesTask = NotificacionService.GetMisNotificacionesAsync();
 
-                    await Task.WhenAll(alumnoTask, periodoTask);
+                    await Task.WhenAll(alumnoTask, periodoTask, notificacionesTask);
 
                     var alumno = alumnoTask.Result;
                     var periodos = periodoTask.Result;
+                    
+                    // Asignamos las notificaciones al feed
+                    notificacionesRecientes = notificacionesTask.Result ?? new List<NotificacionDTO>();
 
                     if (alumno != null)
                     {
@@ -325,6 +456,7 @@
         finally
         {
             cargandoClases = false;
+            cargandoNotificaciones = false;
         }
     }
 
@@ -343,4 +475,25 @@
     }
 
     private void Navegar(string url) => NavigationManager.NavigateTo(url);
+
+    // Helpers visuales para el Feed Vertical
+    private string GetIcono(string tipo) => tipo switch
+    {
+        "Examen" => Icons.Material.Filled.Assignment,
+        "Asistencia" => Icons.Material.Filled.FactCheck,
+        "Inscripcion" => Icons.Material.Filled.HowToReg,
+        "Mensaje" => Icons.Material.Filled.Message,
+        "Alerta" => Icons.Material.Filled.Warning,
+        _ => Icons.Material.Filled.Info
+    };
+
+    private string GetColorHex(string tipo) => tipo switch
+    {
+        "Examen" => "#EF767A",      // Secondary (Rojo EduSys)
+        "Inscripcion" => "#00C853", // Success (Verde)
+        "Asistencia" => "#F44336",  // Error (Rojo)
+        "Mensaje" => "#1e3a58",     // Primary (Azul Oscuro EduSys)
+        "Alerta" => "#FF9800",      // Warning (Naranja)
+        _ => "#0ea5e9"              // Info (Azul Claro)
+    };
 }

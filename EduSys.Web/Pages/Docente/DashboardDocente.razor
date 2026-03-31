@@ -10,6 +10,7 @@
 @inject IDocenteService DocenteService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
+@inject INotificacionApiService NotificacionService
 @inject ISnackbar Snackbar
 
 @attribute [Authorize(Roles = "Docente")]
@@ -61,18 +62,13 @@
     }
 
     .hero-content { position: relative; z-index: 1; }
-
-    .hero-greeting {
-        font-size: 2rem; font-weight: 800; margin-bottom: 0.5rem; letter-spacing: -0.5px;
-    }
-
+    .hero-greeting { font-size: 2rem; font-weight: 800; margin-bottom: 0.5rem; letter-spacing: -0.5px; }
     .hero-subtitle { font-size: 1.1rem; opacity: 0.95; font-weight: 400; }
 
     .hero-date-box {
         background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(10px); border-radius: 12px;
         padding: 1.5rem; text-align: center; border: 1px solid rgba(255, 255, 255, 0.2);
     }
-
     .hero-date-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; opacity: 0.9; margin-bottom: 0.5rem; }
     .hero-date-value { font-size: 2rem; font-weight: 900; letter-spacing: -1px; }
 
@@ -82,87 +78,54 @@
         height: 100%; display: flex; flex-direction: column; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         box-shadow: var(--edusys-shadow-sm); position: relative; overflow: hidden;
     }
-
     .kpi-card::before {
         content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%;
         background: linear-gradient(180deg, var(--kpi-color), transparent); opacity: 0; transition: opacity 0.3s ease;
     }
-
     .kpi-card:hover { transform: translateY(-4px); box-shadow: var(--edusys-shadow-lg); border-color: var(--kpi-color); }
     .kpi-card:hover::before { opacity: 1; }
 
     .kpi-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; }
-
     .kpi-icon-box {
         width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center;
         background: linear-gradient(135deg, var(--kpi-color), var(--kpi-color-light)); color: white; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     }
-
     .kpi-number { font-size: 2.5rem; font-weight: 900; color: var(--edusys-text-primary); line-height: 1; margin-bottom: 0.5rem; }
     .kpi-label { font-size: 0.875rem; color: var(--edusys-text-secondary); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
 
-    .kpi-trend {
-        display: flex; align-items: center; gap: 0.5rem; margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--edusys-border);
-    }
+    .kpi-trend { display: flex; align-items: center; gap: 0.5rem; margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--edusys-border); }
     .kpi-trend-positive { color: var(--edusys-success); }
     .kpi-trend-neutral { color: var(--edusys-text-secondary); }
 
-    /* --- PANEL DE AGENDA DEL DÍA --- */
-    .agenda-panel {
-        background: white; border-radius: 12px; border: 1px solid var(--edusys-border); box-shadow: var(--edusys-shadow-sm); overflow: hidden;
+    /* --- PANELES COMUNES --- */
+    .panel-container {
+        background: white; border-radius: 12px; border: 1px solid var(--edusys-border); box-shadow: var(--edusys-shadow-sm); overflow: hidden; margin-bottom: 1.5rem;
     }
-
     .panel-header {
         padding: 1.5rem; background: linear-gradient(135deg, var(--edusys-background) 0%, white 100%); border-bottom: 2px solid var(--edusys-border);
     }
-
     .panel-title { display: flex; align-items: center; gap: 0.75rem; font-size: 1.25rem; font-weight: 800; color: var(--edusys-primary); }
     .panel-subtitle { margin-top: 0.25rem; font-size: 0.875rem; color: var(--edusys-text-secondary); }
-
     .panel-content { padding: 1.5rem; }
 
+    /* --- AGENDA --- */
     .clase-item {
         background: white; border: 1px solid var(--edusys-border); border-left: 4px solid var(--edusys-accent);
         border-radius: 10px; padding: 1.25rem; margin-bottom: 1rem; transition: all 0.3s ease;
     }
     .clase-item:hover { box-shadow: var(--edusys-shadow-md); border-left-color: var(--edusys-primary); transform: translateX(4px); }
     .clase-item:last-child { margin-bottom: 0; }
-
     .clase-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem; }
     .clase-materia { font-size: 1rem; font-weight: 800; color: var(--edusys-text-primary); line-height: 1.3; }
-
     .clase-info { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
     .clase-detalle { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; color: var(--edusys-text-secondary); font-weight: 500;}
-
-    .clase-actions {
-        display: flex; gap: 0.5rem; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px dashed var(--edusys-border);
-    }
-
+    .clase-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px dashed var(--edusys-border); }
     .quick-action-btn {
         flex: 1; padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--edusys-border); background: white;
         color: var(--edusys-text-primary); font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease;
         display: flex; align-items: center; justify-content: center; gap: 0.4rem;
     }
     .quick-action-btn:hover { background: var(--edusys-primary); color: white; border-color: var(--edusys-primary); transform: translateY(-2px); }
-
-    /* --- ESTADOS VACÍOS --- */
-    .empty-state { text-align: center; padding: 3rem 2rem; background: var(--edusys-background); border-radius: 12px; border: 2px dashed var(--edusys-border); }
-    .empty-icon { font-size: 4rem !important; color: #cbd5e1; margin-bottom: 1rem; }
-    .empty-title { font-size: 1.1rem; font-weight: 700; color: var(--edusys-text-primary); margin-bottom: 0.5rem; }
-    .empty-text { color: var(--edusys-text-secondary); margin-bottom: 1rem; }
-
-    /* --- PANEL DE NOTIFICACIONES --- */
-    .notification-panel { background: white; border-radius: 12px; border: 1px solid var(--edusys-border); box-shadow: var(--edusys-shadow-sm); overflow: hidden; }
-    .notification-item { padding: 1rem 1.5rem; border-bottom: 1px solid var(--edusys-border); transition: background-color 0.2s ease; }
-    .notification-item:hover { background-color: var(--edusys-background); }
-    .notification-item:last-child { border-bottom: none; }
-
-    .notification-content { display: flex; gap: 1rem; }
-    .notification-icon-wrapper { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-    .notification-body { flex: 1; }
-    .notification-title { font-weight: 700; font-size: 0.9rem; color: var(--edusys-text-primary); margin-bottom: 0.25rem; }
-    .notification-text { font-size: 0.85rem; color: var(--edusys-text-secondary); line-height: 1.4; }
-    .notification-time { font-size: 0.75rem; color: var(--edusys-text-secondary); margin-top: 0.5rem; display: flex; align-items: center; gap: 0.3rem; }
 
     /* --- ACCESOS RÁPIDOS --- */
     .quick-access-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
@@ -186,10 +149,39 @@
     .mini-stat-item { text-align: center; }
     .mini-stat-value { font-size: 1.5rem; font-weight: 900; color: var(--stat-color); margin-bottom: 0.25rem; }
     .mini-stat-label { font-size: 0.7rem; color: var(--edusys-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; }
+
+    /* --- ESTADOS VACÍOS --- */
+    .empty-state { text-align: center; padding: 3rem 2rem; background: var(--edusys-background); border-radius: 12px; border: 2px dashed var(--edusys-border); }
+    .empty-icon { font-size: 4rem !important; color: #cbd5e1; margin-bottom: 1rem; }
+    .empty-title { font-size: 1.1rem; font-weight: 700; color: var(--edusys-text-primary); margin-bottom: 0.5rem; }
+    .empty-text { color: var(--edusys-text-secondary); margin-bottom: 1rem; }
+
+    /* --- FEED DE NOTIFICACIONES ASIMÉTRICO --- */
+    .noti-feed-container { max-height: 600px; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; padding-right: 4px; }
+    .noti-feed-container::-webkit-scrollbar { width: 6px; }
+    .noti-feed-container::-webkit-scrollbar-track { background: transparent; }
+    .noti-feed-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    .noti-feed-container::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    .noti-feed-card {
+        background: #ffffff; border-radius: 12px; padding: 1.25rem; border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); transition: transform 0.2s; position: relative;
+    }
+    .noti-feed-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+    .noti-feed-card::before { content: ''; position: absolute; top: 0; left: 0; bottom: 0; width: 6px; border-radius: 12px 0 0 12px; }
+    
+    .noti-feed-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem; gap: 1rem; }
+    .noti-title-container { display: flex; align-items: flex-start; gap: 0.5rem; }
+    .noti-feed-title { font-weight: 800; color: #1e293b; font-size: 0.95rem; line-height: 1.3; }
+    .noti-feed-datetime { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; }
+    .noti-feed-date { font-size: 0.75rem; font-weight: 700; color: #64748b; }
+    .noti-feed-time { font-size: 0.7rem; color: #94a3b8; font-weight: 600; }
+    .noti-feed-body { color: #334155; font-size: 0.85rem; line-height: 1.6; white-space: pre-wrap; word-break: break-word; margin-top: 0.5rem; }
 </style>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-6 mb-12">
 
+    @* --- HERO BANNER --- *@
     <div class="dashboard-hero animate__animated animate__fadeIn">
         <div class="hero-content">
             <MudGrid>
@@ -227,6 +219,7 @@
         </div>
     </div>
 
+    @* --- TARJETAS KPI --- *@
     <MudGrid Spacing="3" Class="mb-6">
         @if (cargando)
         {
@@ -314,10 +307,9 @@
     </MudGrid>
 
     <MudGrid Spacing="3">
-
+        @* --- COLUMNA IZQUIERDA: AGENDA Y ACCESOS RÁPIDOS --- *@
         <MudItem xs="12" lg="8">
-
-            <div class="agenda-panel mb-4 animate__animated animate__fadeIn">
+            <div class="panel-container animate__animated animate__fadeIn">
                 <div class="panel-header">
                     <div class="panel-title">
                         <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Medium" />
@@ -390,30 +382,25 @@
                     }
                 </div>
             </div>
-        </MudItem>
-
-        <MudItem xs="12" lg="4">
-
-            <div class="notification-panel mb-6 animate__animated animate__fadeInRight">
+            
+            <div class="panel-container animate__animated animate__fadeIn">
                 <div class="panel-header">
                     <div class="panel-title">
-                        <MudIcon Icon="@Icons.Material.Filled.Dashboard" Size="Size.Medium" />
+                        <MudIcon Icon="@Icons.Material.Filled.TouchApp" Size="Size.Medium" />
                         <span>Gestión Directa</span>
                     </div>
                 </div>
 
-                <div style="padding: 1.5rem;">
+                <div class="panel-content">
                     <div class="quick-access-grid">
                         <div class="access-card" style="--card-color: var(--edusys-primary); --card-color-light: var(--edusys-primary-light);" @onclick='() => Navegar("/mis-comisiones")'>
                             <MudIcon Icon="@Icons.Material.Filled.Groups" Class="access-icon" />
                             <span class="access-label">Mis Comisiones</span>
                         </div>
-
                         <div class="access-card" style="--card-color: var(--edusys-purple); --card-color-light: #9f7aea;" @onclick='() => Navegar("/mis-mesas")'>
                             <MudIcon Icon="@Icons.Material.Filled.EventSeat" Class="access-icon" />
                             <span class="access-label">Mesas de Final</span>
                         </div>
-
                         <div class="access-card access-full-width" style="--card-color: var(--edusys-accent); --card-color-light: #5f8ebf;" @onclick='() => Navegar("/mi-perfil-docente")'>
                             <MudIcon Icon="@Icons.Material.Filled.Person" Class="access-icon" />
                             <span class="access-label">Mi Perfil Profesional</span>
@@ -438,42 +425,62 @@
                     </div>
                 </div>
             </div>
+        </MudItem>
 
-            <div class="notification-panel animate__animated animate__fadeInRight animate__delay-1s">
-                <div class="panel-header">
+        @* --- COLUMNA DERECHA: MURO DE NOTIFICACIONES --- *@
+        <MudItem xs="12" lg="4">
+            <div class="panel-container animate__animated animate__fadeInRight" style="background-color: #f8fafc; height: 100%;">
+                <div class="panel-header" style="background: transparent; border-bottom: 1px solid #e2e8f0;">
                     <div class="panel-title">
-                        <MudIcon Icon="@Icons.Material.Filled.Campaign" Size="Size.Medium" />
+                        <div style="background-color: #fff7ed; padding: 8px; border-radius: 10px;">
+                            <MudIcon Icon="@Icons.Material.Filled.Campaign" Style="color: #f59e0b;" Size="Size.Small"/>
+                        </div>
                         <span>Avisos Institucionales</span>
                     </div>
                 </div>
 
-                <div>
-                    <div class="notification-item">
-                        <div class="notification-content">
-                            <div class="notification-icon-wrapper" style="background: linear-gradient(135deg, var(--edusys-warning), #ffb74d);">
-                                <MudIcon Icon="@Icons.Material.Filled.Warning" Style="color: white;" Size="Size.Small" />
+                <div class="panel-content px-4 py-4">
+                    <div class="noti-feed-container">
+                        @if (cargandoNotificaciones)
+                        {
+                            <div class="d-flex justify-center align-center h-100 pa-10">
+                                <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
                             </div>
-                            <div class="notification-body">
-                                <div class="notification-title">Cierre de Actas</div>
-                                <div class="notification-text">Recuerde que el cierre de actas del ciclo lectivo actual vence el viernes 15.</div>
+                        }
+                        else if (notificaciones.Any())
+                        {
+                            @foreach (var noti in notificaciones.Take(15))
+                            {
+                                <div class="noti-feed-card" style="background-color: @(noti.Leida ? "#ffffff" : "#fdfffc"); border-color: @(noti.Leida ? "#e2e8f0" : "#cbd5e1");">
+                                    <div style="position: absolute; top: 0; left: 0; bottom: 0; width: 6px; border-radius: 12px 0 0 12px; background-color: @GetColorHex(noti.Tipo);"></div>
+                                    
+                                    <div class="noti-feed-header">
+                                        <div class="noti-title-container">
+                                            <MudIcon Icon="@GetIcono(noti.Tipo)" Size="Size.Small" Style="@($"color: {GetColorHex(noti.Tipo)}; margin-top: 2px;")" />
+                                            <div class="noti-feed-title">@noti.Titulo</div>
+                                        </div>
+                                        <div class="noti-feed-datetime">
+                                            <span class="noti-feed-date">@noti.Fecha.ToString("dd MMM yyyy")</span>
+                                            <span class="noti-feed-time">@noti.Fecha.ToString("HH:mm") hs</span>
+                                        </div>
+                                    </div>
+                                    <div class="noti-feed-body">
+                                        @noti.Mensaje
+                                    </div>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <div class="d-flex flex-column align-center justify-center h-100 pa-8 text-center border-dashed rounded-lg bg-white" style="border-color: #cbd5e1;">
+                                <MudIcon Icon="@Icons.Material.Filled.CheckCircleOutline" Size="Size.Large" Style="color: #49BEAA;" Class="mb-3" />
+                                <MudText Typo="Typo.body1" Style="color: #334155; font-weight: 700;">¡Todo al día!</MudText>
+                                <MudText Typo="Typo.body2" Style="color: #64748b;" Class="mt-1">No tienes comunicados pendientes.</MudText>
                             </div>
-                        </div>
-                    </div>
-
-                    <div class="notification-item">
-                        <div class="notification-content">
-                            <div class="notification-icon-wrapper" style="background: linear-gradient(135deg, var(--edusys-info), #4fc3f7);">
-                                <MudIcon Icon="@Icons.Material.Filled.Assignment" Style="color: white;" Size="Size.Small" />
-                            </div>
-                            <div class="notification-body">
-                                <div class="notification-title">Mesas Examinadoras</div>
-                                <div class="notification-text">El calendario de mesas de examen final ya se encuentra publicado.</div>
-                            </div>
-                        </div>
+                        }
                     </div>
                 </div>
             </div>
-
         </MudItem>
     </MudGrid>
 </MudContainer>
@@ -482,6 +489,9 @@
     private string NombreDocente = "Docente";
     private bool cargando = true;
     private List<ComisionDocenteDTO> comisiones = new();
+
+    private bool cargandoNotificaciones = true;
+    private List<NotificacionDTO> notificaciones = new();
 
     private List<ComisionDocenteDTO> ClasesHoy => comisiones
         .Where(c => !string.IsNullOrEmpty(c.Horario) && c.Horario.ToLower().Contains(ObtenerDiaSemanaHoy()))
@@ -495,7 +505,6 @@
             Snackbar.Add("¡Bienvenido! Acceso concedido.", Severity.Success);
             Navigation.NavigateTo(uri.GetLeftPart(UriPartial.Path), replace: true);
         }
-        cargando = true;
         
         try
         {
@@ -507,15 +516,22 @@
                 NombreDocente = user.FindFirst(ClaimTypes.Name)?.Value ?? "Docente";
             }
 
-            comisiones = await DocenteService.GetMisComisionesAsync() ?? new List<ComisionDocenteDTO>();
+            var comisionesTask = DocenteService.GetMisComisionesAsync();
+            var notificacionesTask = NotificacionService.GetMisNotificacionesAsync();
+
+            await Task.WhenAll(comisionesTask, notificacionesTask);
+
+            comisiones = comisionesTask.Result ?? new List<ComisionDocenteDTO>();
+            notificaciones = notificacionesTask.Result ?? new List<NotificacionDTO>();
         }
         catch (Exception)
         {
-            Snackbar.Add("Error al sincronizar datos académicos.", Severity.Warning);
+            Snackbar.Add("Error al sincronizar datos del servidor.", Severity.Warning);
         }
         finally
         {
             cargando = false;
+            cargandoNotificaciones = false;
         }
     }
 
@@ -547,4 +563,24 @@
         if (!comisiones.Any()) return 0;
         return comisiones.Select(c => c.Sede).Where(s => !string.IsNullOrEmpty(s)).Distinct().Count();
     }
+
+    private string GetIcono(string tipo) => tipo switch
+    {
+        "Examen" => Icons.Material.Filled.Assignment,
+        "Asistencia" => Icons.Material.Filled.FactCheck,
+        "Inscripcion" => Icons.Material.Filled.HowToReg,
+        "Mensaje" => Icons.Material.Filled.Message,
+        "Alerta" => Icons.Material.Filled.Warning,
+        _ => Icons.Material.Filled.Info
+    };
+
+    private string GetColorHex(string tipo) => tipo switch
+    {
+        "Examen" => "#EF767A",      
+        "Inscripcion" => "#00C853", 
+        "Asistencia" => "#F44336",  
+        "Mensaje" => "#1e3a58",     
+        "Alerta" => "#FF9800",      
+        _ => "#0ea5e9"              
+    };
 }

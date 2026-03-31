@@ -7,261 +7,381 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager NavManager
 @inject IJSRuntime JS
-@inject IAuthService AuthService 
+@inject IAuthService AuthService
 
 @implements IDisposable
 
 <style>
+    @@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Lora:wght@500&family=DM+Mono:wght@400&display=swap');
+
+    /* ─── VARIABLES EDUSYS ─────────────────────────── */
     :root {
-        --nav-primary: #1e3a58;
-        --nav-accent: #456990;
-        --nav-bg: #ffffff;
-        --nav-text: #334155;
-        --nav-text-muted: #94a3b8;
-        --nav-hover: #f1f5f9;
-        --nav-active-bg: #e0f2fe;
-        --nav-border: #e2e8f0;
+        --eds-blue:   #456990;
+        --eds-teal:   #49BEAA;
+        --eds-mint:   #49DCB1;
+        --eds-amber:  #EEB868;
+        --eds-coral:  #EF767A;
+        --eds-dark:   #1a2d45;
+        --eds-darker: #132237;
     }
 
-    .custom-nav-menu {
+    /* ─── SHELL ────────────────────────────────────── */
+    .nm {
         height: 100%;
         display: flex;
         flex-direction: column;
-        background-color: var(--nav-bg);
-        font-family: 'Segoe UI', sans-serif;
+        background: #ffffff;
+        font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
         user-select: none;
+        overflow: hidden;
     }
 
-    .nav-profile-section {
-        padding: 20px 16px;
+    /* ─── PERFIL ───────────────────────────────────── */
+    .nm-profile {
+        padding: 1.125rem 1.25rem;
         display: flex;
         align-items: center;
-        gap: 12px;
-        border-bottom: 1px solid var(--nav-border);
-        background: linear-gradient(to bottom, #ffffff, #f8fafc);
+        gap: 0.75rem;
+        border-bottom: 1px solid #eef1f6;
+        background: linear-gradient(160deg, #f8fafc 0%, #ffffff 100%);
+        flex-shrink: 0;
     }
 
-    .profile-info {
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-        flex: 1;
-        justify-content: center;
-    }
+    .nm-profile-info { flex: 1; overflow: hidden; }
 
-    .profile-name {
-        font-weight: 800;
-        color: var(--nav-primary);
-        font-size: 0.95rem;
+    .nm-profile-name {
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: var(--eds-dark);
         white-space: nowrap;
-        text-overflow: ellipsis;
         overflow: hidden;
-        line-height: 1.1;
+        text-overflow: ellipsis;
+        line-height: 1.2;
         margin-bottom: 2px;
     }
 
-    .profile-email {
-        font-size: 0.75rem;
-        color: var(--nav-text-muted);
+    .nm-profile-email {
+        font-size: 0.68rem;
+        color: #8a9ab5;
         white-space: nowrap;
-        text-overflow: ellipsis;
         overflow: hidden;
-        font-weight: 500;
+        text-overflow: ellipsis;
         margin-bottom: 4px;
     }
 
-    .profile-role-badge {
+    .nm-role-badge {
         display: inline-block;
-        font-size: 0.65rem;
-        color: var(--nav-accent);
+        font-size: 0.58rem;
         font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
-        background: #f1f5f9;
-        padding: 2px 6px;
+        letter-spacing: 0.8px;
+        color: var(--eds-blue);
+        background: #eef4fb;
+        border: 1px solid #d0dff0;
+        padding: 2px 7px;
         border-radius: 4px;
-        align-self: flex-start;
     }
 
-    .command-trigger {
-        margin: 12px 16px 8px 16px;
-        padding: 8px 12px;
-        background: #f8fafc;
-        border: 1px solid var(--nav-border);
+    /* ─── BUSCADOR / COMMAND TRIGGER ──────────────── */
+    .nm-search {
+        margin: 0.75rem 1rem;
+        padding: 0.5rem 0.75rem;
+        background: #f4f6fa;
+        border: 1px solid #e2e8f2;
         border-radius: 8px;
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 0.5rem;
         cursor: pointer;
-        transition: 0.2s;
+        transition: border-color 0.15s, background 0.15s;
+        flex-shrink: 0;
     }
 
-    .command-trigger:hover {
-        border-color: var(--nav-accent);
-        background: white;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    .nm-search:hover {
+        border-color: var(--eds-teal);
+        background: #ffffff;
     }
 
-    .command-trigger-text {
+    .nm-search-text {
         flex: 1;
-        font-size: 0.8rem;
-        color: var(--nav-text-muted);
+        font-size: 0.75rem;
+        color: #a0aec0;
+        font-family: 'Plus Jakarta Sans', sans-serif;
     }
 
-    .command-kbd {
-        background: white;
-        border: 1px solid var(--nav-border);
-        padding: 2px 6px;
+    .nm-kbd {
+        background: #ffffff;
+        border: 1px solid #dde3ec;
         border-radius: 4px;
-        font-size: 0.65rem;
+        padding: 1px 6px;
+        font-size: 0.6rem;
         font-weight: 700;
-        color: var(--nav-text-muted);
+        color: #a0aec0;
+        font-family: 'DM Mono', monospace;
     }
 
-    .nav-scroll-area {
+    /* ─── SCROLL AREA ──────────────────────────────── */
+    .nm-scroll {
         flex: 1;
         overflow-y: auto;
-        padding: 8px 16px 16px 16px;
+        padding: 0.5rem 0.75rem 1rem;
     }
 
-    .nav-scroll-area::-webkit-scrollbar { width: 5px; }
-    .nav-scroll-area::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    .nm-scroll::-webkit-scrollbar { width: 3px; }
+    .nm-scroll::-webkit-scrollbar-thumb { background: #dde3ec; border-radius: 3px; }
 
-    .nav-section-header {
-        font-size: 0.65rem;
+    /* ─── SECCIÓN HEADER ───────────────────────────── */
+    .nm-section {
+        font-size: 0.58rem;
         font-weight: 800;
-        color: var(--nav-text-muted);
         text-transform: uppercase;
-        letter-spacing: 1.5px;
-        margin: 20px 0 8px 8px;
-        border-bottom: 1px solid #f1f5f9;
-        padding-bottom: 4px;
+        letter-spacing: 1.8px;
+        color: #b0bcce;
+        padding: 0.875rem 0.5rem 0.3rem;
+        border-bottom: 1px solid #f0f3f8;
+        margin-bottom: 0.2rem;
     }
 
-    .nav-link-wrapper {
+    .nm-section:first-child { padding-top: 0.3rem; }
+
+    /* ─── NAV LINKS ────────────────────────────────── */
+    .nm-link-wrap {
         position: relative;
-        margin-bottom: 2px;
+        margin-bottom: 1px;
     }
 
-    .mud-nav-link {
-        font-weight: 600 !important;
-        border-radius: 8px !important;
-        color: var(--nav-text) !important;
-        padding: 8px 10px !important;
-        transition: all 0.2s ease;
+    /* Override MudNavLink para que respete el diseño */
+    .nm-link-wrap .mud-nav-link {
+        font-family: 'Plus Jakarta Sans', sans-serif !important;
+        font-size: 0.79rem !important;
+        font-weight: 500 !important;
+        color: #3a4d65 !important;
+        border-radius: 7px !important;
+        padding: 0.55rem 0.625rem !important;
+        transition: background 0.13s, color 0.13s, transform 0.13s !important;
         display: flex !important;
         align-items: center !important;
-        font-size: 0.9rem !important;
     }
 
-    .mud-nav-link:hover {
-        background-color: var(--nav-hover) !important;
-        color: var(--nav-primary) !important;
-        transform: translateX(3px);
+    .nm-link-wrap .mud-nav-link:hover {
+        background: #f0f5fb !important;
+        color: var(--eds-dark) !important;
+        transform: translateX(2px) !important;
     }
 
-    .mud-nav-link.active {
-        background-color: var(--nav-active-bg) !important;
-        color: var(--nav-primary) !important;
-        font-weight: 700 !important;
+    .nm-link-wrap .mud-nav-link.active {
+        background: #e8f2fb !important;
+        color: var(--eds-blue) !important;
+        font-weight: 600 !important;
     }
 
-    .mud-nav-link-icon {
-        color: #64748b !important;
-        min-width: 24px !important;
-        margin-right: 12px !important;
-        font-size: 1.2rem !important;
+    .nm-link-wrap .mud-nav-link-icon {
+        color: #8a9ab5 !important;
+        min-width: 22px !important;
+        margin-right: 10px !important;
+        font-size: 1.1rem !important;
+        transition: color 0.13s !important;
     }
 
-    .mud-nav-link.active .mud-nav-link-icon { color: var(--nav-accent) !important; }
+    .nm-link-wrap .mud-nav-link.active .mud-nav-link-icon {
+        color: var(--eds-teal) !important;
+    }
 
-    .favorite-star-btn {
+    /* ─── FAVORITOS ────────────────────────────────── */
+    .nm-fav-btn {
         position: absolute;
-        right: 8px;
+        right: 6px;
         top: 50%;
         transform: translateY(-50%);
         opacity: 0;
-        transition: 0.2s;
+        transition: opacity 0.15s;
         cursor: pointer;
-        color: #cbd5e1;
+        color: #c5cdd9;
         background: transparent;
         border: none;
-        padding: 4px;
+        padding: 3px;
+        border-radius: 4px;
         z-index: 10;
+        line-height: 1;
     }
 
-    .nav-link-wrapper:hover .favorite-star-btn, .favorite-star-btn.active { opacity: 1; }
-    .favorite-star-btn.active { color: #f59e0b; }
-    .favorite-star-btn:hover { color: #f59e0b; transform: translateY(-50%) scale(1.2); }
-    .favorites-pinned { margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px dashed var(--nav-border); }
+    .nm-link-wrap:hover .nm-fav-btn,
+    .nm-fav-btn.pinned { opacity: 1; }
 
-    .nav-footer { padding: 12px 16px; border-top: 1px solid var(--nav-border); background: #fff; }
+    .nm-fav-btn.pinned { color: var(--eds-amber); }
+    .nm-fav-btn:hover  { color: var(--eds-amber); transform: translateY(-50%) scale(1.15); }
 
-    .command-palette-overlay {
-        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(30, 58, 88, 0.4); backdrop-filter: blur(3px);
-        z-index: 2000; display: flex; justify-content: center; padding-top: 12vh;
-        animation: fadeIn 0.2s ease-out;
+    .nm-favs-section {
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px dashed #e8edf5;
     }
 
-    .command-palette {
-        width: 600px; max-width: 90%; background: white; border-radius: 12px;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); overflow: hidden;
-        display: flex; flex-direction: column; max-height: 500px;
-        animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    /* ─── FOOTER ───────────────────────────────────── */
+    .nm-footer {
+        padding: 0.75rem 1rem;
+        border-top: 1px solid #eef1f6;
+        background: #fafbfd;
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
     }
 
-    .command-input-container { padding: 16px; border-bottom: 1px solid #e2e8f0; }
-    .command-input { width: 100%; font-size: 1.1rem; border: none; outline: none; color: var(--nav-primary); font-weight: 500; }
-    .command-results { flex: 1; overflow-y: auto; padding: 8px 0; }
-    .command-item { padding: 12px 20px; display: flex; align-items: center; gap: 14px; cursor: pointer; border-left: 3px solid transparent; transition: 0.1s; }
-    .command-item:hover, .command-item.selected { background: #f8fafc; border-left-color: var(--nav-accent); }
-    .command-empty { padding: 40px; text-align: center; color: #94a3b8; }
+    .nm-footer-btn {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0.625rem;
+        border-radius: 7px;
+        font-size: 0.77rem;
+        font-weight: 500;
+        cursor: pointer;
+        border: none;
+        background: transparent;
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        transition: background 0.12s;
+        width: 100%;
+        text-align: left;
+        color: #4a5e75;
+    }
 
-    @@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-    @@keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+    .nm-footer-btn:hover { background: #f0f3f8; }
+
+    .nm-footer-btn.danger { color: var(--eds-coral); }
+    .nm-footer-btn.danger:hover { background: #fff0f0; }
+
+    /* ─── COMMAND PALETTE ──────────────────────────── */
+    .nm-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(26, 45, 69, 0.45);
+        backdrop-filter: blur(4px);
+        z-index: 2000;
+        display: flex;
+        justify-content: center;
+        padding-top: 10vh;
+        animation: nm-fade-in 0.18s ease-out;
+    }
+
+    .nm-palette {
+        width: 580px;
+        max-width: 92%;
+        background: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 24px 48px -8px rgba(26,45,69,0.28), 0 0 0 1px #e2e8f2;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        max-height: 480px;
+        animation: nm-slide-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .nm-palette-input-wrap {
+        padding: 1rem 1.125rem;
+        border-bottom: 1px solid #eef1f6;
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+    }
+
+    .nm-palette-input {
+        flex: 1;
+        font-size: 1rem;
+        border: none;
+        outline: none;
+        color: var(--eds-dark);
+        font-weight: 500;
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        background: transparent;
+    }
+
+    .nm-palette-input::placeholder { color: #b0bcce; }
+
+    .nm-palette-results {
+        flex: 1;
+        overflow-y: auto;
+        padding: 6px 0;
+    }
+
+    .nm-palette-results::-webkit-scrollbar { width: 3px; }
+    .nm-palette-results::-webkit-scrollbar-thumb { background: #dde3ec; }
+
+    .nm-palette-item {
+        padding: 0.75rem 1.125rem;
+        display: flex;
+        align-items: center;
+        gap: 0.875rem;
+        cursor: pointer;
+        border-left: 3px solid transparent;
+        transition: background 0.1s, border-color 0.1s;
+    }
+
+    .nm-palette-item:hover,
+    .nm-palette-item.sel {
+        background: #f4f8fc;
+        border-left-color: var(--eds-teal);
+    }
+
+    .nm-palette-item-title {
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: var(--eds-dark);
+    }
+
+    .nm-palette-item-cat {
+        font-size: 0.68rem;
+        color: #a0aec0;
+        margin-top: 1px;
+    }
+
+    .nm-palette-empty {
+        padding: 3rem;
+        text-align: center;
+        font-size: 0.8rem;
+        color: #a0aec0;
+    }
+
+    @@keyframes nm-fade-in  { from { opacity: 0; } to { opacity: 1; } }
+    @@keyframes nm-slide-in { from { opacity: 0; transform: translateY(-16px); } to { opacity: 1; transform: translateY(0); } }
 </style>
 
-<div class="custom-nav-menu">
+<div class="nm">
 
-    @* 1. PERFIL *@
+    @* ── PERFIL ─────────────────────────────── *@
     <AuthorizeView>
         <Authorized>
-            <div class="nav-profile-section">
-                <MudAvatar Size="Size.Large" Elevation="2" Color="@GetAvatarColor(context.User)">
+            <div class="nm-profile">
+                <MudAvatar Size="Size.Medium" Elevation="1" Color="@GetAvatarColor(context.User)">
                     @if (!string.IsNullOrEmpty(FotoPerfilUsuario))
                     {
-                        <MudImage Src="@FotoPerfilUsuario" Style="width:100%; height:100%; object-fit:cover;" />
+                        <MudImage Src="@FotoPerfilUsuario" Style="width:100%;height:100%;object-fit:cover;" />
                     }
-                    else
-                    {
-                        @UserInitial
-                    }
+                    else { @UserInitial }
                 </MudAvatar>
-                <div class="profile-info">
-                    <span class="profile-name">@NombreUsuario</span>
-                    <span class="profile-email">@UserEmail</span>
-                    <span class="profile-role-badge">@RoleFull</span>
+                <div class="nm-profile-info">
+                    <div class="nm-profile-name">@NombreUsuario</div>
+                    <div class="nm-profile-email">@UserEmail</div>
+                    <span class="nm-role-badge">@RoleFull</span>
                 </div>
             </div>
         </Authorized>
     </AuthorizeView>
 
-    @* 2. BUSCADOR *@
-    <div class="command-trigger" @onclick="OpenCommandPalette">
-        <MudIcon Icon="@Icons.Material.Filled.Search" Size="Size.Small" Color="Color.Default" />
-        <span class="command-trigger-text">Buscar...</span>
-        <span class="command-kbd">Ctrl+K</span>
+    @* ── BUSCADOR ───────────────────────────── *@
+    <div class="nm-search" @onclick="OpenCommandPalette">
+        <MudIcon Icon="@Icons.Material.Filled.Search" Size="Size.Small" Style="color:#a0aec0;" />
+        <span class="nm-search-text">Buscar en EduSys...</span>
+        <span class="nm-kbd">Ctrl K</span>
     </div>
 
-    @* 3. LISTA DE NAVEGACIÓN *@
-    <div class="nav-scroll-area">
+    @* ── NAVEGACIÓN ─────────────────────────── *@
+    <div class="nm-scroll">
 
-        @* SECCIÓN DE FAVORITOS *@
         @if (favoritePages.Any())
         {
-            <div class="favorites-pinned">
-                <div class="nav-section-header" style="margin-top:0;">Favoritos</div>
+            <div class="nm-favs-section">
+                <div class="nm-section" style="padding-top:0.2rem;">Favoritos</div>
                 @foreach (var fav in favoritePages)
                 {
                     @RenderNavLink(fav.Url, fav.Title, fav.Icon)
@@ -269,241 +389,258 @@
             </div>
         }
 
-        <AuthorizeView Context="authContext">
+        <AuthorizeView Context="authCtx">
             <Authorized>
+
                 @* Panel de Control *@
-                @if (HasPermission(authContext.User, "REP_VER", "ACA_CARRERA_ABM", "COM_COMISION_ABM", "ALU_ABM"))
+                @if (HasPermission(authCtx.User, "REP_VER", "ACA_CARRERA_ABM", "COM_COMISION_ABM", "ALU_ABM"))
                 {
-                    <div class="nav-section-header">Panel de Control</div>
+                    <div class="nm-section">Panel de Control</div>
                     @RenderNavLink("/Home", "Dashboard", Icons.Material.Filled.Dashboard, true)
                 }
 
                 @* Config. Institucional *@
-                @if (HasPermission(authContext.User, "ACA_CARRERA_ABM", "ACA_PLAN_ABM", "ACA_MATERIA_ABM", "CFG_PARAMETROS_ACA", "CFG_SEDES_ABM"))
+                @if (HasPermission(authCtx.User, "ACA_CARRERA_ABM", "ACA_PLAN_ABM", "ACA_MATERIA_ABM", "CFG_PARAMETROS_ACA", "CFG_SEDES_ABM"))
                 {
-                    <div class="nav-section-header">Config. Institucional</div>
-                    @if (HasPermission(authContext.User, "ACA_CARRERA_ABM")) @RenderNavLink("/carreras", "Carreras", Icons.Material.Filled.AccountBalance)
-                    @if (HasPermission(authContext.User, "ACA_PLAN_ABM")) @RenderNavLink("/planes", "Planes de Estudio", Icons.Material.Filled.Map)
-                    @if (HasPermission(authContext.User, "ACA_MATERIA_ABM")) @RenderNavLink("/materias", "Materias", Icons.Material.Filled.Book)
-                    @if (HasPermission(authContext.User, "CFG_PARAMETROS_ACA")) @RenderNavLink("/admin/estados-materia", "Estados de Materia", Icons.Material.Filled.RuleFolder)
-                    @if (HasPermission(authContext.User, "CFG_SEDES_ABM")) @RenderNavLink("/sedes", "Sedes", Icons.Material.Filled.Place)
-                    @if (HasPermission(authContext.User, "CFG_PARAMETROS_ACA")) @RenderNavLink("/modalidades", "Modalidades", Icons.Material.Filled.LaptopChromebook)
-                    @if (HasPermission(authContext.User, "CFG_PARAMETROS_ACA")) @RenderNavLink("/regimenes", "Regímenes", Icons.Material.Filled.Rule)
+                    <div class="nm-section">Config. Institucional</div>
+                    @if (HasPermission(authCtx.User, "ACA_CARRERA_ABM"))     @RenderNavLink("/carreras",              "Carreras",            Icons.Material.Filled.AccountBalance)
+                    @if (HasPermission(authCtx.User, "ACA_PLAN_ABM"))        @RenderNavLink("/planes",                "Planes de Estudio",   Icons.Material.Filled.Map)
+                    @if (HasPermission(authCtx.User, "ACA_MATERIA_ABM"))     @RenderNavLink("/materias",              "Materias",            Icons.Material.Filled.Book)
+                    @if (HasPermission(authCtx.User, "CFG_PARAMETROS_ACA")) @RenderNavLink("/admin/estados-materia", "Estados de Materia",  Icons.Material.Filled.RuleFolder)
+                    @if (HasPermission(authCtx.User, "CFG_SEDES_ABM"))       @RenderNavLink("/sedes",                 "Sedes",               Icons.Material.Filled.Place)
+                    @if (HasPermission(authCtx.User, "CFG_PARAMETROS_ACA")) @RenderNavLink("/modalidades",           "Modalidades",         Icons.Material.Filled.LaptopChromebook)
+                    @if (HasPermission(authCtx.User, "CFG_PARAMETROS_ACA")) @RenderNavLink("/regimenes",             "Regímenes",           Icons.Material.Filled.Rule)
                 }
 
                 @* Planificación Académica *@
-                @if (HasPermission(authContext.User, "PER_PERIODO_ABM", "PER_CALENDARIO_ABM", "COM_COMISION_ABM", "COM_HORARIOS_EDIT"))
+                @if (HasPermission(authCtx.User, "PER_PERIODO_ABM", "PER_CALENDARIO_ABM", "COM_COMISION_ABM", "COM_HORARIOS_EDIT"))
                 {
-                    <div class="nav-section-header">Planificación Académica</div>
-                    @if (HasPermission(authContext.User, "PER_PERIODO_ABM")) @RenderNavLink("/periodos", "Períodos Académicos", Icons.Material.Filled.DateRange)
-                    @if (HasPermission(authContext.User, "PER_CALENDARIO_ABM")) @RenderNavLink("/calendario", "Ventanas y Calendario", Icons.Material.Filled.EventAvailable)
-                    @if (HasPermission(authContext.User, "COM_COMISION_ABM")) @RenderNavLink("/comisiones", "Comisiones", Icons.Material.Filled.Groups)
-                    @if (HasPermission(authContext.User, "COM_HORARIOS_EDIT")) @RenderNavLink("/horarios", "Horarios", Icons.Material.Filled.AccessTime)
+                    <div class="nm-section">Planificación Académica</div>
+                    @if (HasPermission(authCtx.User, "PER_PERIODO_ABM"))     @RenderNavLink("/periodos",    "Períodos Académicos",    Icons.Material.Filled.DateRange)
+                    @if (HasPermission(authCtx.User, "PER_CALENDARIO_ABM")) @RenderNavLink("/calendario",  "Ventanas y Calendario",  Icons.Material.Filled.EventAvailable)
+                    @if (HasPermission(authCtx.User, "COM_COMISION_ABM"))    @RenderNavLink("/comisiones",  "Comisiones",             Icons.Material.Filled.Groups)
+                    @if (HasPermission(authCtx.User, "COM_HORARIOS_EDIT"))   @RenderNavLink("/horarios",    "Horarios",               Icons.Material.Filled.AccessTime)
                 }
 
                 @* Operaciones de Cursada *@
-                @if (HasPermission(authContext.User, "INS_CURSADA_GESTION", "ASIS_VER", "ASIS_CARGAR"))
+                @if (HasPermission(authCtx.User, "INS_CURSADA_GESTION", "ASIS_VER", "ASIS_CARGAR"))
                 {
-                    <div class="nav-section-header">Operaciones de Cursada</div>
-                    @if (HasPermission(authContext.User, "INS_CURSADA_GESTION")) @RenderNavLink("/admin/inscripciones", "Forzar Inscripciones", Icons.Material.Filled.HowToReg)
-                    
-                    @* 🚀 ESTE ES EL ACCESO ADMINISTRATIVO A ASISTENCIAS *@
-                    @if (HasPermission(authContext.User, "ASIS_VER", "ASIS_CARGAR")) @RenderNavLink("/asistencia", "Auditoría Asistencias", Icons.Material.Filled.FactCheck)
+                    <div class="nm-section">Operaciones de Cursada</div>
+                    @if (HasPermission(authCtx.User, "INS_CURSADA_GESTION"))       @RenderNavLink("/admin/inscripciones", "Forzar Inscripciones",  Icons.Material.Filled.HowToReg)
+                    @if (HasPermission(authCtx.User, "ASIS_VER", "ASIS_CARGAR"))   @RenderNavLink("/asistencia",          "Auditoría Asistencias", Icons.Material.Filled.FactCheck)
                 }
 
                 @* Evaluaciones y Actas *@
-                @if (HasPermission(authContext.User, "EVA_ABM", "EVA_CARGAR_NOTAS", "ACTA_VER", "INS_FINAL_MESAS_ABM", "FINAL_CARGAR_RESULTADO"))
+                @if (HasPermission(authCtx.User, "EVA_ABM", "EVA_CARGAR_NOTAS", "ACTA_VER", "INS_FINAL_MESAS_ABM", "FINAL_CARGAR_RESULTADO"))
                 {
-                    <div class="nav-section-header">Evaluaciones y Actas</div>
-                    @if (HasPermission(authContext.User, "EVA_ABM")) @RenderNavLink("/evaluaciones", "Parciales", Icons.Material.Filled.Assignment)
-                    @if (HasPermission(authContext.User, "EVA_CARGAR_NOTAS")) @RenderNavLink("/notas", "Carga de Notas", Icons.Material.Filled.Grade)
-                    @if (HasPermission(authContext.User, "ACTA_VER")) @RenderNavLink("/admin/actas", "Libros de Actas", Icons.Material.Filled.Description)
-                    @if (HasPermission(authContext.User, "INS_FINAL_MESAS_ABM")) @RenderNavLink("/mesas-finales", "Mesas de Finales", Icons.Material.Filled.EventSeat)
-                    @if (HasPermission(authContext.User, "FINAL_CARGAR_RESULTADO")) @RenderNavLink("/resultados-finales", "Actas de Finales", Icons.Material.Filled.EmojiEvents)
+                    <div class="nm-section">Evaluaciones y Actas</div>
+                    @if (HasPermission(authCtx.User, "EVA_ABM"))                     @RenderNavLink("/evaluaciones",       "Parciales",           Icons.Material.Filled.Assignment)
+                    @if (HasPermission(authCtx.User, "EVA_CARGAR_NOTAS"))            @RenderNavLink("/notas",              "Carga de Notas",      Icons.Material.Filled.Grade)
+                    @if (HasPermission(authCtx.User, "ACTA_VER"))                    @RenderNavLink("/admin/actas",        "Libros de Actas",     Icons.Material.Filled.Description)
+                    @if (HasPermission(authCtx.User, "INS_FINAL_MESAS_ABM"))         @RenderNavLink("/mesas-finales",      "Mesas de Finales",    Icons.Material.Filled.EventSeat)
+                    @if (HasPermission(authCtx.User, "FINAL_CARGAR_RESULTADO"))      @RenderNavLink("/resultados-finales", "Actas de Finales",    Icons.Material.Filled.EmojiEvents)
                 }
 
                 @* Comunidad *@
-                @if (HasPermission(authContext.User, "ALU_ABM", "DOC_ABM", "SOL_GESTION"))
+                @if (HasPermission(authCtx.User, "ALU_ABM", "DOC_ABM", "SOL_GESTION"))
                 {
-                    <div class="nav-section-header">Comunidad</div>
-                    @if (HasPermission(authContext.User, "ALU_ABM")) @RenderNavLink("/alumnos", "Alumnos / Legajos", Icons.Material.Filled.Person)
-                    @if (HasPermission(authContext.User, "DOC_ABM")) @RenderNavLink("/docentes", "Docentes", Icons.Material.Filled.Face)
-                    @if (HasPermission(authContext.User, "SOL_GESTION")) @RenderNavLink("/admin/solicitudes", "Solicitudes Ingreso", Icons.Material.Filled.AssignmentInd)
-                    @if (HasPermission(authContext.User, "SOL_GESTION")) @RenderNavLink("/solicitudes/bandeja", "Mesa de Entradas", Icons.Material.Filled.Inbox)
+                    <div class="nm-section">Comunidad</div>
+                    @if (HasPermission(authCtx.User, "ALU_ABM"))      @RenderNavLink("/alumnos",            "Alumnos / Legajos",    Icons.Material.Filled.Person)
+                    @if (HasPermission(authCtx.User, "DOC_ABM"))      @RenderNavLink("/docentes",           "Docentes",             Icons.Material.Filled.Face)
+                    @if (HasPermission(authCtx.User, "SOL_GESTION"))  @RenderNavLink("/admin/solicitudes",  "Solicitudes Ingreso",  Icons.Material.Filled.AssignmentInd)
+                    @if (HasPermission(authCtx.User, "SOL_GESTION"))  @RenderNavLink("/solicitudes/bandeja","Mesa de Entradas",     Icons.Material.Filled.Inbox)
                 }
 
                 @* Sistema *@
-                @if (HasPermission(authContext.User, "REP_VER", "EMAIL_MASIVO", "CFG_INSTITUCION_EDIT", "SEG_USUARIOS_ABM", "SEG_ROLES_ABM"))
+                @if (HasPermission(authCtx.User, "REP_VER", "EMAIL_MASIVO", "CFG_INSTITUCION_EDIT", "SEG_USUARIOS_ABM", "SEG_ROLES_ABM"))
                 {
-                    <div class="nav-section-header">Sistema</div>
+                    <div class="nm-section">Sistema</div>
                     @RenderNavLink("/admin/tickets", "Gestión de Tickets", Icons.Material.Filled.ConfirmationNumber)
-                    @if (HasPermission(authContext.User, "REP_VER")) @RenderNavLink("/reportes/operativos", "Reportes", Icons.Material.Filled.BarChart)
-                    @if (HasPermission(authContext.User, "EMAIL_MASIVO")) @RenderNavLink("/emails/masivos", "Comunicación", Icons.Material.Filled.Email)
-                    
-                    @if (HasPermission(authContext.User, "CFG_INSTITUCION_EDIT"))
+                    @if (HasPermission(authCtx.User, "REP_VER"))              @RenderNavLink("/reportes/operativos",  "Reportes",          Icons.Material.Filled.BarChart)
+                    @if (HasPermission(authCtx.User, "EMAIL_MASIVO"))         @RenderNavLink("/emails/masivos",       "Comunicación",      Icons.Material.Filled.Email)
+
+                    @if (HasPermission(authCtx.User, "EMAIL_MASIVO") || authCtx.User.IsInRole("Administrador") || authCtx.User.IsInRole("Secretaria Academica"))
+                    {
+                        @RenderNavLink("/admin/notificaciones", "Enviar Comunicados", Icons.Material.Filled.Campaign)
+                    }
+
+                    @if (HasPermission(authCtx.User, "CFG_INSTITUCION_EDIT"))
                     {
                         @RenderNavLink("/institucion", "Configuración Base", Icons.Material.Filled.Settings)
                     }
-                    
-                    @if (HasPermission(authContext.User, "SEG_USUARIOS_ABM", "SEG_ROLES_ABM"))
+
+                    @if (HasPermission(authCtx.User, "SEG_USUARIOS_ABM", "SEG_ROLES_ABM"))
                     {
-                        <div class="nav-section-header">Seguridad Avanzada</div>
-                        @if (HasPermission(authContext.User, "SEG_USUARIOS_ABM")) @RenderNavLink("/usuarios", "Usuarios y Cuentas", Icons.Material.Filled.Security)
-                        @if (HasPermission(authContext.User, "SEG_ROLES_ABM")) @RenderNavLink("/admin/roles", "Roles y Permisos", Icons.Material.Filled.AdminPanelSettings)
+                        <div class="nm-section">Seguridad</div>
+                        @if (HasPermission(authCtx.User, "SEG_USUARIOS_ABM")) @RenderNavLink("/usuarios",     "Usuarios y Cuentas", Icons.Material.Filled.Security)
+                        @if (HasPermission(authCtx.User, "SEG_ROLES_ABM"))    @RenderNavLink("/admin/roles",  "Roles y Permisos",   Icons.Material.Filled.AdminPanelSettings)
                     }
                 }
 
                 @* Mi Espacio Alumno *@
-                @if (authContext.User.IsInRole("Alumno"))
+                @if (authCtx.User.IsInRole("Alumno"))
                 {
-                    <div class="nav-section-header" style="color: var(--mud-palette-secondary);">Mi Espacio Alumno</div>
-                    @RenderNavLink("/dashboard-alumno", "Inicio", Icons.Material.Filled.Home, true)
-                    @RenderNavLink("/alumno/mis-cursadas", "Mis Notas", Icons.Material.Filled.Grade)
-                    @RenderNavLink("/alumno/asistencias", "Mis Asistencias", Icons.Material.Filled.FactCheck)
-                    @RenderNavLink("/inscripcion-materias", "Cursar Materias", Icons.Material.Filled.Class)
-                    @RenderNavLink("/alumno/inscripcion-finales", "Rendir Finales", Icons.Material.Filled.AssignmentTurnedIn)
-                    @RenderNavLink("/historia-academica", "Historia Académica", Icons.Material.Filled.HistoryEdu)
-                    @RenderNavLink("/tramites", "Trámites y Certificados", Icons.Material.Filled.Description)
+                    <div class="nm-section" style="color:#49BEAA;">Mi Espacio Alumno</div>
+                    @RenderNavLink("/dashboard-alumno",         "Inicio",                 Icons.Material.Filled.Home,               true)
+                    @RenderNavLink("/alumno/mis-cursadas",      "Mis Notas",              Icons.Material.Filled.Grade)
+                    @RenderNavLink("/alumno/asistencias",       "Mis Asistencias",        Icons.Material.Filled.FactCheck)
+                    @RenderNavLink("/inscripcion-materias",     "Cursar Materias",        Icons.Material.Filled.Class)
+                    @RenderNavLink("/alumno/inscripcion-finales","Rendir Finales",        Icons.Material.Filled.AssignmentTurnedIn)
+                    @RenderNavLink("/historia-academica",       "Historia Académica",     Icons.Material.Filled.HistoryEdu)
+                    @RenderNavLink("/tramites",                 "Trámites y Certificados",Icons.Material.Filled.Description)
                 }
 
                 @* Mi Espacio Docente *@
-                @if (authContext.User.IsInRole("Docente"))
+                @if (authCtx.User.IsInRole("Docente"))
                 {
-                    <div class="nav-section-header" style="color: var(--mud-palette-tertiary);">Mi Espacio Docente</div>
-                    @RenderNavLink("/dashboard-docente", "Inicio", Icons.Material.Filled.Home, true)
-                    @RenderNavLink("/mis-comisiones", "Mis Comisiones", Icons.Material.Filled.Groups)
-                    
-                    @* 🚀 ACCESO DOCENTE A ASISTENCIAS *@
-                    @RenderNavLink("/docente/tomar-asistencia", "Pasar Asistencia", Icons.Material.Filled.HowToReg)
-                    
-                    @RenderNavLink("/docente/evaluaciones", "Planificar Exámenes", Icons.Material.Filled.Assignment)
-                    @RenderNavLink("/docente/cargar-notas", "Cargar Notas", Icons.Material.Filled.EditNote)
-                    @RenderNavLink("/docente/actas", "Cerrar Actas", Icons.Material.Filled.Description)
-                    @RenderNavLink("/docente/mesas-asignadas", "Mesas Asignadas", Icons.Material.Filled.EventSeat)
+                    <div class="nm-section" style="color:#EEB868;">Mi Espacio Docente</div>
+                    @RenderNavLink("/dashboard-docente",          "Inicio",               Icons.Material.Filled.Home,        true)
+                    @RenderNavLink("/mis-comisiones",             "Mis Comisiones",       Icons.Material.Filled.Groups)
+                    @RenderNavLink("/docente/tomar-asistencia",   "Pasar Asistencia",     Icons.Material.Filled.HowToReg)
+                    @RenderNavLink("/docente/evaluaciones",       "Planificar Exámenes",  Icons.Material.Filled.Assignment)
+                    @RenderNavLink("/docente/cargar-notas",       "Cargar Notas",         Icons.Material.Filled.EditNote)
+                    @RenderNavLink("/docente/actas",              "Cerrar Actas",         Icons.Material.Filled.Description)
+                    @RenderNavLink("/docente/mesas-asignadas",    "Mesas Asignadas",      Icons.Material.Filled.EventSeat)
                 }
+
             </Authorized>
         </AuthorizeView>
+
     </div>
 
-    @* 4. FOOTER *@
-    <div class="nav-footer">
-        <MudButton FullWidth="true" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Person" OnClick="AbrirPerfil" Style="justify-content:flex-start; color:#475569;">
+    @* ── FOOTER ─────────────────────────────── *@
+    <div class="nm-footer">
+        <button class="nm-footer-btn" @onclick="AbrirPerfil">
+            <MudIcon Icon="@Icons.Material.Filled.AccountCircle" Size="Size.Small" Style="color:#8a9ab5;" />
             Mi Perfil
-        </MudButton>
-        <MudButton FullWidth="true" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Logout" OnClick="CerrarSesion" Style="justify-content:flex-start; color:#ef4444;">
-            Cerrar Sesión
-        </MudButton>
+        </button>
+        <button class="nm-footer-btn danger" @onclick="CerrarSesion">
+            <MudIcon Icon="@Icons.Material.Filled.Logout" Size="Size.Small" />
+            Cerrar sesión
+        </button>
     </div>
+
 </div>
 
-@* ===== PALETA DE COMANDOS (MODAL) ===== *@
+@* ── COMMAND PALETTE ─────────────────────────── *@
 @if (showCommandPalette)
 {
-    <div class="command-palette-overlay" @onclick="CloseCommandPalette">
-        <div class="command-palette" @onclick:stopPropagation="true">
-            <div class="command-input-container">
-                <input type="text" class="command-input" placeholder="Escribe para buscar..."
-                       value="@commandSearch" @oninput="HandleSearchInput" @ref="commandInputRef"
+    <div class="nm-overlay" @onclick="CloseCommandPalette">
+        <div class="nm-palette" @onclick:stopPropagation="true">
+
+            <div class="nm-palette-input-wrap">
+                <MudIcon Icon="@Icons.Material.Filled.Search" Size="Size.Small" Style="color:#a0aec0; flex-shrink:0;" />
+                <input class="nm-palette-input"
+                       placeholder="Buscar sección, acción o página..."
+                       value="@commandSearch"
+                       @oninput="HandleSearchInput"
+                       @ref="commandInputRef"
                        @onkeydown="HandleCommandKeyDown" />
+                @if (!string.IsNullOrEmpty(commandSearch))
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.Close"
+                                   Size="Size.Small"
+                                   Style="color:#a0aec0; width:24px; height:24px;"
+                                   OnClick="@(() => { commandSearch = string.Empty; filteredCommands = allCommands.ToList(); })" />
+                }
             </div>
-            <div class="command-results">
+
+            <div class="nm-palette-results">
                 @if (filteredCommands.Any())
                 {
-                    @foreach (var (cmd, index) in filteredCommands.Select((x, i) => (x, i)))
+                    @foreach (var (cmd, idx) in filteredCommands.Select((x, i) => (x, i)))
                     {
-                        <div class="command-item @(index == selectedCommandIndex ? "selected" : "")"
+                        <div class="nm-palette-item @(idx == selectedCommandIndex ? "sel" : "")"
                              @onclick="() => ExecuteCommand(cmd)">
-                            <MudIcon Icon="@cmd.Icon" Size="Size.Medium" Class="command-item-icon" />
-                            <div class="command-item-content">
-                                <div class="command-item-title" style="font-weight: 600;">@cmd.Title</div>
-                                <div class="command-item-subtitle" style="font-size: 0.75rem; color: #94a3b8;">@cmd.Category</div>
+                            <MudIcon Icon="@cmd.Icon" Size="Size.Small" Style="color:#456990; flex-shrink:0;" />
+                            <div>
+                                <div class="nm-palette-item-title">@cmd.Title</div>
+                                <div class="nm-palette-item-cat">@cmd.Category</div>
                             </div>
                         </div>
                     }
                 }
                 else
                 {
-                    <div class="command-empty">No encontramos resultados para "@commandSearch"</div>
+                    <div class="nm-palette-empty">
+                        Sin resultados para "<strong>@commandSearch</strong>"
+                    </div>
                 }
             </div>
+
         </div>
     </div>
 }
 
 @code {
     private string FotoPerfilUsuario = "";
-    private string NombreUsuario = "Cargando...";
-    private string UserEmail = "";
-    private string UserInitial = "U";
-    private string RoleFull = "";
-    private string UserId = "";
+    private string NombreUsuario     = "Cargando...";
+    private string UserEmail         = "";
+    private string UserInitial       = "U";
+    private string RoleFull          = "";
+    private string UserId            = "";
 
-    private bool showCommandPalette = false;
-    private string commandSearch = "";
-    private int selectedCommandIndex = 0;
+    private bool           showCommandPalette   = false;
+    private string         commandSearch        = "";
+    private int            selectedCommandIndex = 0;
     private ElementReference commandInputRef;
-    private List<CommandItem> allCommands = new();
+    private List<CommandItem> allCommands      = new();
     private List<CommandItem> filteredCommands = new();
-    
-    // ✅ CORRECCIÓN EXACTA AQUÍ
     private DotNetObjectReference<NavMenu>? _dotNetRef;
 
     private List<NavPage> favoritePages = new();
-    private string FavoritesKey => string.IsNullOrEmpty(UserId) ? "edusys_favorites_guest" : $"edusys_favorites_{UserId}";
+    private string FavoritesKey => string.IsNullOrEmpty(UserId)
+        ? "edusys_favorites_guest"
+        : $"edusys_favorites_{UserId}";
 
+    /* ── RENDER HELPER ─────────────────────────────── */
     private RenderFragment RenderNavLink(string href, string title, string icon, bool matchAll = false) => __builder =>
     {
-        <div class="nav-link-wrapper">
-            <MudNavLink Href="@href" Match="@(matchAll ? NavLinkMatch.All : NavLinkMatch.Prefix)" Class="mud-nav-link">
+        <div class="nm-link-wrap">
+            <MudNavLink Href="@href"
+                        Match="@(matchAll ? NavLinkMatch.All : NavLinkMatch.Prefix)"
+                        Class="mud-nav-link">
                 <MudIcon Icon="@icon" Class="mud-nav-link-icon" Size="Size.Small" />
                 @title
             </MudNavLink>
-            <button class="favorite-star-btn @(IsFavorite(href) ? "active" : "")" @onclick="() => ToggleFavorite(href, title, icon)">
-                <MudIcon Icon="@(IsFavorite(href) ? Icons.Material.Filled.Star : Icons.Material.Filled.StarBorder)" Size="Size.Small" />
+            <button class="nm-fav-btn @(IsFavorite(href) ? "pinned" : "")"
+                    @onclick="() => ToggleFavorite(href, title, icon)">
+                <MudIcon Icon="@(IsFavorite(href) ? Icons.Material.Filled.Star : Icons.Material.Filled.StarBorder)"
+                         Size="Size.Small" />
             </button>
         </div>
     };
 
+    /* ── PERMISOS ───────────────────────────────────── */
     private bool HasPermission(ClaimsPrincipal user, params string[] permissions)
-    {
-        return user.IsInRole("Administrador") || permissions.Any(p => user.IsInRole(p));
-    }
+        => user.IsInRole("Administrador") || permissions.Any(p => user.IsInRole(p));
 
+    /* ── INIT ───────────────────────────────────────── */
     protected override async Task OnInitializedAsync()
     {
-        // ✅ CORRECCIÓN DE INICIALIZACIÓN
         _dotNetRef = DotNetObjectReference.Create(this);
 
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
+        var user      = authState.User;
 
-        if (user.Identity != null && user.Identity.IsAuthenticated)
+        if (user.Identity?.IsAuthenticated == true)
         {
-            NombreUsuario = GetFullUserName(user);
-            UserEmail = user.FindFirst(ClaimTypes.Email)?.Value ?? user.FindFirst("email")?.Value ?? "";
-            UserInitial = string.IsNullOrEmpty(NombreUsuario) ? "U" : NombreUsuario.Substring(0, 1).ToUpper();
-            FotoPerfilUsuario = user.FindFirst("FotoPerfilUrl")?.Value ?? "";
-            UserId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value ?? "";
+            NombreUsuario       = GetFullUserName(user);
+            UserEmail           = user.FindFirst(ClaimTypes.Email)?.Value ?? user.FindFirst("email")?.Value ?? "";
+            UserInitial         = string.IsNullOrEmpty(NombreUsuario) ? "U" : NombreUsuario[0].ToString().ToUpper();
+            FotoPerfilUsuario   = user.FindFirst("FotoPerfilUrl")?.Value ?? "";
+            UserId              = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value ?? "";
 
             var structuralRoles = new[] { "Administrador", "Secretaria Academica", "Coordinador", "Docente", "Alumno" };
-            var assignedStructuralRoles = user.FindAll(ClaimTypes.Role)
-                                              .Select(c => c.Value)
-                                              .Where(r => structuralRoles.Contains(r))
-                                              .ToList();
+            var assigned        = user.FindAll(ClaimTypes.Role).Select(c => c.Value).Where(r => structuralRoles.Contains(r)).ToList();
 
-            if (assignedStructuralRoles.Count > 1) 
-            {
-                RoleFull = "Perfil Multirrol";
-            }
-            else
-            {
-                if (user.IsInRole("Administrador")) RoleFull = "Administrador del Sistema";
-                else if (user.IsInRole("Secretaria Academica")) RoleFull = "Secretaría Académica";
-                else if (user.IsInRole("Coordinador")) RoleFull = "Coordinador de Carrera";
-                else if (user.IsInRole("Docente")) RoleFull = "Docente Académico";
-                else if (user.IsInRole("Alumno")) RoleFull = "Alumno Regular";
-                else RoleFull = "Personal Administrativo";
-            }
+            RoleFull = assigned.Count > 1 ? "Perfil Multirrol"
+                     : user.IsInRole("Administrador")       ? "Administrador del Sistema"
+                     : user.IsInRole("Secretaria Academica")? "Secretaría Académica"
+                     : user.IsInRole("Coordinador")         ? "Coordinador de Carrera"
+                     : user.IsInRole("Docente")             ? "Docente Académico"
+                     : user.IsInRole("Alumno")              ? "Alumno Regular"
+                     : "Personal Administrativo";
 
             InitializeCommands(user);
         }
@@ -519,33 +656,34 @@
             try
             {
                 await JS.InvokeVoidAsync("eval", @"
-                    (function(dotNetHelper) {
-                        window.addEventListener('keydown', function(e) { 
-                            if ((e.ctrlKey || e.metaKey) && e.key === 'k') { 
-                                e.preventDefault(); 
-                                dotNetHelper.invokeMethodAsync('OpenCommandPaletteInstance'); 
-                            } 
+                    (function(ref) {
+                        window.addEventListener('keydown', function(e) {
+                            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                                e.preventDefault();
+                                ref.invokeMethodAsync('OpenCommandPaletteInstance');
+                            }
                         });
                     })(arguments[0]);
                 ", _dotNetRef);
             }
             catch { }
         }
-        
-        if (showCommandPalette) 
-        { 
-            try { await commandInputRef.FocusAsync(); } catch { } 
+
+        if (showCommandPalette)
+        {
+            try { await commandInputRef.FocusAsync(); } catch { }
         }
     }
 
-    [JSInvokable] 
-    public void OpenCommandPaletteInstance() => OpenCommandPalette(); 
+    [JSInvokable]
+    public void OpenCommandPaletteInstance() => OpenCommandPalette();
 
+    /* ── HELPERS ────────────────────────────────────── */
     private string GetFullUserName(ClaimsPrincipal user)
     {
-        var nombre = user.FindFirst("Nombre")?.Value ?? user.FindFirst(ClaimTypes.GivenName)?.Value;
+        var nombre   = user.FindFirst("Nombre")?.Value   ?? user.FindFirst(ClaimTypes.GivenName)?.Value;
         var apellido = user.FindFirst("Apellido")?.Value ?? user.FindFirst(ClaimTypes.Surname)?.Value;
-        return (!string.IsNullOrEmpty(nombre)) ? $"{nombre} {apellido}".Trim() : user.Identity?.Name ?? "Usuario";
+        return !string.IsNullOrEmpty(nombre) ? $"{nombre} {apellido}".Trim() : user.Identity?.Name ?? "Usuario";
     }
 
     private Color GetAvatarColor(ClaimsPrincipal user)
@@ -556,18 +694,21 @@
         return Color.Primary;
     }
 
+    /* ── SESIÓN ─────────────────────────────────────── */
     private async Task CerrarSesion()
     {
         try { await AuthService.LogoutAsync(); } catch { }
         NavManager.NavigateTo("/", forceLoad: true);
     }
 
+    /* ── FAVORITOS ──────────────────────────────────── */
     private async Task LoadFavorites()
     {
         try
         {
             var json = await JS.InvokeAsync<string>("localStorage.getItem", FavoritesKey);
-            if (!string.IsNullOrEmpty(json)) favoritePages = System.Text.Json.JsonSerializer.Deserialize<List<NavPage>>(json) ?? new();
+            if (!string.IsNullOrEmpty(json))
+                favoritePages = System.Text.Json.JsonSerializer.Deserialize<List<NavPage>>(json) ?? new();
         }
         catch { }
     }
@@ -576,17 +717,17 @@
     {
         if (favoritePages.Any(f => f.Url == url)) favoritePages.RemoveAll(f => f.Url == url);
         else favoritePages.Add(new NavPage(url, title, icon));
-
         var json = System.Text.Json.JsonSerializer.Serialize(favoritePages);
         await JS.InvokeVoidAsync("localStorage.setItem", FavoritesKey, json);
     }
 
     private bool IsFavorite(string url) => favoritePages.Any(f => f.Url == url);
 
+    /* ── COMMAND PALETTE ────────────────────────────── */
     private void InitializeCommands(ClaimsPrincipal user)
     {
         allCommands.Clear();
-        
+
         if (user.IsInRole("Docente"))
             allCommands.Add(new CommandItem { Title = "Mi Perfil", Category = "Cuenta", Url = "/docente/mi-perfil", Icon = Icons.Material.Filled.Person });
         else if (user.IsInRole("Alumno"))
@@ -597,80 +738,78 @@
         if (HasPermission(user, "REP_VER", "ACA_CARRERA_ABM", "COM_COMISION_ABM", "ALU_ABM"))
             allCommands.Add(new CommandItem { Title = "Dashboard", Category = "Inicio", Url = "/Home", Icon = Icons.Material.Filled.Dashboard });
 
-        if (HasPermission(user, "ACA_CARRERA_ABM")) allCommands.Add(new CommandItem { Title = "Carreras", Category = "Configuración Institucional", Url = "/carreras", Icon = Icons.Material.Filled.AccountBalance });
-        if (HasPermission(user, "ACA_PLAN_ABM")) allCommands.Add(new CommandItem { Title = "Planes de Estudio", Category = "Configuración Institucional", Url = "/planes", Icon = Icons.Material.Filled.Map });
-        if (HasPermission(user, "ACA_MATERIA_ABM")) allCommands.Add(new CommandItem { Title = "Materias", Category = "Configuración Institucional", Url = "/materias", Icon = Icons.Material.Filled.Book });
-        if (HasPermission(user, "CFG_PARAMETROS_ACA")) allCommands.Add(new CommandItem { Title = "Estados de Materia", Category = "Configuración Institucional", Url = "/admin/estados-materia", Icon = Icons.Material.Filled.RuleFolder });
-        if (HasPermission(user, "CFG_SEDES_ABM")) allCommands.Add(new CommandItem { Title = "Sedes", Category = "Configuración Institucional", Url = "/sedes", Icon = Icons.Material.Filled.Place });
-        if (HasPermission(user, "CFG_PARAMETROS_ACA")) allCommands.Add(new CommandItem { Title = "Modalidades", Category = "Configuración Institucional", Url = "/modalidades", Icon = Icons.Material.Filled.LaptopChromebook });
-        if (HasPermission(user, "CFG_PARAMETROS_ACA")) allCommands.Add(new CommandItem { Title = "Regímenes", Category = "Configuración Institucional", Url = "/regimenes", Icon = Icons.Material.Filled.Rule });
+        if (HasPermission(user, "ACA_CARRERA_ABM"))    allCommands.Add(new CommandItem { Title = "Carreras",            Category = "Config. Institucional", Url = "/carreras",              Icon = Icons.Material.Filled.AccountBalance });
+        if (HasPermission(user, "ACA_PLAN_ABM"))       allCommands.Add(new CommandItem { Title = "Planes de Estudio",  Category = "Config. Institucional", Url = "/planes",                Icon = Icons.Material.Filled.Map });
+        if (HasPermission(user, "ACA_MATERIA_ABM"))    allCommands.Add(new CommandItem { Title = "Materias",           Category = "Config. Institucional", Url = "/materias",              Icon = Icons.Material.Filled.Book });
+        if (HasPermission(user, "CFG_PARAMETROS_ACA")) allCommands.Add(new CommandItem { Title = "Estados de Materia", Category = "Config. Institucional", Url = "/admin/estados-materia", Icon = Icons.Material.Filled.RuleFolder });
+        if (HasPermission(user, "CFG_SEDES_ABM"))      allCommands.Add(new CommandItem { Title = "Sedes",              Category = "Config. Institucional", Url = "/sedes",                 Icon = Icons.Material.Filled.Place });
+        if (HasPermission(user, "CFG_PARAMETROS_ACA")) allCommands.Add(new CommandItem { Title = "Modalidades",        Category = "Config. Institucional", Url = "/modalidades",           Icon = Icons.Material.Filled.LaptopChromebook });
+        if (HasPermission(user, "CFG_PARAMETROS_ACA")) allCommands.Add(new CommandItem { Title = "Regímenes",          Category = "Config. Institucional", Url = "/regimenes",             Icon = Icons.Material.Filled.Rule });
 
-        if (HasPermission(user, "PER_PERIODO_ABM")) allCommands.Add(new CommandItem { Title = "Períodos Académicos", Category = "Planificación", Url = "/periodos", Icon = Icons.Material.Filled.DateRange });
-        if (HasPermission(user, "PER_CALENDARIO_ABM")) allCommands.Add(new CommandItem { Title = "Ventanas y Calendario", Category = "Planificación", Url = "/calendario", Icon = Icons.Material.Filled.EventAvailable });
-        if (HasPermission(user, "COM_COMISION_ABM")) allCommands.Add(new CommandItem { Title = "Comisiones", Category = "Planificación", Url = "/comisiones", Icon = Icons.Material.Filled.Groups });
-        if (HasPermission(user, "COM_HORARIOS_EDIT")) allCommands.Add(new CommandItem { Title = "Horarios", Category = "Planificación", Url = "/horarios", Icon = Icons.Material.Filled.AccessTime });
+        if (HasPermission(user, "PER_PERIODO_ABM"))    allCommands.Add(new CommandItem { Title = "Períodos Académicos",   Category = "Planificación", Url = "/periodos",    Icon = Icons.Material.Filled.DateRange });
+        if (HasPermission(user, "PER_CALENDARIO_ABM")) allCommands.Add(new CommandItem { Title = "Ventanas y Calendario", Category = "Planificación", Url = "/calendario",  Icon = Icons.Material.Filled.EventAvailable });
+        if (HasPermission(user, "COM_COMISION_ABM"))   allCommands.Add(new CommandItem { Title = "Comisiones",            Category = "Planificación", Url = "/comisiones",  Icon = Icons.Material.Filled.Groups });
+        if (HasPermission(user, "COM_HORARIOS_EDIT"))  allCommands.Add(new CommandItem { Title = "Horarios",              Category = "Planificación", Url = "/horarios",    Icon = Icons.Material.Filled.AccessTime });
 
-        if (HasPermission(user, "INS_CURSADA_GESTION")) allCommands.Add(new CommandItem { Title = "Forzar Inscripciones", Category = "Operaciones de Cursada", Url = "/admin/inscripciones", Icon = Icons.Material.Filled.HowToReg });
-        
-        // 🚀 ACCESO ADMINISTRATIVO A ASISTENCIAS EN LA PALETA
-        if (HasPermission(user, "ASIS_VER", "ASIS_CARGAR")) allCommands.Add(new CommandItem { Title = "Auditoría Asistencias", Category = "Operaciones de Cursada", Url = "/asistencia", Icon = Icons.Material.Filled.FactCheck });
+        if (HasPermission(user, "INS_CURSADA_GESTION"))      allCommands.Add(new CommandItem { Title = "Forzar Inscripciones",  Category = "Cursada", Url = "/admin/inscripciones", Icon = Icons.Material.Filled.HowToReg });
+        if (HasPermission(user, "ASIS_VER", "ASIS_CARGAR"))  allCommands.Add(new CommandItem { Title = "Auditoría Asistencias", Category = "Cursada", Url = "/asistencia",          Icon = Icons.Material.Filled.FactCheck });
 
-        if (HasPermission(user, "EVA_ABM")) allCommands.Add(new CommandItem { Title = "Parciales", Category = "Evaluaciones", Url = "/evaluaciones", Icon = Icons.Material.Filled.Assignment });
-        if (HasPermission(user, "EVA_CARGAR_NOTAS")) allCommands.Add(new CommandItem { Title = "Carga de Notas", Category = "Evaluaciones", Url = "/notas", Icon = Icons.Material.Filled.Grade });
-        if (HasPermission(user, "ACTA_VER")) allCommands.Add(new CommandItem { Title = "Libros de Actas", Category = "Evaluaciones", Url = "/admin/actas", Icon = Icons.Material.Filled.Description });
-        if (HasPermission(user, "INS_FINAL_MESAS_ABM")) allCommands.Add(new CommandItem { Title = "Mesas de Finales", Category = "Evaluaciones", Url = "/mesas-finales", Icon = Icons.Material.Filled.EventSeat });
-        if (HasPermission(user, "FINAL_CARGAR_RESULTADO")) allCommands.Add(new CommandItem { Title = "Actas de Finales", Category = "Evaluaciones", Url = "/resultados-finales", Icon = Icons.Material.Filled.EmojiEvents });
+        if (HasPermission(user, "EVA_ABM"))                  allCommands.Add(new CommandItem { Title = "Parciales",       Category = "Evaluaciones", Url = "/evaluaciones",       Icon = Icons.Material.Filled.Assignment });
+        if (HasPermission(user, "EVA_CARGAR_NOTAS"))         allCommands.Add(new CommandItem { Title = "Carga de Notas",  Category = "Evaluaciones", Url = "/notas",              Icon = Icons.Material.Filled.Grade });
+        if (HasPermission(user, "ACTA_VER"))                 allCommands.Add(new CommandItem { Title = "Libros de Actas", Category = "Evaluaciones", Url = "/admin/actas",        Icon = Icons.Material.Filled.Description });
+        if (HasPermission(user, "INS_FINAL_MESAS_ABM"))      allCommands.Add(new CommandItem { Title = "Mesas de Finales",Category = "Evaluaciones", Url = "/mesas-finales",      Icon = Icons.Material.Filled.EventSeat });
+        if (HasPermission(user, "FINAL_CARGAR_RESULTADO"))   allCommands.Add(new CommandItem { Title = "Actas de Finales",Category = "Evaluaciones", Url = "/resultados-finales", Icon = Icons.Material.Filled.EmojiEvents });
 
-        if (HasPermission(user, "ALU_ABM")) allCommands.Add(new CommandItem { Title = "Alumnos / Legajos", Category = "Comunidad", Url = "/alumnos", Icon = Icons.Material.Filled.Person });
-        if (HasPermission(user, "DOC_ABM")) allCommands.Add(new CommandItem { Title = "Docentes", Category = "Comunidad", Url = "/docentes", Icon = Icons.Material.Filled.Face });
-        if (HasPermission(user, "SOL_GESTION")) allCommands.Add(new CommandItem { Title = "Solicitudes Ingreso", Category = "Comunidad", Url = "/admin/solicitudes", Icon = Icons.Material.Filled.AssignmentInd });
-        if (HasPermission(user, "SOL_GESTION")) allCommands.Add(new CommandItem { Title = "Mesa de Entradas", Category = "Comunidad", Url = "/solicitudes/bandeja", Icon = Icons.Material.Filled.Inbox });
+        if (HasPermission(user, "ALU_ABM"))     allCommands.Add(new CommandItem { Title = "Alumnos / Legajos",  Category = "Comunidad", Url = "/alumnos",             Icon = Icons.Material.Filled.Person });
+        if (HasPermission(user, "DOC_ABM"))     allCommands.Add(new CommandItem { Title = "Docentes",           Category = "Comunidad", Url = "/docentes",            Icon = Icons.Material.Filled.Face });
+        if (HasPermission(user, "SOL_GESTION")) allCommands.Add(new CommandItem { Title = "Solicitudes Ingreso",Category = "Comunidad", Url = "/admin/solicitudes",   Icon = Icons.Material.Filled.AssignmentInd });
+        if (HasPermission(user, "SOL_GESTION")) allCommands.Add(new CommandItem { Title = "Mesa de Entradas",   Category = "Comunidad", Url = "/solicitudes/bandeja", Icon = Icons.Material.Filled.Inbox });
 
-        if (HasPermission(user, "REP_VER", "EMAIL_MASIVO", "CFG_INSTITUCION_EDIT", "SEG_USUARIOS_ABM", "SEG_ROLES_ABM")) allCommands.Add(new CommandItem { Title = "Gestión de Tickets", Category = "Sistema", Url = "/admin/tickets", Icon = Icons.Material.Filled.ConfirmationNumber });
-        if (HasPermission(user, "REP_VER")) allCommands.Add(new CommandItem { Title = "Reportes", Category = "Sistema", Url = "/reportes/operativos", Icon = Icons.Material.Filled.BarChart });
-        if (HasPermission(user, "EMAIL_MASIVO")) allCommands.Add(new CommandItem { Title = "Comunicación", Category = "Sistema", Url = "/emails/masivos", Icon = Icons.Material.Filled.Email });
-        if (HasPermission(user, "CFG_INSTITUCION_EDIT")) allCommands.Add(new CommandItem { Title = "Configuración Base", Category = "Sistema", Url = "/institucion", Icon = Icons.Material.Filled.Settings });
-        
-        if (HasPermission(user, "SEG_USUARIOS_ABM")) allCommands.Add(new CommandItem { Title = "Usuarios y Cuentas", Category = "Seguridad Avanzada", Url = "/usuarios", Icon = Icons.Material.Filled.Security });
-        if (HasPermission(user, "SEG_ROLES_ABM")) allCommands.Add(new CommandItem { Title = "Roles y Permisos", Category = "Seguridad Avanzada", Url = "/admin/roles", Icon = Icons.Material.Filled.AdminPanelSettings });
+        allCommands.Add(new CommandItem { Title = "Gestión de Tickets", Category = "Sistema", Url = "/admin/tickets",        Icon = Icons.Material.Filled.ConfirmationNumber });
+        if (HasPermission(user, "REP_VER"))      allCommands.Add(new CommandItem { Title = "Reportes",        Category = "Sistema", Url = "/reportes/operativos", Icon = Icons.Material.Filled.BarChart });
+        if (HasPermission(user, "EMAIL_MASIVO")) allCommands.Add(new CommandItem { Title = "Comunicación",     Category = "Sistema", Url = "/emails/masivos",      Icon = Icons.Material.Filled.Email });
+
+        if (HasPermission(user, "EMAIL_MASIVO") || user.IsInRole("Administrador") || user.IsInRole("Secretaria Academica"))
+            allCommands.Add(new CommandItem { Title = "Enviar Comunicados", Category = "Sistema", Url = "/admin/notificaciones", Icon = Icons.Material.Filled.Campaign });
+
+        if (HasPermission(user, "CFG_INSTITUCION_EDIT")) allCommands.Add(new CommandItem { Title = "Configuración Base", Category = "Sistema",   Url = "/institucion",   Icon = Icons.Material.Filled.Settings });
+        if (HasPermission(user, "SEG_USUARIOS_ABM"))     allCommands.Add(new CommandItem { Title = "Usuarios y Cuentas",  Category = "Seguridad", Url = "/usuarios",      Icon = Icons.Material.Filled.Security });
+        if (HasPermission(user, "SEG_ROLES_ABM"))        allCommands.Add(new CommandItem { Title = "Roles y Permisos",    Category = "Seguridad", Url = "/admin/roles",   Icon = Icons.Material.Filled.AdminPanelSettings });
 
         if (user.IsInRole("Alumno"))
         {
-            allCommands.Add(new CommandItem { Title = "Inicio Alumno", Category = "Mi Espacio", Url = "/dashboard-alumno", Icon = Icons.Material.Filled.Home });
-            allCommands.Add(new CommandItem { Title = "Mis Notas", Category = "Mi Espacio", Url = "/alumno/mis-cursadas", Icon = Icons.Material.Filled.Grade });
-            allCommands.Add(new CommandItem { Title = "Mis Asistencias", Category = "Mi Espacio", Url = "/alumno/asistencias", Icon = Icons.Material.Filled.FactCheck });
-            allCommands.Add(new CommandItem { Title = "Cursar Materias", Category = "Mi Espacio", Url = "/inscripcion-materias", Icon = Icons.Material.Filled.Class });
-            allCommands.Add(new CommandItem { Title = "Rendir Finales", Category = "Mi Espacio", Url = "/alumno/inscripcion-finales", Icon = Icons.Material.Filled.AssignmentTurnedIn });
-            allCommands.Add(new CommandItem { Title = "Historia Académica", Category = "Mi Espacio", Url = "/historia-academica", Icon = Icons.Material.Filled.HistoryEdu });
-            allCommands.Add(new CommandItem { Title = "Trámites y Certificados", Category = "Mi Espacio", Url = "/tramites", Icon = Icons.Material.Filled.Description });
+            allCommands.Add(new CommandItem { Title = "Inicio Alumno",         Category = "Mi Espacio", Url = "/dashboard-alumno",          Icon = Icons.Material.Filled.Home });
+            allCommands.Add(new CommandItem { Title = "Mis Notas",             Category = "Mi Espacio", Url = "/alumno/mis-cursadas",        Icon = Icons.Material.Filled.Grade });
+            allCommands.Add(new CommandItem { Title = "Mis Asistencias",       Category = "Mi Espacio", Url = "/alumno/asistencias",         Icon = Icons.Material.Filled.FactCheck });
+            allCommands.Add(new CommandItem { Title = "Cursar Materias",       Category = "Mi Espacio", Url = "/inscripcion-materias",       Icon = Icons.Material.Filled.Class });
+            allCommands.Add(new CommandItem { Title = "Rendir Finales",        Category = "Mi Espacio", Url = "/alumno/inscripcion-finales", Icon = Icons.Material.Filled.AssignmentTurnedIn });
+            allCommands.Add(new CommandItem { Title = "Historia Académica",    Category = "Mi Espacio", Url = "/historia-academica",         Icon = Icons.Material.Filled.HistoryEdu });
+            allCommands.Add(new CommandItem { Title = "Trámites y Certificados",Category="Mi Espacio",  Url = "/tramites",                   Icon = Icons.Material.Filled.Description });
         }
 
         if (user.IsInRole("Docente"))
         {
-            allCommands.Add(new CommandItem { Title = "Inicio Docente", Category = "Mi Espacio", Url = "/dashboard-docente", Icon = Icons.Material.Filled.Home });
-            allCommands.Add(new CommandItem { Title = "Mis Comisiones", Category = "Mi Espacio", Url = "/mis-comisiones", Icon = Icons.Material.Filled.Groups });
-            
-            // 🚀 ACCESO DOCENTE A ASISTENCIAS EN LA PALETA
-            allCommands.Add(new CommandItem { Title = "Tomar Asistencia", Category = "Mi Espacio", Url = "/docente/tomar-asistencia", Icon = Icons.Material.Filled.HowToReg });
-            
-            allCommands.Add(new CommandItem { Title = "Planificar Exámenes", Category = "Mi Espacio", Url = "/docente/evaluaciones", Icon = Icons.Material.Filled.Assignment });
-            allCommands.Add(new CommandItem { Title = "Cargar Notas", Category = "Mi Espacio", Url = "/docente/cargar-notas", Icon = Icons.Material.Filled.EditNote });
-            allCommands.Add(new CommandItem { Title = "Cerrar Actas", Category = "Mi Espacio", Url = "/docente/actas", Icon = Icons.Material.Filled.Description });
-            allCommands.Add(new CommandItem { Title = "Mesas Asignadas", Category = "Mi Espacio", Url = "/docente/mesas-asignadas", Icon = Icons.Material.Filled.EventSeat });
+            allCommands.Add(new CommandItem { Title = "Inicio Docente",      Category = "Mi Espacio", Url = "/dashboard-docente",         Icon = Icons.Material.Filled.Home });
+            allCommands.Add(new CommandItem { Title = "Mis Comisiones",      Category = "Mi Espacio", Url = "/mis-comisiones",            Icon = Icons.Material.Filled.Groups });
+            allCommands.Add(new CommandItem { Title = "Tomar Asistencia",    Category = "Mi Espacio", Url = "/docente/tomar-asistencia",  Icon = Icons.Material.Filled.HowToReg });
+            allCommands.Add(new CommandItem { Title = "Planificar Exámenes", Category = "Mi Espacio", Url = "/docente/evaluaciones",      Icon = Icons.Material.Filled.Assignment });
+            allCommands.Add(new CommandItem { Title = "Cargar Notas",        Category = "Mi Espacio", Url = "/docente/cargar-notas",      Icon = Icons.Material.Filled.EditNote });
+            allCommands.Add(new CommandItem { Title = "Cerrar Actas",        Category = "Mi Espacio", Url = "/docente/actas",             Icon = Icons.Material.Filled.Description });
+            allCommands.Add(new CommandItem { Title = "Mesas Asignadas",     Category = "Mi Espacio", Url = "/docente/mesas-asignadas",   Icon = Icons.Material.Filled.EventSeat });
         }
 
         filteredCommands = allCommands.ToList();
     }
 
-    private void OpenCommandPalette() 
-    { 
-        showCommandPalette = true; 
-        commandSearch = ""; 
-        filteredCommands = allCommands.ToList(); 
+    private void OpenCommandPalette()
+    {
+        showCommandPalette   = true;
+        commandSearch        = "";
+        filteredCommands     = allCommands.ToList();
         selectedCommandIndex = 0;
-        StateHasChanged(); 
+        StateHasChanged();
     }
-    
+
     private void CloseCommandPalette() => showCommandPalette = false;
 
     private void ExecuteCommand(CommandItem cmd)
@@ -683,49 +822,52 @@
     private void HandleSearchInput(ChangeEventArgs e)
     {
         commandSearch = e.Value?.ToString() ?? "";
-        if (string.IsNullOrWhiteSpace(commandSearch)) 
-            filteredCommands = allCommands.ToList();
-        else 
-            filteredCommands = allCommands
-                .Where(c => c.Title.Contains(commandSearch, StringComparison.OrdinalIgnoreCase) || 
-                            c.Category.Contains(commandSearch, StringComparison.OrdinalIgnoreCase))
-                .ToList();
+        filteredCommands = string.IsNullOrWhiteSpace(commandSearch)
+            ? allCommands.ToList()
+            : allCommands.Where(c =>
+                c.Title.Contains(commandSearch, StringComparison.OrdinalIgnoreCase) ||
+                c.Category.Contains(commandSearch, StringComparison.OrdinalIgnoreCase)).ToList();
         selectedCommandIndex = 0;
     }
 
     private async Task HandleCommandKeyDown(KeyboardEventArgs e)
     {
-        if (e.Key == "ArrowDown") selectedCommandIndex = Math.Min(selectedCommandIndex + 1, filteredCommands.Count - 1);
-        else if (e.Key == "ArrowUp") selectedCommandIndex = Math.Max(selectedCommandIndex - 1, 0);
+        if      (e.Key == "ArrowDown") selectedCommandIndex = Math.Min(selectedCommandIndex + 1, filteredCommands.Count - 1);
+        else if (e.Key == "ArrowUp")   selectedCommandIndex = Math.Max(selectedCommandIndex - 1, 0);
         else if (e.Key == "Enter" && filteredCommands.Any()) ExecuteCommand(filteredCommands[selectedCommandIndex]);
         else if (e.Key == "Escape") CloseCommandPalette();
     }
 
-    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e) => StateHasChanged();
-    
-    public void Dispose() 
-    {
-        NavManager.LocationChanged -= OnLocationChanged;
-        _dotNetRef?.Dispose(); 
-    }
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+        => StateHasChanged();
 
     private async Task AbrirPerfil()
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
-        
-        if (user.IsInRole("Docente"))
-            NavManager.NavigateTo("/docente/mi-perfil");
-        else if (user.IsInRole("Alumno"))
-            NavManager.NavigateTo("/alumno/perfil");
+        var user      = authState.User;
+        if (user.IsInRole("Docente"))      NavManager.NavigateTo("/docente/mi-perfil");
+        else if (user.IsInRole("Alumno"))  NavManager.NavigateTo("/alumno/perfil");
         else
         {
-            var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, NoHeader = true, CloseButton = false, BackdropClick = true };
-            DialogService.Show<DialogoPerfil>("", options);
+            var opts = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, NoHeader = true, CloseButton = false, BackdropClick = true };
+            DialogService.Show<DialogoPerfil>("", opts);
         }
         CloseCommandPalette();
     }
 
+    public void Dispose()
+    {
+        NavManager.LocationChanged -= OnLocationChanged;
+        _dotNetRef?.Dispose();
+    }
+
     private record NavPage(string Url, string Title, string Icon);
-    private class CommandItem { public string Title { get; set; } = ""; public string Category { get; set; } = ""; public string Url { get; set; } = ""; public string Icon { get; set; } = ""; public Func<Task>? Action { get; set; } }
+    private class CommandItem
+    {
+        public string        Title    { get; set; } = "";
+        public string        Category { get; set; } = "";
+        public string        Url      { get; set; } = "";
+        public string        Icon     { get; set; } = "";
+        public Func<Task>?   Action   { get; set; }
+    }
 }

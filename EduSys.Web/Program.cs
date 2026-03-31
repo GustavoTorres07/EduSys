@@ -84,7 +84,7 @@ builder.Services.AddScoped<HorarioPdfService>(); // (Este es una clase concreta,
 builder.Services.AddScoped<IAsistenciaService, AsistenciaService>();
 
 builder.Services.AddScoped<IUsuarioService, UsuarioService>();
-
+builder.Services.AddScoped<INotificacionApiService, NotificacionApiService>();
 builder.Services.AddScoped<IRolService, RolService>();  
 // ==================================================================
 // 4. CONFIGURACIONES ADICIONALES Y ARRANQUE

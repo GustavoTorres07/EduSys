@@ -1,45 +1,134 @@
 ﻿@inject NavigationManager Navigation
 @using Microsoft.AspNetCore.Components
-
-@* Ocultamos el layout principal (menú lateral, etc.) por si el usuario no está logueado *@
 @layout EmptyLayout
 
-<MudContainer MaxWidth="MaxWidth.Small" Class="d-flex align-center justify-center" Style="height: 100vh;">
-    <MudPaper Elevation="4" Class="pa-8 text-center rounded-lg" Style="max-width: 450px; border-top: 4px solid #456990;">
-        <MudIcon Icon="@Icons.Material.Filled.LockPerson" Color="Color.Primary" Style="font-size: 4rem;" Class="mb-4" />
-        
-        <MudText Typo="Typo.h5" Style="font-weight: 700; color: #1e293b;" Class="mb-2">
-            Acceso Restringido
-        </MudText>
-        
-        <MudText Typo="Typo.body1" Style="color: #64748b;" Class="mb-6">
-            Tu sesión ha expirado o necesitas identificarte para ver esta página.
-            Te estamos redirigiendo al inicio de sesión de forma segura...
-        </MudText>
-        
-        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Medium" />
-    </MudPaper>
-</MudContainer>
+<style>
+    @@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Lora:wght@500&display=swap');
+
+    .eds-redirect-shell {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        background: #f0f3f8;
+        font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+        padding: 1.5rem;
+    }
+
+    .eds-redirect-card {
+        background: #ffffff;
+        border-radius: 12px;
+        border-top: 3px solid #456990;
+        padding: 3rem 2.5rem;
+        max-width: 420px;
+        width: 100%;
+        text-align: center;
+        box-shadow: 0 4px 20px rgba(26,45,69,0.1);
+    }
+
+    .eds-redirect-icon-wrap {
+        width: 64px;
+        height: 64px;
+        border-radius: 16px;
+        background: #eef4fb;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1.5rem;
+    }
+
+    .eds-redirect-title {
+        font-family: 'Lora', Georgia, serif;
+        font-size: 1.3rem;
+        font-weight: 500;
+        color: #1a2d45;
+        margin-bottom: 0.625rem;
+        line-height: 1.2;
+    }
+
+    .eds-redirect-desc {
+        font-size: 0.8rem;
+        color: #6a7d98;
+        line-height: 1.6;
+        margin-bottom: 1.75rem;
+        font-weight: 400;
+    }
+
+    .eds-redirect-progress {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        font-size: 0.72rem;
+        color: #a0aec0;
+        font-weight: 500;
+    }
+
+    /* Barra de progreso animada — más informativa que un spinner */
+    .eds-progress-bar-wrap {
+        width: 100%;
+        height: 3px;
+        background: #eef1f6;
+        border-radius: 3px;
+        overflow: hidden;
+        margin-bottom: 1rem;
+    }
+
+    .eds-progress-bar-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #456990, #49BEAA);
+        border-radius: 3px;
+        animation: eds-fill 1.5s ease-out forwards;
+    }
+
+    @@keyframes eds-fill {
+        from { width: 0%; }
+        to   { width: 100%; }
+    }
+</style>
+
+<div class="eds-redirect-shell">
+    <div class="eds-redirect-card">
+
+        <div class="eds-redirect-icon-wrap">
+            <MudIcon Icon="@Icons.Material.Outlined.LockPerson"
+                     Style="font-size:2rem; color:#456990;" />
+        </div>
+
+        <h1 class="eds-redirect-title">Sesión no activa</h1>
+
+        <p class="eds-redirect-desc">
+            Tu sesión ha expirado o necesitás identificarte para acceder a esta sección.
+            Te estamos llevando al inicio de sesión de forma segura.
+        </p>
+
+        <div class="eds-progress-bar-wrap">
+            <div class="eds-progress-bar-fill"></div>
+        </div>
+
+        <div class="eds-redirect-progress">
+            <MudProgressCircular Color="Color.Primary"
+                                 Indeterminate="true"
+                                 Size="Size.Small"
+                                 Style="width:14px; height:14px;" />
+            Redirigiendo...
+        </div>
+
+    </div>
+</div>
 
 @code {
     protected override async Task OnInitializedAsync()
     {
-        // 1. Capturamos la ruta exacta a la que el usuario intentaba acceder
         var returnUrl = Navigation.ToBaseRelativePath(Navigation.Uri);
 
-        // 2. Le damos 1.5 segundos al usuario para leer el mensaje (Excelente UX)
+        // Tiempo suficiente para que la barra de progreso termine su animación
         await Task.Delay(1500);
 
-        // 3. Redirigimos al Login pasando el returnUrl como parámetro.
-        // Ejemplo: /?returnUrl=alumno/mis-notas
-        if (string.IsNullOrWhiteSpace(returnUrl))
-        {
-            Navigation.NavigateTo("/");
-        }
-        else
-        {
-            // Usamos Uri.EscapeDataString para que los caracteres especiales (como / o ?) no rompan la URL
-            Navigation.NavigateTo($"/?returnUrl={Uri.EscapeDataString(returnUrl)}");
-        }
+        Navigation.NavigateTo(
+            string.IsNullOrWhiteSpace(returnUrl)
+                ? "/"
+                : $"/?returnUrl={Uri.EscapeDataString(returnUrl)}"
+        );
     }
 }

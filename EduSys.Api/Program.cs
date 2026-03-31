@@ -94,6 +94,8 @@ builder.Services.AddScoped<IAsistenciaRepository, AsistenciaRepository>();
 
 builder.Services.AddScoped<IRolRepository, RolRepository>();
 
+builder.Services.AddHostedService<EduSys.Api.Workers.NotificacionesWorker>();
+
 builder.Services.AddControllers();
 
 // ==================================================================

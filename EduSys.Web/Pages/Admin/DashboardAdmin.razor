@@ -1,0 +1,811 @@
+﻿@page "/admin/dashboard"
+
+@attribute [Authorize(Roles = "Administrador")]
+
+@using EduSys.Shared.DTOs
+@using EduSys.Web.Services.Interfaces
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@using System.Globalization
+
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IDashboardService DashboardService
+@inject INotificacionApiService NotificacionService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+@implements IDisposable
+
+<style>
+    @@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Lora:ital,wght@0,500;1,400&family=DM+Mono:wght@400;500&display=swap');
+
+    /* ═══════════════════════════════════════════════════
+       EDUSYS · PALETA OFICIAL
+       #456990  azul pizarrón  → dominante institucional
+       #49BEAA  teal           → interacciones, links
+       #49DCB1  mint           → éxito, estados positivos
+       #EEB868  ámbar          → destacados, badges
+       #EF767A  coral          → alertas, errores
+    ═══════════════════════════════════════════════════ */
+
+    .eds *, .eds *::before, .eds *::after { box-sizing: border-box; }
+
+    .eds {
+        font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+        display: block;
+        height: 100vh;
+        overflow: hidden;
+        background: #eef1f6;
+        color: #1a2332;
+    }
+
+    /* ═══════════════
+       ÁREA PRINCIPAL
+    ═══════════════ */
+    .eds-main {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        height: 100vh;
+        overflow: hidden;
+    }
+
+    /* Topbar con breadcrumb */
+    .eds-topbar {
+        height: 50px;
+        background: #ffffff;
+        border-bottom: 1px solid #dde3ec;
+        padding: 0 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        flex-shrink: 0;
+    }
+
+    /* Breadcrumb / historial de rutas */
+    .eds-bc {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+    }
+
+    .eds-bc-item {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+    }
+
+    .eds-bc-link {
+        font-size: 0.73rem;
+        font-weight: 400;
+        color: #8a9ab5;
+        cursor: pointer;
+        padding: 3px 5px;
+        border-radius: 4px;
+        transition: color 0.12s, background 0.12s;
+    }
+
+    .eds-bc-link:hover {
+        color: #456990;
+        background: #eef1f6;
+    }
+
+    .eds-bc-sep {
+        font-size: 0.65rem;
+        color: #c5cdd9;
+        user-select: none;
+        padding: 0 1px;
+    }
+
+    .eds-bc-now {
+        font-size: 0.73rem;
+        font-weight: 600;
+        color: #1a2332;
+        padding: 3px 5px;
+    }
+
+    .eds-topbar-right {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .eds-topbar-date {
+        font-size: 0.72rem;
+        color: #8a9ab5;
+    }
+
+    /* ═══════════════
+       SCROLL PAGE
+    ═══════════════ */
+    .eds-page {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1.875rem 2rem 3rem;
+        overscroll-behavior: contain;
+    }
+
+    .eds-page::-webkit-scrollbar { width: 4px; }
+    .eds-page::-webkit-scrollbar-thumb { background: #c5cdd9; border-radius: 4px; }
+
+    /* Cabecera de página */
+    .eds-ph {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        margin-bottom: 1.625rem;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .eds-ph-title {
+        font-family: 'Lora', Georgia, serif;
+        font-size: 1.6rem;
+        font-weight: 500;
+        color: #1a2332;
+        letter-spacing: -0.3px;
+        line-height: 1.1;
+        margin: 0;
+    }
+
+    .eds-ph-sub {
+        font-size: 0.78rem;
+        color: #7a8da8;
+        font-weight: 400;
+        margin-top: 0.3rem;
+    }
+
+    /* ═══════════════════════════
+       ACCIONES RÁPIDAS
+       — row de botones sin panel
+    ═══════════════════════════ */
+    .eds-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 1.75rem;
+    }
+
+    .eds-act-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.45rem 0.875rem;
+        background: #ffffff;
+        border: 1px solid #dde3ec;
+        border-radius: 8px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: #3a5070;
+        cursor: pointer;
+        transition: all 0.13s;
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        white-space: nowrap;
+    }
+
+    .eds-act-btn:hover {
+        background: #456990;
+        border-color: #456990;
+        color: #ffffff;
+        box-shadow: 0 3px 10px rgba(69,105,144,0.3);
+        transform: translateY(-1px);
+    }
+
+
+    /* ═══════════════════
+       MÉTRICAS
+    ═══════════════════ */
+    .eds-kpis {
+        display: grid;
+        grid-template-columns: 1.35fr 1fr 1fr 1fr;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid #dde3ec;
+        background: #dde3ec;
+        gap: 1px;
+        margin-bottom: 1.75rem;
+    }
+
+    @@media (max-width: 1080px) { .eds-kpis { grid-template-columns: 1fr 1fr; } }
+    @@media (max-width:  580px) { .eds-kpis { grid-template-columns: 1fr; } }
+
+    .eds-kpi {
+        background: #ffffff;
+        padding: 1.625rem 1.75rem 1.375rem;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        transition: background 0.14s;
+        cursor: default;
+    }
+
+    .eds-kpi:hover { background: #fafbfd; }
+
+    /* Primera celda: barra de color arriba + fondo distinto */
+    .eds-kpi:first-child {
+        background: #456990;
+    }
+
+    .eds-kpi:first-child:hover { background: #3d5e80; }
+
+    .eds-kpi:first-child::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 3px;
+        background: #EEB868;
+    }
+
+    /* Las otras tres: barra de color arriba tenue */
+    .eds-kpi:nth-child(2)::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: #49BEAA; }
+    .eds-kpi:nth-child(3)::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: #49DCB1; }
+    .eds-kpi:nth-child(4)::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: #EF767A; }
+
+    .eds-kpi-n {
+        font-family: 'Lora', Georgia, serif;
+        font-size: 3rem;
+        font-weight: 500;
+        color: #1a2332;
+        line-height: 1;
+        letter-spacing: -1.5px;
+        margin-bottom: 0.5rem;
+    }
+
+    .eds-kpi:first-child .eds-kpi-n {
+        color: #ffffff;
+        font-size: 3.5rem;
+    }
+
+    .eds-kpi-label {
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #8a9ab5;
+    }
+
+    .eds-kpi:first-child .eds-kpi-label { color: rgba(255,255,255,0.55); }
+
+    .eds-kpi-sub {
+        font-size: 0.7rem;
+        color: #b0bcce;
+        margin-top: 0.2rem;
+        font-weight: 400;
+    }
+
+    .eds-kpi:first-child .eds-kpi-sub { color: rgba(255,255,255,0.35); }
+
+
+    /* ═══════════════════════════
+       ZONA INFERIOR
+    ═══════════════════════════ */
+    .eds-lower {
+        display: grid;
+        grid-template-columns: 1fr 340px;
+        gap: 1.25rem;
+        align-items: start;
+    }
+
+    @@media (max-width: 1080px) { .eds-lower { grid-template-columns: 1fr; } }
+
+    /* Panel genérico */
+    .eds-panel {
+        background: #ffffff;
+        border: 1px solid #dde3ec;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .eds-panel-head {
+        padding: 0.875rem 1.375rem;
+        border-bottom: 1px solid #eef1f6;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: #f8fafc;
+    }
+
+    .eds-panel-title {
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: #5a7090;
+    }
+
+    .eds-panel-link {
+        font-size: 0.7rem;
+        color: #49BEAA;
+        font-weight: 600;
+        cursor: pointer;
+        transition: color 0.12s;
+    }
+
+    .eds-panel-link:hover { color: #3aaa95; }
+
+
+    /* ═══════════════════
+       AUDIT LOG
+    ═══════════════════ */
+    .eds-audit {
+        display: flex;
+        flex-direction: column;
+        max-height: 390px;
+        overflow-y: auto;
+    }
+
+    .eds-audit::-webkit-scrollbar { width: 3px; }
+    .eds-audit::-webkit-scrollbar-thumb { background: #dde3ec; border-radius: 3px; }
+
+    .eds-audit-row {
+        display: grid;
+        grid-template-columns: 8px 1fr auto;
+        gap: 0.875rem;
+        padding: 0.875rem 1.375rem;
+        border-bottom: 1px solid #f0f3f8;
+        align-items: start;
+        transition: background 0.1s;
+    }
+
+    .eds-audit-row:last-child { border-bottom: none; }
+    .eds-audit-row:hover { background: #f8fafd; }
+
+    .eds-audit-pip {
+        width: 8px; height: 8px;
+        border-radius: 50%;
+        margin-top: 5px;
+    }
+
+    .eds-audit-t {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #1a2332;
+        line-height: 1.3;
+    }
+
+    .eds-audit-d {
+        font-size: 0.73rem;
+        color: #7a8da8;
+        margin-top: 2px;
+        line-height: 1.4;
+    }
+
+    .eds-audit-when {
+        font-family: 'DM Mono', monospace;
+        font-size: 0.65rem;
+        color: #b0bcce;
+        white-space: nowrap;
+        padding-top: 3px;
+    }
+
+
+    /* ═══════════════════
+       NOTIFICACIONES
+    ═══════════════════ */
+    .eds-notis {
+        display: flex;
+        flex-direction: column;
+        max-height: 390px;
+        overflow-y: auto;
+    }
+
+    .eds-notis::-webkit-scrollbar { width: 3px; }
+    .eds-notis::-webkit-scrollbar-thumb { background: #dde3ec; border-radius: 3px; }
+
+    .eds-noti {
+        padding: 0.875rem 1.375rem;
+        border-bottom: 1px solid #f0f3f8;
+        position: relative;
+        transition: background 0.1s;
+    }
+
+    .eds-noti:last-child { border-bottom: none; }
+    .eds-noti:hover { background: #f8fafd; }
+
+    /* Acento lateral solo en no leídas */
+    .eds-noti.new::before {
+        content: '';
+        position: absolute;
+        left: 0; top: 0; bottom: 0;
+        width: 3px;
+        background: var(--nc, #EEB868);
+    }
+
+    /* Punto de no leído arriba a la derecha */
+    .eds-noti.new::after {
+        content: '';
+        position: absolute;
+        top: 1rem; right: 1.375rem;
+        width: 5px; height: 5px;
+        border-radius: 50%;
+        background: var(--nc, #EEB868);
+    }
+
+    .eds-noti-kind {
+        font-size: 0.6rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1.2px;
+        color: var(--nc, #456990);
+        margin-bottom: 0.2rem;
+    }
+
+    .eds-noti-title {
+        font-size: 0.79rem;
+        font-weight: 600;
+        color: #1a2332;
+        line-height: 1.3;
+        padding-right: 1rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .eds-noti-msg {
+        font-size: 0.73rem;
+        color: #6a7d98;
+        line-height: 1.5;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .eds-noti-date {
+        font-family: 'DM Mono', monospace;
+        font-size: 0.62rem;
+        color: #b0bcce;
+        margin-top: 0.4rem;
+    }
+
+    /* Badge contador */
+    .eds-badge {
+        display: inline-block;
+        background: #eef4f0;
+        color: #3a7060;
+        font-size: 0.63rem;
+        font-weight: 700;
+        padding: 1px 8px;
+        border-radius: 20px;
+    }
+
+    /* Empty state */
+    .eds-empty {
+        padding: 2.5rem 1.5rem;
+        text-align: center;
+    }
+
+    .eds-empty-t {
+        font-family: 'Lora', Georgia, serif;
+        font-style: italic;
+        font-size: 0.95rem;
+        color: #8a9ab5;
+        margin-bottom: 0.25rem;
+    }
+
+    .eds-empty-s { font-size: 0.73rem; color: #b0bcce; }
+
+    /* Skeletons */
+    @@keyframes eds-sh {
+        from { background-position: -600px 0; }
+        to   { background-position:  600px 0; }
+    }
+
+    .eds-sk {
+        background: linear-gradient(90deg, #dde3ec 25%, #eef1f6 50%, #dde3ec 75%);
+        background-size: 600px 100%;
+        animation: eds-sh 1.4s ease-in-out infinite;
+        border-radius: 6px;
+        display: block;
+    }
+</style>
+
+<div class="eds">
+
+    <!-- ══════════════ ÁREA PRINCIPAL ══════════════ -->
+    <div class="eds-main">
+
+        <!-- Topbar con breadcrumb / historial de rutas -->
+        <div class="eds-topbar">
+            <nav class="eds-bc">
+                <div class="eds-bc-item">
+                    <span class="eds-bc-link" @onclick="@(() => Navegar("/"))">
+                        <MudIcon Icon="@Icons.Material.Filled.Home" Style="font-size:13px; vertical-align:middle;" />
+                    </span>
+                    <span class="eds-bc-sep">›</span>
+                </div>
+                <div class="eds-bc-item">
+                    <span class="eds-bc-link" @onclick="@(() => Navegar("/admin"))">Administración</span>
+                    <span class="eds-bc-sep">›</span>
+                </div>
+                <div class="eds-bc-item">
+                    <span class="eds-bc-now">Dashboard</span>
+                </div>
+            </nav>
+            <div class="eds-topbar-right">
+                <span class="eds-topbar-date">@fechaActual</span>
+                <MudTooltip Text="Actualizar datos">
+                    <MudIconButton
+                        Icon="@Icons.Material.Outlined.Refresh"
+                        Size="Size.Small"
+                        Style="color:#8a9ab5; width:32px; height:32px;"
+                        OnClick="CargarDatos" />
+                </MudTooltip>
+            </div>
+        </div>
+
+        <!-- Contenido scrollable -->
+        <div class="eds-page">
+
+            @if (loading)
+            {
+                <div style="margin-bottom:1.75rem;">
+                    <span class="eds-sk" style="height:22px; width:240px; margin-bottom:0.5rem;"></span>
+                    <span class="eds-sk" style="height:13px; width:360px;"></span>
+                </div>
+                <div style="display:flex; gap:0.5rem; margin-bottom:1.75rem; flex-wrap:wrap;">
+                    @for (int i = 0; i < 5; i++)
+                    {
+                        <span class="eds-sk" style="height:34px; width:120px; border-radius:8px;"></span>
+                    }
+                </div>
+                <div style="display:grid; grid-template-columns:1.35fr 1fr 1fr 1fr; gap:1px; border-radius:12px; overflow:hidden; background:#dde3ec; border:1px solid #dde3ec; margin-bottom:1.75rem;">
+                    @for (int i = 0; i < 4; i++)
+                    {
+                        <div style="background:#fff; padding:1.625rem 1.75rem;">
+                            <span class="eds-sk" style="height:48px; width:65px; margin-bottom:0.625rem; display:block;"></span>
+                            <span class="eds-sk" style="height:10px; width:85px; margin-bottom:0.25rem; display:block;"></span>
+                            <span class="eds-sk" style="height:9px; width:120px; display:block;"></span>
+                        </div>
+                    }
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 340px; gap:1.25rem;">
+                    <span class="eds-sk" style="height:350px; border-radius:12px;"></span>
+                    <span class="eds-sk" style="height:350px; border-radius:12px;"></span>
+                </div>
+            }
+            else
+            {
+                <!-- Cabecera de la página -->
+                <div class="eds-ph">
+                    <div>
+                        <h1 class="eds-ph-title">Panel de control</h1>
+                        <p class="eds-ph-sub">@fechaActual · Indicadores del sistema y actividad reciente</p>
+                    </div>
+                </div>
+
+                <!-- Acciones rápidas -->
+                <div class="eds-actions">
+                    <button class="eds-act-btn" @onclick="@(() => Navegar("/usuarios"))">
+                        <MudIcon Icon="@Icons.Material.Filled.PersonAdd" Style="font-size:14px;" />
+                        Nuevo usuario
+                    </button>
+                    <button class="eds-act-btn" @onclick="@(() => Navegar("/admin/notificaciones"))">
+                        <MudIcon Icon="@Icons.Material.Filled.Campaign" Style="font-size:14px;" />
+                        Enviar aviso
+                    </button>
+                    <button class="eds-act-btn" @onclick="@(() => Navegar("/admin/roles"))">
+                        <MudIcon Icon="@Icons.Material.Filled.VpnKey" Style="font-size:14px;" />
+                        Gestionar roles
+                    </button>
+                    <button class="eds-act-btn" @onclick="@(() => Navegar("/institucion"))">
+                        <MudIcon Icon="@Icons.Material.Filled.Tune" Style="font-size:14px;" />
+                        Configuración
+                    </button>
+                    <button class="eds-act-btn" @onclick="@(() => Navegar("/auditoria"))">
+                        <MudIcon Icon="@Icons.Material.Filled.ManageSearch" Style="font-size:14px;" />
+                        Auditoría
+                    </button>
+                </div>
+
+                <!-- KPIs -->
+                <div class="eds-kpis">
+
+                    <div class="eds-kpi">
+                        <div class="eds-kpi-n">@(data.CantidadAlumnos + data.CantidadDocentes)</div>
+                        <div class="eds-kpi-label">Usuarios activos</div>
+                        <div class="eds-kpi-sub">@data.CantidadAlumnos alumnos · @data.CantidadDocentes docentes</div>
+                    </div>
+
+                    <div class="eds-kpi">
+                        <div class="eds-kpi-n" style="color:#3a6080;">@data.CantidadCarreras</div>
+                        <div class="eds-kpi-label">Carreras</div>
+                        <div class="eds-kpi-sub">habilitadas en oferta activa</div>
+                    </div>
+
+                    <div class="eds-kpi">
+                        <div class="eds-kpi-n" style="color:#2a7060;">@data.CantidadSedes</div>
+                        <div class="eds-kpi-label">Sedes</div>
+                        <div class="eds-kpi-sub">con acceso al sistema</div>
+                    </div>
+
+                    <div class="eds-kpi">
+                        <div class="eds-kpi-n" style="color:@(0 > 0 ? "#EF767A" : "#1a2332");">0</div>
+                        <div class="eds-kpi-label">Alertas críticas</div>
+                        <div class="eds-kpi-sub">sin incidentes activos</div>
+                    </div>
+
+                </div>
+
+                <!-- Zona inferior -->
+                <div class="eds-lower">
+
+                    <!-- Auditoría -->
+                    <div class="eds-panel">
+                        <div class="eds-panel-head">
+                            <span class="eds-panel-title">Registro de auditoría</span>
+                            <span class="eds-panel-link" @onclick="@(() => Navegar("/auditoria"))">
+                                Ver historial →
+                            </span>
+                        </div>
+                        <div class="eds-audit">
+                            @if (data.UltimosEventos != null && data.UltimosEventos.Any())
+                            {
+                                @foreach (var ev in data.UltimosEventos)
+                                {
+                                    string pip = ev.Tipo == "Success" ? "#49DCB1"
+                                               : ev.Tipo == "Warning" ? "#EEB868"
+                                               : "#456990";
+
+                                    <div class="eds-audit-row">
+                                        <div class="eds-audit-pip" style="background:@pip;"></div>
+                                        <div>
+                                            <div class="eds-audit-t">@ev.Titulo</div>
+                                            <div class="eds-audit-d">@ev.Descripcion</div>
+                                        </div>
+                                        <div class="eds-audit-when">@GetTimeAgo(ev.Fecha)</div>
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <div class="eds-empty">
+                                    <div class="eds-empty-t">Sin actividad reciente</div>
+                                    <div class="eds-empty-s">El log no registra eventos en las últimas horas.</div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Notificaciones -->
+                    <div class="eds-panel">
+                        <div class="eds-panel-head">
+                            <span class="eds-panel-title">Avisos del sistema</span>
+                            @if (notificaciones.Any())
+                            {
+                                <span class="eds-badge">@notificaciones.Count</span>
+                            }
+                        </div>
+
+                        @if (cargandoNotificaciones)
+                        {
+                            <div style="padding:2rem; display:flex; justify-content:center;">
+                                <MudProgressCircular Color="Color.Default" Indeterminate="true" Size="Size.Small" />
+                            </div>
+                        }
+                        else if (notificaciones.Any())
+                        {
+                            <div class="eds-notis">
+                                @foreach (var n in notificaciones.Take(10))
+                                {
+                                    string nc  = GetColorHex(n.Tipo);
+                                    string cls = n.Leida ? "eds-noti" : "eds-noti new";
+                                    <div class="@cls" style="--nc:@nc;">
+                                        <div class="eds-noti-kind">@n.Tipo</div>
+                                        <div class="eds-noti-title">@n.Titulo</div>
+                                        <div class="eds-noti-msg">@n.Mensaje</div>
+                                        <div class="eds-noti-date">@n.Fecha.ToString("dd/MM/yyyy · HH:mm") hs</div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="eds-empty">
+                                <div class="eds-empty-t">Bandeja al día</div>
+                                <div class="eds-empty-s">No hay avisos institucionales pendientes.</div>
+                            </div>
+                        }
+                    </div>
+
+                </div>
+            }
+
+        </div>
+    </div>
+</div>
+
+@code {
+    private string nombreUsuario = "Administrador";
+    private string horaActual    = DateTime.Now.ToString("HH:mm");
+    private string fechaActual   = DateTime.Now.ToString("dddd d 'de' MMMM 'de' yyyy", new CultureInfo("es-ES"));
+
+    private DashboardDTO data    = new DashboardDTO();
+    private bool loading         = true;
+    private System.Threading.Timer? _timer;
+
+    private bool cargandoNotificaciones = true;
+    private List<NotificacionDTO> notificaciones = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        if (uri.Query.Contains("login=exito"))
+        {
+            Snackbar.Add("Sesión iniciada correctamente.", Severity.Success);
+            Navigation.NavigateTo(uri.GetLeftPart(UriPartial.Path), replace: true);
+        }
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user      = authState.User;
+
+        if (user.Identity is { IsAuthenticated: true })
+        {
+            var nombre   = user.FindFirst("Nombre")?.Value   ?? user.FindFirst(ClaimTypes.GivenName)?.Value;
+            var apellido = user.FindFirst("Apellido")?.Value ?? user.FindFirst(ClaimTypes.Surname)?.Value;
+            nombreUsuario = (!string.IsNullOrWhiteSpace(nombre) || !string.IsNullOrWhiteSpace(apellido))
+                ? $"{nombre} {apellido}".Trim()
+                : user.Identity.Name ?? "Administrador";
+        }
+
+        int ms = (60 - DateTime.Now.Second) * 1000;
+        _timer = new System.Threading.Timer(_ => ActualizarReloj(), null, ms, 60_000);
+
+        await CargarDatos();
+    }
+
+    private void ActualizarReloj()
+    {
+        var nueva = DateTime.Now.ToString("HH:mm");
+        if (horaActual == nueva) return;
+        horaActual = nueva;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task CargarDatos()
+    {
+        try
+        {
+            loading = cargandoNotificaciones = true;
+            StateHasChanged();
+
+            var t1 = DashboardService.GetResumenAsync();
+            var t2 = NotificacionService.GetMisNotificacionesAsync();
+            await Task.WhenAll(t1, t2);
+
+            data           = t1.Result;
+            notificaciones = t2.Result ?? new List<NotificacionDTO>();
+        }
+        catch
+        {
+            Snackbar.Add("No se pudo cargar la información del sistema.", Severity.Error);
+        }
+        finally
+        {
+            loading = cargandoNotificaciones = false;
+        }
+    }
+
+    private void Navegar(string url) => Navigation.NavigateTo(url);
+
+    private string GetTimeAgo(DateTime fecha)
+    {
+        var d = DateTime.Now - fecha;
+        if (d.TotalMinutes < 60)  return $"hace {Math.Max(1, d.Minutes)}m";
+        if (d.TotalHours   < 24)  return $"hace {d.Hours}h";
+        if (d.TotalDays    < 7)   return $"hace {d.Days}d";
+        return fecha.ToString("dd/MM/yy");
+    }
+
+    private string GetColorHex(string tipo) => tipo switch
+    {
+        "Examen"      => "#EF767A",
+        "Inscripcion" => "#49DCB1",
+        "Asistencia"  => "#EF767A",
+        "Mensaje"     => "#456990",
+        "Alerta"      => "#EEB868",
+        _             => "#49BEAA"
+    };
+
+    public void Dispose() => _timer?.Dispose();
+}

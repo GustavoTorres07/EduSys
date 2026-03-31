@@ -2,8 +2,8 @@
 @using EduSys.Web.Services.Interfaces
 @using Microsoft.Extensions.Logging
 
-@inject IAlumnoPortalService AlumnoPortalService
-@* 💡 INYECTA AQUÍ TU SERVICIO DE DOCENTES O ADMINS (Ej: @inject IDocenteService DocenteService) *@
+@* 🚀 Inyectamos nuestro nuevo servicio unificado *@
+@inject INotificacionApiService NotificacionService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager NavManager
 @inject ILogger<NotificacionesMenu> Logger
@@ -28,19 +28,9 @@
         cursor: pointer;
     }
 
-        .noti-item:hover {
-            background-color: #f1f5f9;
-        }
-
-        .noti-item.unread {
-            background-color: #f0f9ff; /* Azul muy clarito */
-            border-left: 3px solid #0ea5e9;
-        }
-
-        .noti-item.read {
-            opacity: 0.7;
-            border-left: 3px solid transparent;
-        }
+    .noti-item:hover { background-color: #f1f5f9; }
+    .noti-item.unread { background-color: #f0f9ff; border-left: 3px solid #0ea5e9; }
+    .noti-item.read { opacity: 0.7; border-left: 3px solid transparent; }
 </style>
 
 <MudMenu Direction="Direction.Bottom" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Dense="true" Class="mt-1" PopoverClass="rounded-lg shadow-lg">
@@ -53,13 +43,12 @@
     <ChildContent>
         <MudPaper Width="350px" MaxHeight="450px" Class="d-flex flex-column" Elevation="0">
             
-            @* --- CABECERA UX --- *@
             <div class="noti-menu-header rounded-t-lg">
                 <MudText Typo="Typo.subtitle2" Style="font-weight: 700; color: #1e293b;">Notificaciones</MudText>
                 @if (cantNoLeidas > 0)
                 {
                     <MudTooltip Text="Marcar todas como leídas">
-                        <MudIconButton Icon="@Icons.Material.Filled.Checklist" Size="Size.Small" Color="Color.Primary" OnClick="MarcarTodasComoLeidas" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Checklist" Size="Size.Small" Color="Color.Primary" OnClick="MarcarTodasComoLeidasAsync" />
                     </MudTooltip>
                 }
             </div>
@@ -84,7 +73,7 @@
                     <div class="d-flex flex-column">
                         @foreach (var noti in notificaciones)
                         {
-                            <div class="noti-item @(noti.Leida ? "read" : "unread")" @onclick="() => VerNotificacion(noti)">
+                            <div class="noti-item @(noti.Leida ? "read" : "unread")" @onclick="() => VerNotificacionAsync(noti)">
                                 <div class="d-flex gap-3">
                                     <MudAvatar Size="Size.Small" Color="@GetColor(noti.Tipo)" Variant="Variant.Filled" Style="margin-top: 2px;">
                                         <MudIcon Icon="@GetIcono(noti.Tipo)" Size="Size.Small" />
@@ -130,91 +119,75 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await CargarNotificacionesSegunRol();
-
-        // Polling seguro: Ejecuta cada 2 minutos (120,000 ms)
+        await CargarNotificaciones();
+        
+        // Polling: Se ejecuta cada 2 minutos en segundo plano
         _timer = new System.Threading.Timer(async _ =>
         {
-            await InvokeAsync(CargarNotificacionesSegunRol);
+            await InvokeAsync(CargarNotificaciones);
         }, null, 120000, 120000);
     }
 
-    private async Task CargarNotificacionesSegunRol()
+    private async Task CargarNotificaciones()
     {
         try
         {
             var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-            var user = authState.User;
-
-            if (!user.Identity?.IsAuthenticated ?? true) return;
-
-            // 💡 AQUÍ ESTÁ LA MAGIA DEL ROL:
-            if (user.IsInRole("Alumno"))
-            {
-                notificaciones = await AlumnoPortalService.GetNotificacionesAsync();
-            }
-            else if (user.IsInRole("Docente"))
-            {
-                // TODO: Reemplaza esto con tu servicio real de docentes
-                // notificaciones = await DocenteService.GetNotificacionesAsync();
-                notificaciones = new List<NotificacionDTO>();
-            }
-            else
-            {
-                // Administradores u otros roles
-                // notificaciones = await AdminService.GetNotificacionesAsync();
-                notificaciones = new List<NotificacionDTO>();
-            }
-
-            // Ordenamos para que las no leídas o las más recientes salgan arriba
+            if (!authState.User.Identity?.IsAuthenticated ?? true) return;
+            
+            // Llama al backend unificado (no importa si es Alumno, Docente o Admin)
+            notificaciones = await NotificacionService.GetMisNotificacionesAsync();
+            
             notificaciones = notificaciones.OrderBy(n => n.Leida).ThenByDescending(n => n.Fecha).ToList();
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Fallo silencioso al intentar cargar notificaciones en segundo plano.");
+            Logger.LogError(ex, "Error al intentar cargar notificaciones en segundo plano.");
         }
         finally
         {
             _cargando = false;
-            StateHasChanged(); // Forzamos redibujado de la UI
+            StateHasChanged(); 
         }
     }
 
-    private async Task VerNotificacion(NotificacionDTO noti)
+    private async Task VerNotificacionAsync(NotificacionDTO noti)
     {
         if (noti.Leida) return;
 
         try
         {
-            // Feedback inmediato en UI para que se sienta súper rápido
+            // Feedback UX inmediato
             noti.Leida = true;
             StateHasChanged();
-
-            // Llamada al backend según el rol
-            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-            if (authState.User.IsInRole("Alumno"))
-            {
-                await AlumnoPortalService.MarcarLeidaAsync(noti.Id);
-            }
-            // else if (authState.User.IsInRole("Docente")) { await DocenteService... }
-
+            
+            // Impactamos en BD
+            await NotificacionService.MarcarComoLeidaAsync(noti.Id);
         }
         catch (Exception ex)
         {
-            noti.Leida = false; // Revertimos si falla
+            noti.Leida = false; 
             Logger.LogError(ex, "No se pudo marcar la notificación {Id} como leída.", noti.Id);
         }
     }
 
-    private void MarcarTodasComoLeidas()
+    private async Task MarcarTodasComoLeidasAsync()
     {
-        // Esto es opcional, pero mejora mucho la UX.
-        // Idealmente tendrías un endpoint en tu API como MarcarTodasLeidasAsync()
-        foreach (var n in notificaciones.Where(x => !x.Leida))
+        try
         {
-            _ = VerNotificacion(n); // Disparamos las tareas en segundo plano
+            foreach (var n in notificaciones.Where(x => !x.Leida))
+            {
+                n.Leida = true;
+            }
+            StateHasChanged();
+            
+            await NotificacionService.MarcarTodasComoLeidasAsync();
+            Snackbar.Add("Todas las notificaciones marcadas como leídas.", Severity.Success);
         }
-        Snackbar.Add("Todas las notificaciones marcadas como leídas.", Severity.Success);
+        catch(Exception)
+        {
+            Snackbar.Add("Ocurrió un error al marcar las notificaciones.", Severity.Error);
+        }
     }
 
     private string FormatearFecha(DateTime fecha)
@@ -228,6 +201,7 @@
     {
         "Examen" => Icons.Material.Filled.Assignment,
         "Asistencia" => Icons.Material.Filled.FactCheck,
+        "Inscripcion" => Icons.Material.Filled.HowToReg,
         "Mensaje" => Icons.Material.Filled.Message,
         "Alerta" => Icons.Material.Filled.Warning,
         _ => Icons.Material.Filled.Info
@@ -236,13 +210,13 @@
     private Color GetColor(string tipo) => tipo switch
     {
         "Examen" => Color.Secondary,
+        "Inscripcion" => Color.Success,
         "Asistencia" => Color.Error,
         "Mensaje" => Color.Primary,
         "Alerta" => Color.Warning,
         _ => Color.Info
     };
 
-    // Es VITAL limpiar el timer cuando el componente se destruye para evitar memory leaks
     public void Dispose()
     {
         _timer?.Dispose();

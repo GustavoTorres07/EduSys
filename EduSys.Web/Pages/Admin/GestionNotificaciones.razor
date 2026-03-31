@@ -1,0 +1,226 @@
+﻿@page "/admin/notificaciones"
+
+@using EduSys.Shared.DTOs
+@using EduSys.Web.Services.Interfaces
+@using Microsoft.AspNetCore.Authorization
+
+@* 🔒 Protegemos la vista: Solo admins y secretaría *@
+@attribute [Authorize(Roles = "Administrador, Secretaria Academica")]
+
+@inject INotificacionApiService NotificacionService
+@inject ISnackbar Snackbar
+
+<style>
+    :root {
+        --admin-primary: #1e3a58;
+        --admin-accent: #49BEAA;
+        --admin-purple: #9c27b0;
+        --bg-light: #f8fafc;
+        --border-color: #e2e8f0;
+    }
+
+    .admin-header {
+        background: linear-gradient(135deg, var(--admin-primary) 0%, #2b4162 100%);
+        color: white; padding: 2rem; border-radius: 16px; margin-bottom: 1.5rem;
+        box-shadow: 0 10px 25px rgba(30,58,88,0.15);
+    }
+
+    .form-card {
+        background: white; border-radius: 12px; border: 1px solid var(--border-color); 
+        padding: 2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+    }
+
+    .preview-card {
+        background: var(--bg-light); border-radius: 12px; border: 1px dashed #cbd5e1;
+        padding: 1.5rem; display: flex; flex-direction: column; align-items: center;
+    }
+
+    /* 🔥 CORRECCIÓN DE LABELS EN MUDBLAZOR PARA LA VISTA ADMIN 🔥 */
+    .force-dark-text .mud-input-label-outlined {
+        color: var(--admin-primary) !important;
+        font-weight: 700 !important;
+        background-color: white !important;
+        padding: 0 6px !important;
+    }
+
+    .force-dark-text input, 
+    .force-dark-text .mud-select-input, 
+    .force-dark-text .mud-input-slot,
+    .force-dark-text textarea { 
+        color: #1e293b !important; 
+        font-weight: 500 !important;
+        -webkit-text-fill-color: #1e293b !important;
+    }
+
+    .force-dark-text .mud-input-outlined-border { border-color: #cbd5e1 !important; }
+    .force-dark-text:hover .mud-input-outlined-border { border-color: var(--admin-primary) !important; }
+    .force-dark-text.mud-input-control.mud-input-focused .mud-input-outlined-border {
+        border-color: var(--admin-primary) !important; border-width: 2px !important;
+    }
+
+    /* Estilos del Preview */
+    .noti-preview-item {
+        background: white; padding: 16px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        border-left: 4px solid #0ea5e9; width: 100%; max-width: 320px; text-align: left;
+    }
+</style>
+
+<div class="pa-4">
+    <div class="admin-header">
+        <MudText Typo="Typo.h4" Style="font-weight: 800; letter-spacing: -1px;">Difusión y Comunicados</MudText>
+        <MudText Typo="Typo.subtitle1" Style="opacity: 0.9;">Redacta y envía notificaciones masivas a toda la comunidad educativa.</MudText>
+    </div>
+
+    <MudGrid>
+        @* FORMULARIO DE REDACCIÓN *@
+        <MudItem xs="12" md="7" lg="8">
+            <div class="form-card">
+                <MudText Typo="Typo.h6" Style="font-weight: 700; color: var(--admin-primary);" Class="mb-4">Redactar Mensaje</MudText>
+                
+                <MudGrid Spacing="3">
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="string" Label="Audiencia / Destinatarios" @bind-Value="request.Destinatarios" 
+                                   Class="force-dark-text bg-white" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true">
+                            <MudSelectItem Value="@("Todos")">Toda la Institución</MudSelectItem>
+                            <MudSelectItem Value="@("Alumnos")">Solo Alumnos</MudSelectItem>
+                            <MudSelectItem Value="@("Docentes")">Solo Docentes</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="string" Label="Nivel de Importancia" @bind-Value="request.Tipo" 
+                                   Class="force-dark-text bg-white" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true">
+                            <MudSelectItem Value="@("Info")">Informativo</MudSelectItem>
+                            <MudSelectItem Value="@("Mensaje")">Mensaje General</MudSelectItem>
+                            <MudSelectItem Value="@("Alerta")">Alerta Importante</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="request.Titulo" Label="Título de la Notificación" Variant="Variant.Outlined" 
+                                      Class="force-dark-text" Margin="Margin.Dense" Required="true" MaxLength="60" 
+                                      Placeholder="Ej: Suspensión de clases por feriado..." />
+                    </MudItem>
+
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="request.Mensaje" Label="Cuerpo del Mensaje" Variant="Variant.Outlined" 
+                                      Class="force-dark-text" Lines="4" Required="true" MaxLength="250" 
+                                      Placeholder="Escribe los detalles aquí..." />
+                    </MudItem>
+
+                    <MudItem xs="12" Class="d-flex justify-end mt-2">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" 
+                                   StartIcon="@Icons.Material.Filled.Send" Style="font-weight: 700; border-radius: 8px; padding: 10px 32px;"
+                                   OnClick="EnviarNotificacion" Disabled="procesando">
+                            @(procesando ? "ENVIANDO..." : "ENVIAR COMUNICADO")
+                        </MudButton>
+                    </MudItem>
+                </MudGrid>
+            </div>
+        </MudItem>
+
+        @* VISTA PREVIA (UX) *@
+        <MudItem xs="12" md="5" lg="4">
+            <div class="preview-card h-100">
+                <MudText Typo="Typo.subtitle2" Style="font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px;" Class="mb-6">
+                    Vista Previa del Estudiante/Docente
+                </MudText>
+
+                <div class="noti-preview-item" style="border-left-color: @GetColorHex(request.Tipo);">
+                    <div class="d-flex gap-3">
+                        <MudAvatar Size="Size.Small" Color="@GetColor(request.Tipo)" Variant="Variant.Filled" Style="margin-top: 2px;">
+                            <MudIcon Icon="@GetIcono(request.Tipo)" Size="Size.Small" />
+                        </MudAvatar>
+                        
+                        <div class="d-flex flex-column flex-grow-1">
+                            <div class="d-flex justify-space-between align-center mb-1">
+                                <MudText Typo="Typo.subtitle2" Style="font-weight: 700; font-size: 0.85rem; color: #1e293b; line-height: 1.1;">
+                                    @(string.IsNullOrWhiteSpace(request.Titulo) ? "Título de ejemplo" : request.Titulo)
+                                </MudText>
+                                <MudText Typo="Typo.caption" Style="font-size: 0.7rem; color: #94a3b8; white-space: nowrap; margin-left: 8px;">
+                                    Ahora
+                                </MudText>
+                            </div>
+                            <MudText Typo="Typo.body2" Style="font-size: 0.8rem; color: #475569; line-height: 1.3;">
+                                @(string.IsNullOrWhiteSpace(request.Mensaje) ? "Aquí aparecerá el cuerpo del mensaje que redactes. Se adaptará automáticamente al espacio disponible." : request.Mensaje)
+                            </MudText>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-8 text-center px-4">
+                    <MudIcon Icon="@Icons.Material.Filled.Group" Size="Size.Large" Style="color: #cbd5e1;" Class="mb-2" />
+                    <MudText Typo="Typo.body2" Style="color: #64748b; font-weight: 500;">
+                        Este mensaje llegará a: <strong>@request.Destinatarios</strong>
+                    </MudText>
+                </div>
+            </div>
+        </MudItem>
+    </MudGrid>
+</div>
+
+@code {
+    private NotificacionMasivaDTO request = new();
+    private bool procesando = false;
+
+    private async Task EnviarNotificacion()
+    {
+        if (string.IsNullOrWhiteSpace(request.Titulo) || string.IsNullOrWhiteSpace(request.Mensaje))
+        {
+            Snackbar.Add("Debes completar el título y el mensaje.", Severity.Warning);
+            return;
+        }
+
+        procesando = true;
+        StateHasChanged();
+
+        try
+        {
+            var exito = await NotificacionService.EnviarNotificacionMasivaAsync(request);
+
+            if (exito)
+            {
+                Snackbar.Add("Comunicado enviado exitosamente a la audiencia seleccionada.", Severity.Success);
+                request = new NotificacionMasivaDTO(); // Reseteamos el formulario
+            }
+            else
+            {
+                Snackbar.Add("Hubo un problema enviando la notificación o no hay usuarios activos en ese grupo.", Severity.Error);
+            }
+        }
+        catch
+        {
+            Snackbar.Add("Error de conexión con el servidor.", Severity.Error);
+        }
+        finally
+        {
+            procesando = false;
+            StateHasChanged();
+        }
+    }
+
+    // Helpers visuales para la Vista Previa
+    private string GetIcono(string tipo) => tipo switch
+    {
+        "Info" => Icons.Material.Filled.Info,
+        "Mensaje" => Icons.Material.Filled.Message,
+        "Alerta" => Icons.Material.Filled.Warning,
+        _ => Icons.Material.Filled.Notifications
+    };
+
+    private Color GetColor(string tipo) => tipo switch
+    {
+        "Info" => Color.Info,
+        "Mensaje" => Color.Primary,
+        "Alerta" => Color.Warning,
+        _ => Color.Default
+    };
+
+    private string GetColorHex(string tipo) => tipo switch
+    {
+        "Info" => "#0ea5e9", // Azul Info
+        "Mensaje" => "#1e3a58", // Primary oscuro
+        "Alerta" => "#f59e0b", // Naranja Warning
+        _ => "#cbd5e1"
+    };
+}
