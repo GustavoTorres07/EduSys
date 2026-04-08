@@ -25,19 +25,17 @@ namespace EduSys.Api.Controllers
         // ================================================================
         private static class P
         {
-            public const string Blue = "#456990";
-            public const string BlueDark = "#344f6e";
-            public const string BluePale = "#edf2f7";
-            public const string ComA = "#ffffff";
-            public const string ComB = "#f4f7fb";
-            public const string Teal = "#49BEAA";
-            public const string Bg = "#f7f9fc";
+            public const string Blue = "#1e3a58";
+            public const string BlueDark = "#0f172a";
+            public const string BluePale = "#e0f2fe";
+            public const string Teal = "#0284c7";
             public const string Surface = "#ffffff";
-            public const string Border = "#dde3ea";
-            public const string BorderSep = "#b0c4d8";
-            public const string Text = "#1a2733";
-            public const string TextMid = "#4a5568";
-            public const string TextSoft = "#8a9ab0";
+            public const string Border = "#cbd5e1";
+            public const string BorderDark = "#94a3b8";
+            public const string RowAlt = "#f8fafc";
+            public const string Text = "#0f172a";
+            public const string TextMid = "#475569";
+            public const string TextSoft = "#64748b";
             public const string White = "#ffffff";
         }
 
@@ -66,7 +64,6 @@ namespace EduSys.Api.Controllers
         // ================================================================
 
         [HttpGet("horarios-alumno-cursando")]
-        // 🔒 CANDADO MIXTO: El alumno puede ver los suyos, o el administrativo de reportes
         [Authorize(Roles = "Alumno, REP_VER")]
         public async Task<IActionResult> GetHorariosCursando([FromQuery] int idPeriodo, [FromQuery] int idAlumno)
         {
@@ -80,43 +77,47 @@ namespace EduSys.Api.Controllers
 
         [HttpGet("horario-descargar")]
         [Produces("application/pdf")]
-        // 🔓 ABIERTO (con Authorize base): Docentes, Alumnos y Administrativos necesitan descargar horarios
         public async Task<IActionResult> DescargarHorarioGet(
             [FromQuery] int idPeriodo,
             [FromQuery] int idCarrera,
             [FromQuery] int idSede)
         {
-            var horarios = await _horarioRepo.GetHorariosByCarreraAndPeriodoAsync(
-                idPeriodo, idCarrera, idSede);
-
-            if (!horarios.Any())
-                return NotFound(new { message = "No se encontraron horarios." });
-
-            foreach (var h in horarios)
+            try
             {
-                h.Curso ??= h.ComisionCodigo ?? "—";
-                h.Materia ??= "Materia no informada";
+                var horarios = await _horarioRepo.GetHorariosByCarreraAndPeriodoAsync(
+                    idPeriodo, idCarrera, idSede);
+
+                if (!horarios.Any())
+                    return NotFound(new { message = "No se encontraron horarios para la carrera y sede seleccionada." });
+
+                foreach (var h in horarios)
+                {
+                    h.Curso ??= h.ComisionCodigo ?? "—";
+                    h.Materia ??= "Materia no informada";
+                }
+
+                var first = horarios.First();
+                var request = new HorarioRequestDTO
+                {
+                    CarreraNombre = first.CarreraNombre ?? "Carrera",
+                    SedeNombre = first.Sede ?? "Sede Central",
+                    Periodo = first.PeriodoNombre ?? $"Periodo {idPeriodo}",
+                    Horarios = horarios
+                };
+
+                QuestPDF.Settings.License = LicenseType.Community;
+                byte[] pdfBytes = CrearHorarioPdf(request).GeneratePdf();
+
+                return File(pdfBytes, "application/pdf", $"Horarios_{request.CarreraNombre.Replace(" ", "_")}.pdf");
             }
-
-            var first = horarios.First();
-            var request = new HorarioRequestDTO
+            catch (Exception ex)
             {
-                CarreraNombre = first.CarreraNombre ?? "Carrera",
-                SedeNombre = first.Sede ?? "Sede Central",
-                Periodo = ObtenerNombrePeriodoLocal(idPeriodo),
-                Horarios = horarios
-            };
-
-            QuestPDF.Settings.License = LicenseType.Community;
-            byte[] pdfBytes = CrearHorarioPdf(request).GeneratePdf();
-
-            return File(pdfBytes, "application/pdf",
-                $"Horario_{request.CarreraNombre.Replace(" ", "_")}.pdf");
+                return StatusCode(500, new { message = $"Error al generar el PDF: {ex.Message}", detail = ex.StackTrace });
+            }
         }
 
         [HttpGet("constancia-inscripcion")]
         [Produces("application/pdf")]
-        // 🔒 CANDADO MIXTO: Autogestión Alumno o Bedelía (REP_VER)
         [Authorize(Roles = "Alumno, REP_VER")]
         public async Task<IActionResult> DescargarConstancia(
             [FromQuery] int idAlumno, [FromQuery] int idPeriodo)
@@ -135,7 +136,6 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpGet("historia-academica")]
-        // 🔒 CANDADO MIXTO
         [Authorize(Roles = "Alumno, REP_VER, ALU_ABM")]
         public async Task<IActionResult> GetHistoriaAcademica([FromQuery] int idAlumno)
         {
@@ -150,7 +150,6 @@ namespace EduSys.Api.Controllers
 
         [HttpGet("certificado-alumno-regular-descargar")]
         [Produces("application/pdf")]
-        // 🔒 CANDADO MIXTO
         [Authorize(Roles = "Alumno, REP_VER")]
         public async Task<IActionResult> DescargarCertificadoRegular(
             [FromQuery] int idAlumno, [FromQuery] int idPeriodo)
@@ -184,7 +183,6 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpGet("analitico-provisorio")]
-        // 🔒 CANDADO ESTRICTO: Solo el Alumno (ya que saca su propio ID del Token)
         [Authorize(Roles = "Alumno")]
         [Produces("application/pdf")]
         public async Task<IActionResult> DescargarAnaliticoProvisorio()
@@ -211,7 +209,6 @@ namespace EduSys.Api.Controllers
         }
 
         [HttpGet("constancia-final/{idInscripcion}")]
-        // 🔒 CANDADO ESTRICTO: Solo el Alumno
         [Authorize(Roles = "Alumno")]
         [Produces("application/pdf")]
         public async Task<IActionResult> DescargarConstanciaFinal(int idInscripcion)
@@ -234,7 +231,7 @@ namespace EduSys.Api.Controllers
         }
 
         // ================================================================
-        // MÉTODOS PRIVADOS (Se mantienen igual)
+        // PDF PRINCIPAL - ALINEACIÓN SUPERIOR (CERO ESPACIOS RAROS)
         // ================================================================
 
         private Document CrearHorarioPdf(HorarioRequestDTO request)
@@ -243,273 +240,162 @@ namespace EduSys.Api.Controllers
             {
                 container.Page(page =>
                 {
+                    // 🚀 A4 HORIZONTAL, márgenes de 10 puntos para ocupar toda la hoja
                     page.Size(PageSizes.A4.Landscape());
-                    page.Margin(6, Unit.Point);
+                    page.Margin(10, Unit.Point);
                     page.PageColor(Colors.White);
-                    page.DefaultTextStyle(t =>
-                        t.FontFamily("Arial").FontSize(6.5f).FontColor(P.Text));
 
-                    // ── HEADER ────────────────────────────────────────────
-                    page.Header().PaddingBottom(2).Column(col =>
+                    // Interlineado hiper eficiente (0.9f)
+                    page.DefaultTextStyle(x => x.FontSize(8.5f).FontFamily("Arial").FontColor(P.Text).LineHeight(0.9f));
+
+                    var comisiones = request.Horarios
+                        .Select(h => new { Anio = h.AnioCursada, Com = h.ComisionCodigo ?? "S/C" })
+                        .Distinct()
+                        .OrderBy(c => c.Anio).ThenBy(c => c.Com)
+                        .Select(c => new {
+                            Display = $"{c.Anio}° {c.Com}".Trim(),
+                            c.Anio,
+                            c.Com
+                        }).ToList();
+
+                    var diasPosibles = new[] { "Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado" };
+
+                    string sedeLimpia = (request.SedeNombre ?? "Central").Replace("Sede ", "", StringComparison.OrdinalIgnoreCase);
+
+                    // ── HEADER ──────────────────────────
+                    page.Header().PaddingBottom(4).Row(row =>
                     {
-                        col.Item().Row(row =>
+                        row.RelativeItem().Text(txt =>
                         {
-                            row.RelativeItem().Column(c =>
-                            {
-                                c.Item()
-                                 .Text(request.CarreraNombre.ToUpper())
-                                 .FontSize(10f).Bold().FontColor(P.BlueDark);
-                                c.Item()
-                                 .Text($"HORARIO DE CLASES  ·  {request.Periodo.ToUpper()}  ·  SEDE {request.SedeNombre?.ToUpper()}")
-                                 .FontSize(6.5f).SemiBold().FontColor(P.TextSoft);
-                            });
-                            row.ConstantItem(100).AlignRight()
-                               .Text($"Generado: {DateTime.Now:dd/MM/yyyy}")
-                               .FontSize(6f).FontColor(P.TextSoft);
+                            txt.Span(request.CarreraNombre.ToUpper()).FontSize(11).Bold().FontColor(P.BlueDark);
+                            txt.Span($"   |   {request.Periodo} - SEDE {sedeLimpia.ToUpper()}").FontSize(9).FontColor(P.TextMid);
                         });
-                        col.Item().PaddingTop(2).LineHorizontal(0.75f).LineColor(P.Border);
+                        row.ConstantItem(120).AlignRight().Text($"Emitido: {DateTime.Now:dd/MM/yyyy}").FontSize(7.5f).FontColor(P.TextSoft);
                     });
 
-                    // ── TABLA ─────────────────────────────────────────────
-                    page.Content().PaddingTop(3).Table(table =>
+                    // ── TABLA MATRICIAL ──────────────────────────────
+                    page.Content().Table(t =>
                     {
-                        var dias = new List<string>
-                            { "Lunes", "Martes", "Miercoles", "Jueves", "Viernes" };
-
-                        if (request.Horarios.Any(h =>
-                                NormalizarDia(h.Dia).Equals("Sabado",
-                                    StringComparison.OrdinalIgnoreCase)))
-                            dias.Add("Sabado");
-
-                        // ── COLUMNAS ──────────────────────────────────────
-                        table.ColumnsDefinition(cols =>
+                        t.ColumnsDefinition(cols =>
                         {
-                            cols.ConstantColumn(16);  // Año rotado
-                            cols.ConstantColumn(34);  // Badge comisión
-                            foreach (var _ in dias) cols.RelativeColumn();
+                            cols.ConstantColumn(18); // Día rotado
+                            foreach (var _ in comisiones) cols.RelativeColumn();
                         });
 
-                        // ── CABECERA DE DÍAS ──────────────────────────────
-                        var nombresVisuales = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                        // CABECERA
+                        t.Header(h =>
                         {
-                            ["Lunes"] = "L U N E S",
-                            ["Martes"] = "M A R T E S",
-                            ["Miercoles"] = "M I É R C O L E S",
-                            ["Jueves"] = "J U E V E S",
-                            ["Viernes"] = "V I E R N E S",
-                            ["Sabado"] = "S Á B A D O",
-                        };
+                            h.Cell().Border(0.5f).BorderColor(P.BorderDark).Background(P.BlueDark);
 
-                        table.Header(header =>
-                        {
-                            header.Cell().ColumnSpan(2)
-                                  .Background(P.Bg)
-                                  .BorderBottom(2).BorderColor(P.Blue);
-
-                            foreach (var dia in dias)
+                            foreach (var c in comisiones)
                             {
-                                string label = nombresVisuales.TryGetValue(dia, out var v)
-                                    ? v : string.Join(" ", dia.ToUpper().ToCharArray());
-
-                                header.Cell()
-                                      .Background(P.BluePale)
-                                      .BorderRight(1).BorderColor(P.Border)
-                                      .BorderBottom(2).BorderColor(P.Blue)
-                                      .PaddingVertical(5)
-                                      .AlignCenter().AlignMiddle()
-                                      .Text(label)
-                                      .FontSize(6f).Bold().FontColor(P.Blue);
+                                h.Cell().Border(0.5f).BorderColor(P.BorderDark).Background(P.BlueDark)
+                                 .PaddingVertical(3).AlignCenter().AlignMiddle()
+                                 .Text(c.Display).FontSize(9.5f).Bold().FontColor(P.White);
                             }
                         });
 
-                        // ── FILAS ─────────────────────────────────────────
-                        var gruposAnio = request.Horarios
-                            .GroupBy(h => h.AnioCursada)
-                            .OrderBy(g => g.Key)
-                            .ToList();
-
-                        bool isFirstAnio = true;
-
-                        foreach (var gAnio in gruposAnio)
+                        // FILAS POR DÍA
+                        int rowIndex = 0;
+                        foreach (var dia in diasPosibles)
                         {
-                            if (!isFirstAnio)
-                            {
-                                table.Cell()
-                                     .ColumnSpan((uint)(2 + dias.Count))
-                                     .Height(2)
-                                     .Background(P.Blue);
-                            }
-                            isFirstAnio = false;
-
-                            var coms = gAnio
-                                .GroupBy(h => h.ComisionCodigo ?? "S/C")
-                                .OrderBy(g => g.Key)
+                            var clasesDiaGlobal = request.Horarios
+                                .Where(h => NormalizarDia(h.Dia) == NormalizarDia(dia))
                                 .ToList();
 
-                            uint rowSpanAnio = (uint)coms.Count;
-                            bool isFirstCom = true;
-                            int comIndex = 0;
+                            if (!clasesDiaGlobal.Any()) continue;
 
-                            foreach (var gCom in coms)
+                            string rowBgColor = (rowIndex % 2 == 0) ? P.Surface : P.RowAlt;
+                            rowIndex++;
+
+                            // DÍA ROTADO
+                            t.Cell().Border(0.5f).BorderColor(P.BorderDark).Background(P.BlueDark)
+                             .AlignCenter().AlignMiddle()
+                             .RotateLeft()
+                             .Text(dia.ToUpper()).FontSize(8.5f).Bold().FontColor(P.White);
+
+                            // CELDAS DE MATERIAS
+                            foreach (var c in comisiones)
                             {
-                                string bgRow = (comIndex % 2 == 0) ? P.ComA : P.ComB;
-                                comIndex++;
+                                var clasesComisionDia = clasesDiaGlobal
+                                    .Where(h => h.AnioCursada == c.Anio && (h.ComisionCodigo ?? "S/C") == c.Com)
+                                    .OrderBy(h => h.HoraInicio)
+                                    .ToList();
 
-                                // ── COLUMNA AÑO (rowspan) ─────────────────
-                                if (isFirstCom)
+                                // ✨ AQUÍ ESTÁ EL ARREGLO: Se usa AlignTop() en lugar de AlignMiddle() o ExtendVertical()
+                                // Esto asegura que todas las celdas comiencen exactamente desde la línea superior, prolijas.
+                                var cell = t.Cell().Border(0.5f).BorderColor(P.BorderDark).Background(rowBgColor)
+                                            .PaddingVertical(2).PaddingHorizontal(4).AlignTop();
+
+                                if (!clasesComisionDia.Any())
                                 {
-                                    table.Cell()
-                                         .RowSpan(rowSpanAnio)
-                                         .Background(P.BluePale)
-                                         .BorderRight(2).BorderColor(P.Blue)
-                                         .AlignCenter().AlignMiddle()
-                                         .RotateLeft()
-                                         .PaddingVertical(1)
-                                         .Text($"{gAnio.Key}° AÑO")
-                                         .FontSize(6.5f).Bold().FontColor(P.Blue);
-
-                                    isFirstCom = false;
+                                    cell.AlignCenter().Text("").FontSize(8);
                                 }
-
-                                // ── COLUMNA COMISIÓN ──────────────────────
-                                var comCell = table.Cell()
-                                     .Background(P.Bg)
-                                     .BorderBottom(1).BorderColor(P.Border)
-                                     .BorderRight(1).BorderColor(P.Border)
-                                     .AlignCenter().AlignMiddle()
-                                     .Padding(2);
-
-                                if (comIndex > 1)
-                                    comCell = comCell
-                                        .BorderTop(1.5f).BorderColor(P.BorderSep);
-
-                                comCell
-                                     .Element(b => b
-                                         .Background(P.Blue)
-                                         .PaddingHorizontal(5).PaddingVertical(3)
-                                         .AlignCenter())
-                                     .Text(gCom.Key)
-                                     .FontSize(7f).Bold().FontColor(P.White);
-
-                                // ── CELDAS DE DÍAS ────────────────────────
-                                foreach (var dia in dias)
+                                else
                                 {
-                                    var clases = gCom
-                                        .Where(h => NormalizarDia(h.Dia)
-                                            .Equals(dia, StringComparison.OrdinalIgnoreCase))
-                                        .OrderBy(h => h.HoraInicio)
-                                        .ToList();
-
-                                    var dayCell = table.Cell()
-                                         .BorderBottom(1).BorderColor(P.Border)
-                                         .BorderRight(1).BorderColor(P.Border)
-                                         .Background(bgRow)
-                                         .Padding(3);
-
-                                    if (comIndex > 1)
-                                        dayCell = dayCell
-                                            .BorderTop(1.5f).BorderColor(P.BorderSep);
-
-                                    dayCell.Column(dayCol =>
+                                    cell.Column(col =>
                                     {
-                                        dayCol.Spacing(3);
-
-                                        foreach (var cl in clases)
+                                        for (int i = 0; i < clasesComisionDia.Count; i++)
                                         {
-                                            // ── TARJETA HORIZONTAL ────────
-                                            dayCol.Item()
-                                                  .Border(0.5f).BorderColor(P.Border)
-                                                  .Background(P.White)
-                                                  .Row(cardRow =>
-                                                  {
-                                                      // IZQUIERDA: hora (cb-time)
-                                                      cardRow.ConstantItem(34)
-                                                             .Background(P.Blue)
-                                                             .AlignCenter().AlignMiddle()
-                                                             .Padding(2)
-                                                             .Column(timeCol =>
-                                                             {
-                                                                 timeCol.Spacing(0);
+                                            var clase = clasesComisionDia[i];
 
-                                                                 timeCol.Item()
-                                                                        .AlignCenter()
-                                                                        .Text(cl.HoraInicio
-                                                                            .ToString(@"hh\:mm"))
-                                                                        .FontSize(6f).Bold()
-                                                                        .FontColor(P.White);
+                                            col.Item().Column(inner =>
+                                            {
+                                                inner.Spacing(0);
 
-                                                                 timeCol.Item()
-                                                                        .PaddingVertical(1)
-                                                                        .PaddingHorizontal(5)
-                                                                        .LineHorizontal(0.5f)
-                                                                        .LineColor("#7d96b1");
+                                                // 1. Horario
+                                                inner.Item().AlignLeft().Text($"{clase.HoraInicio:hh\\:mm} a {clase.HoraFin:hh\\:mm} hs")
+                                                     .FontSize(8.5f).Bold().FontColor(P.Teal);
 
-                                                                 timeCol.Item()
-                                                                        .AlignCenter()
-                                                                        .Text(cl.HoraFin
-                                                                            .ToString(@"hh\:mm"))
-                                                                        .FontSize(6f).Bold()
-                                                                        .FontColor(P.White);
-                                                             });
+                                                // 2. Código y Materia
+                                                inner.Item().AlignLeft().Text(txt =>
+                                                {
+                                                    if (!string.IsNullOrWhiteSpace(clase.Codigo))
+                                                        txt.Span($"[{clase.Codigo.ToUpper()}] ").FontSize(7.5f).FontColor(P.TextMid);
 
-                                                      // DERECHA: info (cb-body)
-                                                      cardRow.RelativeItem()
-                                                             .BorderLeft(2f).BorderColor(P.Teal)
-                                                             .PaddingHorizontal(4).PaddingVertical(2)
-                                                             .Column(body =>
-                                                             {
-                                                                 body.Spacing(1);
+                                                    txt.Span((clase.Materia ?? "S/D").ToUpper()).FontSize(8.5f).Bold().FontColor(P.Text);
+                                                });
 
-                                                                 // código (cb-code)
-                                                                 if (!string.IsNullOrWhiteSpace(cl.Codigo))
-                                                                 {
-                                                                     body.Item()
-                                                                         .Text(cl.Codigo.ToUpper())
-                                                                         .FontSize(5f).Bold()
-                                                                         .FontColor(P.Blue);
-                                                                 }
+                                                // 3. Aula y Profesor
+                                                string aula = string.IsNullOrWhiteSpace(clase.Aula) ? "A Confirmar" : clase.Aula;
+                                                string prof = string.IsNullOrWhiteSpace(clase.Profesor) ? "A designar" : clase.Profesor;
 
-                                                                 // nombre materia (cb-subject)
-                                                                 string materia = (cl.Materia
-                                                                     ?? "Materia no informada").ToUpper();
-                                                                 body.Item()
-                                                                     .Text(materia)
-                                                                     .FontSize(6.5f).Bold()
-                                                                     .FontColor(P.Text);
+                                                inner.Item().AlignLeft()
+                                                     .Text($"Aula: {aula} | Prof: {prof}")
+                                                     .FontSize(7.5f).Italic().FontColor(P.TextSoft);
+                                            });
 
-                                                                 // aula
-                                                                 string aula = string.IsNullOrWhiteSpace(cl.Aula)
-                                                                     ? "Aula: A confirmar"
-                                                                     : $"Aula: {cl.Aula.ToUpper()}";
-                                                                 body.Item()
-                                                                     .Text(aula)
-                                                                     .FontSize(5.5f).SemiBold()
-                                                                     .FontColor(P.TextSoft);
-
-                                                                 // profesor
-                                                                 string prof = string.IsNullOrWhiteSpace(cl.Profesor)
-                                                                     ? "Profesor sin asignar"
-                                                                     : cl.Profesor;
-                                                                 body.Item()
-                                                                     .Text(prof)
-                                                                     .FontSize(5.5f).Italic()
-                                                                     .FontColor(P.TextSoft);
-                                                             });
-                                                  });
+                                            // Divisor
+                                            if (i < clasesComisionDia.Count - 1)
+                                            {
+                                                col.Item().PaddingVertical(3).LineHorizontal(0.5f).LineColor(P.Border);
+                                            }
                                         }
                                     });
                                 }
                             }
                         }
                     });
+
+                    // ── FOOTER ───────────────────────────────────────────────
+                    page.Footer().PaddingTop(2).Row(row =>
+                    {
+                        row.RelativeItem()
+                           .Text("EduSys Académico - Documentación Oficial")
+                           .FontSize(6.5f).FontColor(P.TextSoft);
+                    });
                 });
             });
         }
 
+        // ================================================================
+        // UTILS Y OTROS REPORTES
+        // ================================================================
+
         private static string NormalizarDia(string dia)
         {
             if (string.IsNullOrWhiteSpace(dia)) return dia ?? "";
-            return dia
+            return dia.ToLower()
                 .Replace("é", "e").Replace("É", "E")
                 .Replace("á", "a").Replace("Á", "A")
                 .Replace("ó", "o").Replace("Ó", "O")

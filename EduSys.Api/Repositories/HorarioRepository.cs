@@ -17,7 +17,7 @@ namespace EduSys.Api.Repositories
 
         public async Task<List<HorarioVisualizacionDTO>> GetHorariosByCarreraAndPeriodoAsync(int idPeriodo, int idCarrera, int idSede)
         {
-            // 🚀 OPTIMIZADO: Proyección directa incluyendo Profesor y Código de Materia
+            // 🚀 OPTIMIZADO: Proyección directa incluyendo Profesor, Código de Materia y Nombre del Período
             return await _context.HorarioComisions
                 .AsNoTracking()
                 .Where(h => h.IdComisionNavigation != null &&
@@ -29,8 +29,11 @@ namespace EduSys.Api.Repositories
                 {
                     Id = h.Id,
                     IdComision = h.IdComision,
+
+                    // 👇 AQUÍ ESTÁ LA LÍNEA NUEVA: Buscamos el nombre del período en la base de datos
+                    PeriodoNombre = h.IdComisionNavigation.IdPeriodoNavigation != null ? h.IdComisionNavigation.IdPeriodoNavigation.Nombre : "Sin Periodo",
+
                     Materia = h.IdComisionNavigation.IdPlanMateriaNavigation.IdMateriaNavigation.Nombre ?? "Materia sin nombre",
-                    // Buscamos el código de la materia
                     Codigo = h.IdComisionNavigation.IdPlanMateriaNavigation.IdMateriaNavigation.Codigo ?? "",
                     Curso = h.IdComisionNavigation.Codigo ?? "S/C",
                     ComisionCodigo = h.IdComisionNavigation.Codigo ?? "S/C",
@@ -41,7 +44,6 @@ namespace EduSys.Api.Repositories
                     HoraFin = h.HoraFin,
                     Aula = h.IdAulaNavigation != null ? h.IdAulaNavigation.Nombre : "Sin Aula",
                     Sede = h.IdComisionNavigation.IdSedeNavigation != null ? h.IdComisionNavigation.IdSedeNavigation.Nombre : "Sin Sede",
-                    // Buscamos el apellido y nombre del primer docente activo asignado a la comisión
                     Profesor = h.IdComisionNavigation.DocenteComisions
                                 .Where(dc => dc.Activo)
                                 .Select(dc => dc.IdDocenteNavigation.IdUsuarioNavigation.Apellido + ", " + dc.IdDocenteNavigation.IdUsuarioNavigation.Nombre)
@@ -53,7 +55,6 @@ namespace EduSys.Api.Repositories
                     .ThenBy(x => x.HoraInicio)
                 .ToListAsync();
         }
-
         public async Task<List<HorarioComision>> GetByComisionAsync(int idComision)
         {
             return await _context.HorarioComisions

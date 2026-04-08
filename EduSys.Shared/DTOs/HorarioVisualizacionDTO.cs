@@ -17,5 +17,6 @@
         public string? Turno { get; set; }
         public string? Codigo { get; set; } 
         public string? Profesor { get; set; }
+        public string? PeriodoNombre { get; set; } 
     }
 }
