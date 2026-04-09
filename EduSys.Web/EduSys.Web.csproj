@@ -8,9 +8,13 @@
 
   <ItemGroup>
     <Compile Remove="Components\**" />
+    <Compile Remove="wwwroot\js\**" />
     <Content Remove="Components\**" />
+    <Content Remove="wwwroot\js\**" />
     <EmbeddedResource Remove="Components\**" />
+    <EmbeddedResource Remove="wwwroot\js\**" />
     <None Remove="Components\**" />
+    <None Remove="wwwroot\js\**" />
   </ItemGroup>
 
 	<ItemGroup>
@@ -30,10 +34,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\EduSys.Shared\EduSys.Shared.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="wwwroot\js\" />
   </ItemGroup>
 
 </Project>

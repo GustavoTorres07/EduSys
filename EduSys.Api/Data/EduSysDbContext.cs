@@ -16,7 +16,7 @@ public partial class EduSysDbContext : DbContext
 
     // --- DBSETS ---
     public virtual DbSet<Alumno> Alumnos { get; set; }
-    public virtual DbSet<Asistencia> Asistencia { get; set; } // Restaurado a singular como lo tenías
+    public virtual DbSet<Asistencia> Asistencia { get; set; }
     public virtual DbSet<Aula> Aulas { get; set; }
     public virtual DbSet<Carrera> Carreras { get; set; }
     public virtual DbSet<CarreraSede> CarreraSedes { get; set; }
@@ -48,6 +48,9 @@ public partial class EduSysDbContext : DbContext
     public virtual DbSet<SolicitudIngreso> SolicitudIngresos { get; set; }
     public virtual DbSet<Notificacion> Notificacions { get; set; }
     public virtual DbSet<EstadoMateria> EstadoMaterias { get; set; }
+
+    // ✅ NUEVO: DbSet de la tabla de Actas Individuales
+    public virtual DbSet<ActaAlumno> ActaAlumnos { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -134,7 +137,6 @@ public partial class EduSysDbContext : DbContext
                   .HasConstraintName("FK_PlanMateria_Regimen");
         });
 
-        // ✅ RESTAURADO: Configuración de Asistencia
         modelBuilder.Entity<Asistencia>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PK__Asistenc__3214EC0775A00304");
@@ -142,7 +144,6 @@ public partial class EduSysDbContext : DbContext
 
             entity.Property(e => e.EsJustificado).HasDefaultValue(false);
             entity.Property(e => e.UrlCertificado).HasMaxLength(500);
-            // ---------------------------------
 
             entity.HasOne(d => d.IdInscripcionCursadaNavigation).WithMany(p => p.Asistencia)
                 .HasForeignKey(d => d.IdInscripcionCursada)
@@ -220,7 +221,6 @@ public partial class EduSysDbContext : DbContext
             entity.ToTable("Correlatividad");
             entity.Property(e => e.TipoRequisito).HasMaxLength(20);
 
-            // ✅ AHORA: referenciar las colecciones reales del modelo PlanMateria
             entity.HasOne(d => d.IdPlanMateriaOrigenNavigation)
                 .WithMany(p => p.CorrelativasComoOrigen)
                 .HasForeignKey(d => d.IdPlanMateriaOrigen)
@@ -284,9 +284,6 @@ public partial class EduSysDbContext : DbContext
             entity.Property(e => e.HorasAnticipacionConfirmar).HasDefaultValue(72);
             entity.Property(e => e.HorasAnticipacionBaja).HasDefaultValue(48);
 
-            // ==============================================================
-            // ✅ SOLUCIÓN: MAPEO DE LA RELACIÓN PADRE-HIJO
-            // ==============================================================
             entity.HasOne(d => d.IdEvaluacionPadreNavigation)
                             .WithMany(e => e.EvaluacionesHijas)
                             .HasForeignKey(d => d.IdEvaluacionPadre)
@@ -482,7 +479,6 @@ public partial class EduSysDbContext : DbContext
                 .HasConstraintName("FK_RefreshToken_Usuario");
         });
 
-        // ✅ APLICADO: Configuración Muchos a Muchos para Rol y Permiso
         modelBuilder.Entity<Rol>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PK__Rol__3214EC0712833D5A");
@@ -574,7 +570,6 @@ public partial class EduSysDbContext : DbContext
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_Usuario_Nacionalidad");
 
-            // 🚀 APLICADO: NUEVA RELACIÓN MUCHOS A MUCHOS (Usuario <-> Rol)
             entity.HasMany(d => d.IdRols).WithMany(p => p.IdUsuarios)
                 .UsingEntity<Dictionary<string, object>>(
                     "UsuarioRol",
@@ -673,6 +668,54 @@ public partial class EduSysDbContext : DbContext
                   .HasForeignKey(d => d.IdSede)
                   .OnDelete(DeleteBehavior.ClientSetNull)
                   .HasConstraintName("FK_SolicitudIngreso_Sede");
+        });
+
+        // ✅ NUEVO: CONFIGURACIÓN DE LA TABLA ActaAlumno
+        modelBuilder.Entity<ActaAlumno>(entity =>
+        {
+            entity.ToTable("ActaAlumno");
+            entity.HasKey(e => e.Id);
+
+            entity.HasIndex(e => e.NumeroActa, "UQ_ActaAlumno_NumeroActa").IsUnique();
+
+            entity.Property(e => e.NumeroActa).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.TipoActa).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.Detalle).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.EstadoAcademico).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.FechaEmision).HasDefaultValueSql("(getdate())").HasColumnType("datetime");
+            entity.Property(e => e.Nota).HasColumnType("decimal(4, 2)");
+
+            entity.HasOne(d => d.IdAlumnoNavigation)
+                  .WithMany()
+                  .HasForeignKey(d => d.IdAlumno)
+                  .OnDelete(DeleteBehavior.ClientSetNull)
+                  .HasConstraintName("FK_ActaAlumno_Alumno");
+
+            entity.HasOne(d => d.IdPlanMateriaNavigation)
+                  .WithMany()
+                  .HasForeignKey(d => d.IdPlanMateria)
+                  .OnDelete(DeleteBehavior.ClientSetNull)
+                  .HasConstraintName("FK_ActaAlumno_PlanMateria");
+
+            entity.HasOne(d => d.IdEvaluacionReferenciaNavigation)
+                  .WithMany()
+                  .HasForeignKey(d => d.IdEvaluacionReferencia)
+                  .HasConstraintName("FK_ActaAlumno_Evaluacion");
+
+            entity.HasOne(d => d.IdInscripcionCursadaReferenciaNavigation)
+                  .WithMany()
+                  .HasForeignKey(d => d.IdInscripcionCursadaReferencia)
+                  .HasConstraintName("FK_ActaAlumno_InscripcionCursada");
+
+            entity.HasOne(d => d.IdInscripcionFinalReferenciaNavigation)
+                  .WithMany()
+                  .HasForeignKey(d => d.IdInscripcionFinalReferencia)
+                  .HasConstraintName("FK_ActaAlumno_InscripcionFinal");
+
+            entity.HasOne(d => d.IdDocenteFirmaNavigation)
+                  .WithMany()
+                  .HasForeignKey(d => d.IdDocenteFirma)
+                  .HasConstraintName("FK_ActaAlumno_Docente");
         });
 
         OnModelCreatingPartial(modelBuilder);

@@ -2,14 +2,16 @@
 @page "/docente/notas/{IdComision:int}"
 @using EduSys.Shared.DTOs
 @using EduSys.Web.Services.Interfaces
-@using EduSys.Web.Pages.Docente.Componentes
+@using EduSys.Web.Pages.Docente.Componentes 
 @using Microsoft.AspNetCore.Authorization
 @using System.Globalization
 
 @inject INotasService NotasService
+@inject IActasService ActasService   
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 @inject NavigationManager NavigationManager
+@inject IJSRuntime JS
 
 @attribute [Authorize(Roles = "Docente, Administrador")]
 
@@ -189,7 +191,8 @@
             <div class="d-flex gap-2 align-center">
                 <MudButton Variant="Variant.Outlined" Color="Color.Default" StartIcon="@Icons.Material.Filled.Refresh" OnClick="CargarDatos" Disabled="_procesando" Class="rounded-lg font-weight-bold bg-white">Recargar</MudButton>
 
-                @if (planilla.ComisionEstado == "Cerrada")
+                @* 🚀 ESTA ES LA CONDICIÓN ARREGLADA *@
+                @if (planilla.ComisionEstado == "Cerrada" || planilla.ComisionEstado == "Finalizada")
                 {
                     <MudButton Variant="Variant.Filled" Color="Color.Warning" StartIcon="@Icons.Material.Filled.LockOpen" OnClick="ReabrirCursadaGlobal" Class="rounded-lg font-weight-bold px-4" Disabled="_procesando">Reabrir Cursada</MudButton>
                 }
@@ -235,7 +238,6 @@
                 <div class="info-divider d-none d-md-block"></div>
                 <div>
                     <span class="info-label">Código de Comisión</span>
-                    @* ✅ FIX: Removido el MudChip, se usa el mismo span que la materia *@
                     <span class="info-value">@planilla.ComisionCodigo</span>
                 </div>
                 <div class="info-divider d-none d-md-block"></div>
@@ -247,7 +249,7 @@
                 </div>
             </div>
 
-            @if (planilla.ComisionEstado == "Cerrada")
+            @if (planilla.ComisionEstado == "Cerrada" || planilla.ComisionEstado == "Finalizada")
             {
                 <div class="status-closed-badge d-flex align-center gap-2">
                     <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" />
@@ -305,18 +307,18 @@
                                             {
                                                 <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" Style="color: #94a3b8;" Title="Acta Cerrada" />
                                                 <MudTooltip Text="Reabrir Acta">
-                                                    <MudIconButton Icon="@Icons.Material.Filled.LockReset" Size="Size.Small" Color="Color.Warning" OnClick="@(() => ReabrirActa(eval))" Disabled="@(planilla.ComisionEstado == "Cerrada" || _procesando)" />
+                                                    <MudIconButton Icon="@Icons.Material.Filled.LockReset" Size="Size.Small" Color="Color.Warning" OnClick="@(() => ReabrirActa(eval))" Disabled="@(planilla.ComisionEstado == "Cerrada" || planilla.ComisionEstado == "Finalizada" || _procesando)" />
                                                 </MudTooltip>
                                             }
                                             else
                                             {
                                                 <MudTooltip Text="Editar Examen">
-                                                    <MudIconButton Icon="@Icons.Material.Filled.Settings" Size="Size.Small" Color="Color.Default" OnClick="@(() => AbrirDialogoEditarEvaluacion(eval))" Disabled="@(planilla.ComisionEstado == "Cerrada" || _procesando)" />
+                                                    <MudIconButton Icon="@Icons.Material.Filled.Settings" Size="Size.Small" Color="Color.Default" OnClick="@(() => AbrirDialogoEditarEvaluacion(eval))" Disabled="@(planilla.ComisionEstado == "Cerrada" || planilla.ComisionEstado == "Finalizada" || _procesando)" />
                                                 </MudTooltip>
                                                 <MudTooltip Text="Cerrar Acta Parcial">
-                                                    <MudIconButton Icon="@Icons.Material.Filled.LockOpen" Size="Size.Small" Color="Color.Success" OnClick="@(() => AbrirDialogoCierreActa(eval))" Disabled="@(planilla.ComisionEstado == "Cerrada" || _procesando)" />
+                                                    <MudIconButton Icon="@Icons.Material.Filled.LockOpen" Size="Size.Small" Color="Color.Success" OnClick="@(() => AbrirDialogoCierreActa(eval))" Disabled="@(planilla.ComisionEstado == "Cerrada" || planilla.ComisionEstado == "Finalizada" || _procesando)" />
                                                 </MudTooltip>
-                                                @if (planilla.ComisionEstado != "Cerrada")
+                                                @if (planilla.ComisionEstado != "Cerrada" && planilla.ComisionEstado != "Finalizada")
                                                 {
                                                     <MudTooltip Text="Eliminar">
                                                         <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => EliminarExamen(eval))" Disabled="_procesando" />
@@ -348,7 +350,7 @@
                                     var notaActual = alumno.Notas.ContainsKey(eval.IdEvaluacion) ? alumno.Notas[eval.IdEvaluacion] : null;
 
                                     <td>
-                                        @if (eval.EstaCerrada || alumno.CursadaCerrada || planilla.ComisionEstado == "Cerrada")
+                                        @if (eval.EstaCerrada || alumno.CursadaCerrada || planilla.ComisionEstado == "Cerrada" || planilla.ComisionEstado == "Finalizada")
                                         {
                                             <div class="grade-readonly" title="Celda bloqueada">
                                                 @(notaActual?.ToString("0.##") ?? "-")
@@ -390,19 +392,18 @@
                                 </MudChip>
                             </td>
 
-                            @* ✅ FIX: Contenedor con d-flex y justify-center para centrar el candado perfectamente *@
                             <td class="text-center">
                                 <div class="d-flex justify-center align-center h-100 w-100">
                                     @if (alumno.CursadaCerrada)
                                     {
                                         <MudTooltip Text="Desbloquear alumno">
-                                            <MudIconButton Icon="@Icons.Material.Filled.LockOpen" Size="Size.Small" Color="Color.Warning" OnClick="@(() => ToggleCierreFila(alumno.IdInscripcion))" Disabled="@(planilla.ComisionEstado == "Cerrada" || _procesando)" />
+                                            <MudIconButton Icon="@Icons.Material.Filled.LockOpen" Size="Size.Small" Color="Color.Warning" OnClick="@(() => ToggleCierreFila(alumno.IdInscripcion))" Disabled="@(planilla.ComisionEstado == "Cerrada" || planilla.ComisionEstado == "Finalizada" || _procesando)" />
                                         </MudTooltip>
                                     }
                                     else
                                     {
                                         <MudTooltip Text="Bloquear alumno">
-                                            <MudIconButton Icon="@Icons.Material.Filled.Lock" Size="Size.Small" Color="Color.Success" OnClick="@(() => ToggleCierreFila(alumno.IdInscripcion))" Disabled="@(planilla.ComisionEstado == "Cerrada" || _procesando)" />
+                                            <MudIconButton Icon="@Icons.Material.Filled.Lock" Size="Size.Small" Color="Color.Success" OnClick="@(() => ToggleCierreFila(alumno.IdInscripcion))" Disabled="@(planilla.ComisionEstado == "Cerrada" || planilla.ComisionEstado == "Finalizada" || _procesando)" />
                                         </MudTooltip>
                                     }
                                 </div>
@@ -608,7 +609,7 @@
 
         try
         {
-            if (await NotasService.ReabrirActaAsync(evaluacionParaReabrir.IdEvaluacion)) 
+            if (await ActasService.ReabrirActaAsync(evaluacionParaReabrir.IdEvaluacion)) 
             { 
                 Snackbar.Add("El acta ha sido reabierta.", Severity.Success); 
                 await CargarDatos(); 
@@ -628,11 +629,7 @@
 
     private async Task AbrirDialogoNuevaEvaluacion()
     {
-        var parameters = new DialogParameters<DialogoEvaluacion>
-        {
-            { x => x.ListaAlumnos, planilla?.Alumnos ?? new() },
-            { x => x.EvaluacionesAnteriores, planilla?.Evaluaciones ?? new() }
-        };
+        var parameters = new DialogParameters { ["ListaAlumnos"] = planilla?.Alumnos ?? new(), ["EvaluacionesAnteriores"] = planilla?.Evaluaciones ?? new() };
 
         var dialog = await DialogService.ShowAsync<DialogoEvaluacion>("Nueva Instancia de Evaluación", parameters, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, BackdropClick = false });
         var result = await dialog.Result;
@@ -666,11 +663,7 @@
             IdEvaluacionPadre = evaluacion.IdEvaluacionPadre
         };
 
-        var parameters = new DialogParameters<DialogoEvaluacion>
-        {
-            { x => x.model, evalClone },
-            { x => x.EvaluacionesAnteriores, planilla?.Evaluaciones ?? new() }
-        };
+        var parameters = new DialogParameters { ["model"] = evalClone, ["EvaluacionesAnteriores"] = planilla?.Evaluaciones ?? new() };
 
         var dialog = await DialogService.ShowAsync<DialogoEvaluacion>("Modificar Evaluación", parameters, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, BackdropClick = false });
         var result = await dialog.Result;
@@ -692,22 +685,24 @@
         }
     }
 
+    // 🚀 NUEVA LÓGICA: Confirmación rápida para generar las Actas Individuales
     private async Task AbrirDialogoCierreActa(EvaluacionDTO eval)
     {
-        var parameters = new DialogParameters<DialogoCierreActa> { { x => x.IdEvaluacion, eval.IdEvaluacion } };
-        var dialog = await DialogService.ShowAsync<DialogoCierreActa>("Cierre Definitivo de Acta", parameters, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, BackdropClick = false });
-        var result = await dialog.Result;
-        
-        if (!result.Canceled && result.Data is CierreActaDTO cierreDto)
+        bool? confirm = await DialogService.ShowMessageBox(
+            "Confirmar Cierre de Acta", 
+            $"¿Está seguro de cerrar el acta de {eval.Nombre}? El sistema generará automáticamente un acta individual para cada alumno.", 
+            yesText:"Cerrar Acta", cancelText:"Cancelar");
+
+        if (confirm == true)
         {
             _procesando = true;
             StateHasChanged();
 
             try
             {
-                if (await NotasService.CerrarActaAsync(cierreDto)) 
+                if (await ActasService.CerrarActaAsync(eval.IdEvaluacion)) 
                 { 
-                    Snackbar.Add("El acta parcial ha sido cerrada exitosamente.", Severity.Success); 
+                    Snackbar.Add("El acta ha sido cerrada y los documentos individuales generados.", Severity.Success); 
                     await CargarDatos(); 
                 }
                 else 
@@ -760,7 +755,7 @@
 
         try
         {
-            var exito = await NotasService.ToggleCierreIndividualAsync(idInscripcion);
+            var exito = await ActasService.ToggleCierreIndividualAsync(idInscripcion);
             if (exito)
             {
                 Snackbar.Add("Estado de bloqueo del alumno actualizado.", Severity.Success);
@@ -774,41 +769,37 @@
         finally { _procesando = false; }
     }
 
+    // 🚀 NUEVA LÓGICA: Confirmación rápida para el cierre de cursada
     private async Task AbrirDialogoCierreCursada()
     {
-        var parameters = new DialogParameters<DialogoCierreActa> { { x => x.IdEvaluacion, 0 } };
-        var dialog = await DialogService.ShowAsync<DialogoCierreActa>("Cerrar Cursada (Fin de Ciclo)", parameters, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, BackdropClick = false });
-        var result = await dialog.Result;
+        bool? confirm = await DialogService.ShowMessageBox(
+            "Confirmar Cierre de Cursada", 
+            "¿Está seguro de cerrar la cursada? El sistema consolidará las notas y generará las Actas de Regularidad para cada alumno.", 
+            yesText:"Cerrar Cursada", cancelText:"Cancelar");
 
-        if (!result.Canceled && result.Data is CierreActaDTO datosCierre)
+        if (confirm == true)
         {
             _procesando = true;
             StateHasChanged();
 
             try
             {
-                var request = new CierreCursadaDTO
-                {
-                    IdComision = this.IdComision,
-                    Libro = datosCierre.Libro,
-                    Folio = datosCierre.Folio
-                };
-
-                var exito = await NotasService.CerrarCursadaAsync(request);
+                var exito = await ActasService.CerrarCursadaAsync(IdComision);
                 if (exito)
                 {
-                    Snackbar.Add("La cursada ha sido cerrada. Los promedios y estados finales han sido asentados.", Severity.Success);
+                    Snackbar.Add("¡Cursada cerrada y actas generadas exitosamente!", Severity.Success);
                     await CargarDatos();
                 }
                 else 
                 { 
-                    Snackbar.Add("El servidor reportó un error al intentar cerrar la cursada.", Severity.Error); 
+                    Snackbar.Add("Error al procesar el cierre.", Severity.Error); 
                 }
             }
             finally { _procesando = false; }
         }
     }
 
+    // 🚀 NUEVA LÓGICA: Modal de reapertura sin validaciones complejas
     private void ReabrirCursadaGlobal()
     {
         mostrarDialogoReabrirCursada = true;
@@ -821,10 +812,10 @@
 
         try
         {
-            var exito = await NotasService.ReabrirComisionAsync(IdComision);
+            var exito = await ActasService.ReabrirComisionAsync(IdComision);
             if (exito) 
             { 
-                Snackbar.Add("La cursada vuelve a estar abierta y editable.", Severity.Success); 
+                Snackbar.Add("La cursada vuelve a estar abierta y editable. Las actas generadas fueron anuladas.", Severity.Success); 
                 await CargarDatos(); 
             }
             else 
@@ -846,7 +837,7 @@
         "Regular" => Color.Info,
         "Desaprobado" => Color.Warning,
         "Libre" => Color.Error,
-        "Aprobada" => Color.Success, // Para algunos planes
+        "Aprobada" => Color.Success, 
         _ => Color.Default
     };
 

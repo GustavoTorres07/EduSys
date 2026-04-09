@@ -406,20 +406,20 @@
                     @if (HasPermission(authCtx.User, "ACA_CARRERA_ABM"))     @RenderNavLink("/carreras",              "Carreras",            Icons.Material.Filled.AccountBalance)
                     @if (HasPermission(authCtx.User, "ACA_PLAN_ABM"))        @RenderNavLink("/planes",                "Planes de Estudio",   Icons.Material.Filled.Map)
                     @if (HasPermission(authCtx.User, "ACA_MATERIA_ABM"))     @RenderNavLink("/materias",              "Materias",            Icons.Material.Filled.Book)
-                    @if (HasPermission(authCtx.User, "CFG_PARAMETROS_ACA")) @RenderNavLink("/admin/estados-materia", "Estados de Materia",  Icons.Material.Filled.RuleFolder)
+                    @if (HasPermission(authCtx.User, "CFG_PARAMETROS_ACA"))  @RenderNavLink("/admin/estados-materia", "Estados de Materia",  Icons.Material.Filled.RuleFolder)
                     @if (HasPermission(authCtx.User, "CFG_SEDES_ABM"))       @RenderNavLink("/sedes",                 "Sedes",               Icons.Material.Filled.Place)
-                    @if (HasPermission(authCtx.User, "CFG_PARAMETROS_ACA")) @RenderNavLink("/modalidades",           "Modalidades",         Icons.Material.Filled.LaptopChromebook)
-                    @if (HasPermission(authCtx.User, "CFG_PARAMETROS_ACA")) @RenderNavLink("/regimenes",             "Regímenes",           Icons.Material.Filled.Rule)
+                    @if (HasPermission(authCtx.User, "CFG_PARAMETROS_ACA"))  @RenderNavLink("/modalidades",           "Modalidades",         Icons.Material.Filled.LaptopChromebook)
+                    @if (HasPermission(authCtx.User, "CFG_PARAMETROS_ACA"))  @RenderNavLink("/regimenes",             "Regímenes",           Icons.Material.Filled.Rule)
                 }
 
                 @* Planificación Académica *@
                 @if (HasPermission(authCtx.User, "PER_PERIODO_ABM", "PER_CALENDARIO_ABM", "COM_COMISION_ABM", "COM_HORARIOS_EDIT"))
                 {
                     <div class="nm-section">Planificación Académica</div>
-                    @if (HasPermission(authCtx.User, "PER_PERIODO_ABM"))     @RenderNavLink("/periodos",    "Períodos Académicos",    Icons.Material.Filled.DateRange)
-                    @if (HasPermission(authCtx.User, "PER_CALENDARIO_ABM")) @RenderNavLink("/calendario",  "Ventanas y Calendario",  Icons.Material.Filled.EventAvailable)
-                    @if (HasPermission(authCtx.User, "COM_COMISION_ABM"))    @RenderNavLink("/comisiones",  "Comisiones",             Icons.Material.Filled.Groups)
-                    @if (HasPermission(authCtx.User, "COM_HORARIOS_EDIT"))   @RenderNavLink("/horarios",    "Horarios",               Icons.Material.Filled.AccessTime)
+                    @if (HasPermission(authCtx.User, "PER_PERIODO_ABM"))     @RenderNavLink("/periodos",    "Períodos Académicos",   Icons.Material.Filled.DateRange)
+                    @if (HasPermission(authCtx.User, "PER_CALENDARIO_ABM"))  @RenderNavLink("/calendario",  "Ventanas y Calendario", Icons.Material.Filled.EventAvailable)
+                    @if (HasPermission(authCtx.User, "COM_COMISION_ABM"))    @RenderNavLink("/comisiones",  "Comisiones",            Icons.Material.Filled.Groups)
+                    @if (HasPermission(authCtx.User, "COM_HORARIOS_EDIT"))   @RenderNavLink("/horarios",    "Horarios",              Icons.Material.Filled.AccessTime)
                 }
 
                 @* Operaciones de Cursada *@
@@ -430,15 +430,15 @@
                     @if (HasPermission(authCtx.User, "ASIS_VER", "ASIS_CARGAR"))   @RenderNavLink("/asistencia",          "Auditoría Asistencias", Icons.Material.Filled.FactCheck)
                 }
 
-                @* Evaluaciones y Actas *@
+                @* Evaluaciones y Actas (SECCIÓN ACTUALIZADA) *@
                 @if (HasPermission(authCtx.User, "EVA_ABM", "EVA_CARGAR_NOTAS", "ACTA_VER", "INS_FINAL_MESAS_ABM", "FINAL_CARGAR_RESULTADO"))
                 {
                     <div class="nm-section">Evaluaciones y Actas</div>
-                    @if (HasPermission(authCtx.User, "EVA_ABM"))                     @RenderNavLink("/evaluaciones",       "Parciales",           Icons.Material.Filled.Assignment)
-                    @if (HasPermission(authCtx.User, "EVA_CARGAR_NOTAS"))            @RenderNavLink("/notas",              "Carga de Notas",      Icons.Material.Filled.Grade)
-                    @if (HasPermission(authCtx.User, "ACTA_VER"))                    @RenderNavLink("/admin/actas",        "Libros de Actas",     Icons.Material.Filled.Description)
-                    @if (HasPermission(authCtx.User, "INS_FINAL_MESAS_ABM"))         @RenderNavLink("/mesas-finales",      "Mesas de Finales",    Icons.Material.Filled.EventSeat)
-                    @if (HasPermission(authCtx.User, "FINAL_CARGAR_RESULTADO"))      @RenderNavLink("/resultados-finales", "Actas de Finales",    Icons.Material.Filled.EmojiEvents)
+                    @if (HasPermission(authCtx.User, "EVA_ABM"))                 @RenderNavLink("/evaluaciones",       "Parciales y Exámenes",  Icons.Material.Filled.Assignment)
+                    @if (HasPermission(authCtx.User, "EVA_CARGAR_NOTAS"))        @RenderNavLink("/notas",              "Carga de Notas",        Icons.Material.Filled.EditNote)
+                    @if (HasPermission(authCtx.User, "ACTA_VER"))                @RenderNavLink("/admin/actas",        "Libros de Actas",       Icons.Material.Filled.MenuBook)
+                    @if (HasPermission(authCtx.User, "INS_FINAL_MESAS_ABM"))     @RenderNavLink("/mesas-finales",      "Mesas de Finales",      Icons.Material.Filled.EventSeat)
+                    @if (HasPermission(authCtx.User, "FINAL_CARGAR_RESULTADO"))  @RenderNavLink("/resultados-finales", "Actas de Finales",      Icons.Material.Filled.EmojiEvents)
                 }
 
                 @* Comunidad *@
@@ -499,7 +499,7 @@
                     @RenderNavLink("/docente/tomar-asistencia",   "Pasar Asistencia",     Icons.Material.Filled.HowToReg)
                     @RenderNavLink("/docente/evaluaciones",       "Planificar Exámenes",  Icons.Material.Filled.Assignment)
                     @RenderNavLink("/docente/cargar-notas",       "Cargar Notas",         Icons.Material.Filled.EditNote)
-                    @RenderNavLink("/docente/actas",              "Cerrar Actas",         Icons.Material.Filled.Description)
+                    @RenderNavLink("/docente/actas",              "Cerrar Actas",         Icons.Material.Filled.MenuBook)
                     @RenderNavLink("/docente/mesas-asignadas",    "Mesas Asignadas",      Icons.Material.Filled.EventSeat)
                 }
 
@@ -580,12 +580,12 @@
     private string RoleFull          = "";
     private string UserId            = "";
 
-    private bool           showCommandPalette   = false;
-    private string         commandSearch        = "";
-    private int            selectedCommandIndex = 0;
+    private bool             showCommandPalette   = false;
+    private string           commandSearch        = "";
+    private int              selectedCommandIndex = 0;
     private ElementReference commandInputRef;
-    private List<CommandItem> allCommands      = new();
-    private List<CommandItem> filteredCommands = new();
+    private List<CommandItem> allCommands       = new();
+    private List<CommandItem> filteredCommands  = new();
     private DotNetObjectReference<NavMenu>? _dotNetRef;
 
     private List<NavPage> favoritePages = new();
@@ -736,7 +736,7 @@
         allCommands.Add(new CommandItem { Title = "Cerrar Sesión", Category = "Cuenta", Action = () => { _ = CerrarSesion(); return Task.CompletedTask; }, Icon = Icons.Material.Filled.Logout });
 
         if (HasPermission(user, "REP_VER", "ACA_CARRERA_ABM", "COM_COMISION_ABM", "ALU_ABM"))
-            allCommands.Add(new CommandItem { Title = "Dashboard", Category = "Inicio", Url = "/Home", Icon = Icons.Material.Filled.Dashboard });
+            allCommands.Add(new CommandItem { Title = "Dashboard", Category = "Inicio", Url = "/admin/dashboard", Icon = Icons.Material.Filled.Dashboard });
 
         if (HasPermission(user, "ACA_CARRERA_ABM"))    allCommands.Add(new CommandItem { Title = "Carreras",            Category = "Config. Institucional", Url = "/carreras",              Icon = Icons.Material.Filled.AccountBalance });
         if (HasPermission(user, "ACA_PLAN_ABM"))       allCommands.Add(new CommandItem { Title = "Planes de Estudio",  Category = "Config. Institucional", Url = "/planes",                Icon = Icons.Material.Filled.Map });
@@ -754,11 +754,12 @@
         if (HasPermission(user, "INS_CURSADA_GESTION"))      allCommands.Add(new CommandItem { Title = "Forzar Inscripciones",  Category = "Cursada", Url = "/admin/inscripciones", Icon = Icons.Material.Filled.HowToReg });
         if (HasPermission(user, "ASIS_VER", "ASIS_CARGAR"))  allCommands.Add(new CommandItem { Title = "Auditoría Asistencias", Category = "Cursada", Url = "/asistencia",          Icon = Icons.Material.Filled.FactCheck });
 
-        if (HasPermission(user, "EVA_ABM"))                  allCommands.Add(new CommandItem { Title = "Parciales",       Category = "Evaluaciones", Url = "/evaluaciones",       Icon = Icons.Material.Filled.Assignment });
-        if (HasPermission(user, "EVA_CARGAR_NOTAS"))         allCommands.Add(new CommandItem { Title = "Carga de Notas",  Category = "Evaluaciones", Url = "/notas",              Icon = Icons.Material.Filled.Grade });
-        if (HasPermission(user, "ACTA_VER"))                 allCommands.Add(new CommandItem { Title = "Libros de Actas", Category = "Evaluaciones", Url = "/admin/actas",        Icon = Icons.Material.Filled.Description });
-        if (HasPermission(user, "INS_FINAL_MESAS_ABM"))      allCommands.Add(new CommandItem { Title = "Mesas de Finales",Category = "Evaluaciones", Url = "/mesas-finales",      Icon = Icons.Material.Filled.EventSeat });
-        if (HasPermission(user, "FINAL_CARGAR_RESULTADO"))   allCommands.Add(new CommandItem { Title = "Actas de Finales",Category = "Evaluaciones", Url = "/resultados-finales", Icon = Icons.Material.Filled.EmojiEvents });
+        // ACTUALIZADO PARA LA NUEVA DIVISIÓN DE ACTAS
+        if (HasPermission(user, "EVA_ABM"))                  allCommands.Add(new CommandItem { Title = "Parciales y Exámenes", Category = "Evaluaciones", Url = "/evaluaciones",       Icon = Icons.Material.Filled.Assignment });
+        if (HasPermission(user, "EVA_CARGAR_NOTAS"))         allCommands.Add(new CommandItem { Title = "Carga de Notas",     Category = "Evaluaciones", Url = "/notas",              Icon = Icons.Material.Filled.EditNote });
+        if (HasPermission(user, "ACTA_VER"))                 allCommands.Add(new CommandItem { Title = "Libros de Actas",    Category = "Evaluaciones", Url = "/admin/actas",        Icon = Icons.Material.Filled.MenuBook });
+        if (HasPermission(user, "INS_FINAL_MESAS_ABM"))      allCommands.Add(new CommandItem { Title = "Mesas de Finales",   Category = "Evaluaciones", Url = "/mesas-finales",      Icon = Icons.Material.Filled.EventSeat });
+        if (HasPermission(user, "FINAL_CARGAR_RESULTADO"))   allCommands.Add(new CommandItem { Title = "Actas de Finales",   Category = "Evaluaciones", Url = "/resultados-finales", Icon = Icons.Material.Filled.EmojiEvents });
 
         if (HasPermission(user, "ALU_ABM"))     allCommands.Add(new CommandItem { Title = "Alumnos / Legajos",  Category = "Comunidad", Url = "/alumnos",             Icon = Icons.Material.Filled.Person });
         if (HasPermission(user, "DOC_ABM"))     allCommands.Add(new CommandItem { Title = "Docentes",           Category = "Comunidad", Url = "/docentes",            Icon = Icons.Material.Filled.Face });
@@ -767,7 +768,7 @@
 
         allCommands.Add(new CommandItem { Title = "Gestión de Tickets", Category = "Sistema", Url = "/admin/tickets",        Icon = Icons.Material.Filled.ConfirmationNumber });
         if (HasPermission(user, "REP_VER"))      allCommands.Add(new CommandItem { Title = "Reportes",        Category = "Sistema", Url = "/reportes/operativos", Icon = Icons.Material.Filled.BarChart });
-        if (HasPermission(user, "EMAIL_MASIVO")) allCommands.Add(new CommandItem { Title = "Comunicación",     Category = "Sistema", Url = "/emails/masivos",      Icon = Icons.Material.Filled.Email });
+        if (HasPermission(user, "EMAIL_MASIVO")) allCommands.Add(new CommandItem { Title = "Comunicación",    Category = "Sistema", Url = "/emails/masivos",      Icon = Icons.Material.Filled.Email });
 
         if (HasPermission(user, "EMAIL_MASIVO") || user.IsInRole("Administrador") || user.IsInRole("Secretaria Academica"))
             allCommands.Add(new CommandItem { Title = "Enviar Comunicados", Category = "Sistema", Url = "/admin/notificaciones", Icon = Icons.Material.Filled.Campaign });
@@ -779,11 +780,11 @@
         if (user.IsInRole("Alumno"))
         {
             allCommands.Add(new CommandItem { Title = "Inicio Alumno",         Category = "Mi Espacio", Url = "/dashboard-alumno",          Icon = Icons.Material.Filled.Home });
-            allCommands.Add(new CommandItem { Title = "Mis Notas",             Category = "Mi Espacio", Url = "/alumno/mis-cursadas",        Icon = Icons.Material.Filled.Grade });
-            allCommands.Add(new CommandItem { Title = "Mis Asistencias",       Category = "Mi Espacio", Url = "/alumno/asistencias",         Icon = Icons.Material.Filled.FactCheck });
-            allCommands.Add(new CommandItem { Title = "Cursar Materias",       Category = "Mi Espacio", Url = "/inscripcion-materias",       Icon = Icons.Material.Filled.Class });
+            allCommands.Add(new CommandItem { Title = "Mis Notas",             Category = "Mi Espacio", Url = "/alumno/mis-cursadas",       Icon = Icons.Material.Filled.Grade });
+            allCommands.Add(new CommandItem { Title = "Mis Asistencias",       Category = "Mi Espacio", Url = "/alumno/asistencias",        Icon = Icons.Material.Filled.FactCheck });
+            allCommands.Add(new CommandItem { Title = "Cursar Materias",       Category = "Mi Espacio", Url = "/inscripcion-materias",      Icon = Icons.Material.Filled.Class });
             allCommands.Add(new CommandItem { Title = "Rendir Finales",        Category = "Mi Espacio", Url = "/alumno/inscripcion-finales", Icon = Icons.Material.Filled.AssignmentTurnedIn });
-            allCommands.Add(new CommandItem { Title = "Historia Académica",    Category = "Mi Espacio", Url = "/historia-academica",         Icon = Icons.Material.Filled.HistoryEdu });
+            allCommands.Add(new CommandItem { Title = "Historia Académica",    Category = "Mi Espacio", Url = "/historia-academica",        Icon = Icons.Material.Filled.HistoryEdu });
             allCommands.Add(new CommandItem { Title = "Trámites y Certificados",Category="Mi Espacio",  Url = "/tramites",                   Icon = Icons.Material.Filled.Description });
         }
 
@@ -794,7 +795,7 @@
             allCommands.Add(new CommandItem { Title = "Tomar Asistencia",    Category = "Mi Espacio", Url = "/docente/tomar-asistencia",  Icon = Icons.Material.Filled.HowToReg });
             allCommands.Add(new CommandItem { Title = "Planificar Exámenes", Category = "Mi Espacio", Url = "/docente/evaluaciones",      Icon = Icons.Material.Filled.Assignment });
             allCommands.Add(new CommandItem { Title = "Cargar Notas",        Category = "Mi Espacio", Url = "/docente/cargar-notas",      Icon = Icons.Material.Filled.EditNote });
-            allCommands.Add(new CommandItem { Title = "Cerrar Actas",        Category = "Mi Espacio", Url = "/docente/actas",             Icon = Icons.Material.Filled.Description });
+            allCommands.Add(new CommandItem { Title = "Cerrar Actas",        Category = "Mi Espacio", Url = "/docente/actas",             Icon = Icons.Material.Filled.MenuBook });
             allCommands.Add(new CommandItem { Title = "Mesas Asignadas",     Category = "Mi Espacio", Url = "/docente/mesas-asignadas",   Icon = Icons.Material.Filled.EventSeat });
         }
 

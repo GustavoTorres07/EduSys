@@ -10,25 +10,22 @@ namespace EduSys.Api.Repositories
     public class NotasRepository : INotasRepository
     {
         private readonly EduSysDbContext _context;
-        private readonly INotificationService _notificationService;
 
-        public NotasRepository(EduSysDbContext context, INotificationService notificationService)
+        public NotasRepository(EduSysDbContext context)
         {
             _context = context;
-            _notificationService = notificationService;
         }
 
         public async Task<PlanillaNotasDTO> GetPlanillaAsync(int idComision)
         {
-            // 🚀 OPTIMIZADO: AsSplitQuery para evitar explosión cartesiana con tantos Includes
             var comision = await _context.Comisions
                 .AsNoTracking()
-                .Include(c => c.IdPlanMateriaNavigation)           // ← separado
-                    .ThenInclude(pm => pm.IdMateriaNavigation)     // ← encadenado con ThenInclude
+                .Include(c => c.IdPlanMateriaNavigation)
+                    .ThenInclude(pm => pm.IdMateriaNavigation)
                 .Include(c => c.Evaluacions)
                 .Include(c => c.InscripcionCursada.Where(i => i.Estado != "Baja"))
-                    .ThenInclude(i => i.IdAlumnoNavigation)        // ← separado
-                        .ThenInclude(a => a.IdUsuarioNavigation)   // ← encadenado
+                    .ThenInclude(i => i.IdAlumnoNavigation)
+                        .ThenInclude(a => a.IdUsuarioNavigation)
                 .Include(c => c.InscripcionCursada)
                     .ThenInclude(i => i.Nota)
                 .Include(c => c.InscripcionCursada)
@@ -66,7 +63,6 @@ namespace EduSys.Api.Repositories
                     Legajo = ins.IdAlumnoNavigation.Legajo,
                     Estado = ins.IdEstadoMateriaNavigation?.Nombre ?? "Cursando",
                     CursadaCerrada = ins.CursadaCerrada,
-                    // 🚀 Mapeo de notas eficiente
                     Notas = evaluacionesDto.ToDictionary(
                         e => e.IdEvaluacion,
                         e => ins.Nota.FirstOrDefault(n => n.IdEvaluacion == e.IdEvaluacion)?.Valor
@@ -118,9 +114,61 @@ namespace EduSys.Api.Repositories
             catch { return false; }
         }
 
-        // =======================================================================
-        // 🧠 MOTOR DE REGLAS ACADÉMICAS (Mantenemos tu excelente lógica original)
-        // =======================================================================
+        public async Task<bool> CrearEvaluacionAsync(int idComision, EvaluacionDTO dto)
+        {
+            _context.Evaluacions.Add(new Evaluacion
+            {
+                IdComision = idComision,
+                Nombre = dto.Nombre,
+                Fecha = DateOnly.FromDateTime(dto.Fecha),
+                EsRecuperatorio = dto.EsRecuperatorio,
+                EsIntegrador = dto.EsIntegrador,
+                IdEvaluacionPadre = dto.IdEvaluacionPadre,
+                EstadoActa = "Abierta"
+            });
+            return await _context.SaveChangesAsync() > 0;
+        }
+
+        public async Task<bool> EditarEvaluacionAsync(EvaluacionDTO dto)
+        {
+            var eval = await _context.Evaluacions.FindAsync(dto.IdEvaluacion);
+            if (eval == null || eval.EstadoActa == "Cerrada") return false;
+            eval.Nombre = dto.Nombre;
+            eval.Fecha = DateOnly.FromDateTime(dto.Fecha);
+            eval.EsRecuperatorio = dto.EsRecuperatorio;
+            eval.EsIntegrador = dto.EsIntegrador;
+            eval.IdEvaluacionPadre = dto.IdEvaluacionPadre;
+            return await _context.SaveChangesAsync() > 0;
+        }
+
+        public async Task<bool> EliminarEvaluacionAsync(int idEvaluacion)
+        {
+            using var trans = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                var eval = await _context.Evaluacions.FirstOrDefaultAsync(e => e.Id == idEvaluacion);
+                if (eval == null || eval.EstadoActa == "Cerrada") return false;
+
+                var hijos = await _context.Evaluacions.Where(e => e.IdEvaluacionPadre == idEvaluacion).ToListAsync();
+                foreach (var h in hijos) { h.IdEvaluacionPadre = null; h.EsRecuperatorio = false; }
+                await _context.SaveChangesAsync();
+
+                var notas = await _context.Nota.Where(n => n.IdEvaluacion == idEvaluacion).ToListAsync();
+                if (notas.Any()) _context.Nota.RemoveRange(notas);
+                await _context.SaveChangesAsync();
+
+                _context.Evaluacions.Remove(eval);
+                await _context.SaveChangesAsync();
+
+                var inscs = await _context.InscripcionCursada.Where(i => i.IdComision == eval.IdComision && i.Estado != "Baja").Select(i => i.Id).ToListAsync();
+                foreach (var id in inscs) await RecalcularEstadoAlumnoAsync(id);
+
+                await trans.CommitAsync();
+                return true;
+            }
+            catch { await trans.RollbackAsync(); return false; }
+        }
+
         private (int IdEstado, decimal? NotaFinal) CalcularEstadoYNotaDefinitiva(PlanMateria plan, List<Nota> notasAlumno, List<Evaluacion> evaluacionesComision, int idEstadoActual)
         {
             if (!notasAlumno.Any()) return (idEstadoActual, null);
@@ -199,7 +247,6 @@ namespace EduSys.Api.Repositories
                 }
                 return (estadoDesaprobado, promedioInstancias);
             }
-
             return (idEstadoActual, promedioInstancias);
         }
 
@@ -222,134 +269,6 @@ namespace EduSys.Api.Repositories
             inscripcion.NotaFinalCursada = res.NotaFinal;
 
             await _context.SaveChangesAsync();
-        }
-
-        public async Task<bool> CerrarActaComisionAsync(int idComision, string libro, string folio)
-        {
-            using var trans = await _context.Database.BeginTransactionAsync();
-            try
-            {
-                var comision = await _context.Comisions.Include(c => c.IdPlanMateriaNavigation).FirstOrDefaultAsync(c => c.Id == idComision);
-                if (comision == null) return false;
-
-                var evaluaciones = await _context.Evaluacions.AsNoTracking().Where(e => e.IdComision == idComision).ToListAsync();
-                var inscripciones = await _context.InscripcionCursada.Include(i => i.Nota).Where(i => i.IdComision == idComision && i.Estado != "Baja").ToListAsync();
-
-                foreach (var ins in inscripciones)
-                {
-                    if (ins.CursadaCerrada) continue;
-                    var res = CalcularEstadoYNotaDefinitiva(comision.IdPlanMateriaNavigation, ins.Nota.ToList(), evaluaciones, ins.IdEstadoMateria ?? 1);
-                    ins.IdEstadoMateria = res.IdEstado;
-                    ins.NotaFinalCursada = res.NotaFinal;
-                    ins.Estado = "Finalizada";
-                    ins.CursadaCerrada = true;
-                }
-
-                comision.Estado = "Cerrada";
-                await _context.SaveChangesAsync();
-                await trans.CommitAsync();
-                return true;
-            }
-            catch { await trans.RollbackAsync(); return false; }
-        }
-
-        public async Task<bool> CerrarActaAsync(CierreActaDTO dto)
-        {
-            var eval = await _context.Evaluacions.FindAsync(dto.IdEvaluacion);
-            if (eval == null) return false;
-
-            eval.EstadoActa = "Cerrada";
-            eval.FechaCierre = DateTime.Now;
-            eval.Libro = dto.Libro;
-            eval.Folio = dto.Folio;
-
-            if (await _context.SaveChangesAsync() > 0)
-            {
-                await _notificationService.NotificarCierreActaAsync(eval.Id, eval.Nombre);
-                return true;
-            }
-            return false;
-        }
-
-        public async Task<bool> ReabrirActaAsync(int idEvaluacion)
-        {
-            var eval = await _context.Evaluacions.FindAsync(idEvaluacion);
-            if (eval == null || eval.EstadoActa != "Cerrada") return false;
-            eval.EstadoActa = "Abierta";
-            eval.FechaCierre = null; eval.Libro = null; eval.Folio = null;
-            return await _context.SaveChangesAsync() > 0;
-        }
-
-        public async Task<bool> EliminarEvaluacionAsync(int idEvaluacion)
-        {
-            using var trans = await _context.Database.BeginTransactionAsync();
-            try
-            {
-                var eval = await _context.Evaluacions.FirstOrDefaultAsync(e => e.Id == idEvaluacion);
-                if (eval == null || eval.EstadoActa == "Cerrada") return false;
-
-                var hijos = await _context.Evaluacions.Where(e => e.IdEvaluacionPadre == idEvaluacion).ToListAsync();
-                foreach (var h in hijos) { h.IdEvaluacionPadre = null; h.EsRecuperatorio = false; }
-                await _context.SaveChangesAsync();
-
-                var notas = await _context.Nota.Where(n => n.IdEvaluacion == idEvaluacion).ToListAsync();
-                if (notas.Any()) _context.Nota.RemoveRange(notas);
-                await _context.SaveChangesAsync();
-
-                _context.Evaluacions.Remove(eval);
-                await _context.SaveChangesAsync();
-
-                var inscs = await _context.InscripcionCursada.Where(i => i.IdComision == eval.IdComision && i.Estado != "Baja").Select(i => i.Id).ToListAsync();
-                foreach (var id in inscs) await RecalcularEstadoAlumnoAsync(id);
-
-                await trans.CommitAsync();
-                return true;
-            }
-            catch { await trans.RollbackAsync(); return false; }
-        }
-
-        public async Task<bool> EditarEvaluacionAsync(EvaluacionDTO dto)
-        {
-            var eval = await _context.Evaluacions.FindAsync(dto.IdEvaluacion);
-            if (eval == null || eval.EstadoActa == "Cerrada") return false;
-            eval.Nombre = dto.Nombre;
-            eval.Fecha = DateOnly.FromDateTime(dto.Fecha);
-            eval.EsRecuperatorio = dto.EsRecuperatorio;
-            eval.EsIntegrador = dto.EsIntegrador;
-            eval.IdEvaluacionPadre = dto.IdEvaluacionPadre;
-            return await _context.SaveChangesAsync() > 0;
-        }
-
-        public async Task<bool> CrearEvaluacionAsync(int idComision, EvaluacionDTO dto)
-        {
-            _context.Evaluacions.Add(new Evaluacion
-            {
-                IdComision = idComision,
-                Nombre = dto.Nombre,
-                Fecha = DateOnly.FromDateTime(dto.Fecha),
-                EsRecuperatorio = dto.EsRecuperatorio,
-                EsIntegrador = dto.EsIntegrador,
-                IdEvaluacionPadre = dto.IdEvaluacionPadre,
-                EstadoActa = "Abierta"
-            });
-            return await _context.SaveChangesAsync() > 0;
-        }
-
-        public async Task<bool> ToggleCierreCursadaIndividualAsync(int idInsc)
-        {
-            var ins = await _context.InscripcionCursada.FindAsync(idInsc);
-            if (ins == null) return false;
-            ins.CursadaCerrada = !ins.CursadaCerrada;
-            return await _context.SaveChangesAsync() > 0;
-        }
-
-        public async Task<bool> ReabrirActaComisionAsync(int idCom)
-        {
-            var com = await _context.Comisions.Include(c => c.InscripcionCursada).FirstOrDefaultAsync(c => c.Id == idCom);
-            if (com == null) return false;
-            com.Estado = "Abierta";
-            foreach (var i in com.InscripcionCursada) i.CursadaCerrada = false;
-            return await _context.SaveChangesAsync() > 0;
         }
     }
 }

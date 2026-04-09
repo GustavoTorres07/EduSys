@@ -21,8 +21,8 @@ namespace EduSys.Api.Controllers
 
         // GET: api/alumnos
         [HttpGet]
-        // 🔒 CANDADO REAL: Solo usuarios con permiso para gestionar alumnos ven la lista
-        [Authorize(Roles = "ALU_ABM")]
+        // 🔒 SOLUCIÓN: Agregamos ACTA_VER y Administrador para que puedan usar el buscador
+        [Authorize(Roles = "ALU_ABM, ACTA_VER, Administrador")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<AlumnoListadoDTO>))]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<ActionResult<List<AlumnoListadoDTO>>> GetAlumnos()

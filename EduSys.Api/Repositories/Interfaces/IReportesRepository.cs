@@ -12,6 +12,7 @@ namespace EduSys.Api.Repositories.Interfaces
         Task<HistoriaAcademicaDTO> GetHistoriaAcademicaAsync(int idAlumno);
 
         Task<ConstanciaFinalDTO?> GetDatosConstanciaFinalAsync(int idInscripcion, int idAlumno);
+        Task<ActaIndividualDTO?> GetDatosActaIndividualAsync(int idActa);
 
     }
 }

@@ -86,6 +86,7 @@ builder.Services.AddScoped<IAsistenciaService, AsistenciaService>();
 builder.Services.AddScoped<IUsuarioService, UsuarioService>();
 builder.Services.AddScoped<INotificacionApiService, NotificacionApiService>();
 builder.Services.AddScoped<IRolService, RolService>();  
+builder.Services.AddScoped<IActasService, ActasService>();
 // ==================================================================
 // 4. CONFIGURACIONES ADICIONALES Y ARRANQUE
 // ==================================================================

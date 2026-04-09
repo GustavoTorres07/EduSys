@@ -14,7 +14,7 @@ namespace EduSys.Api.Repositories
         {
             _context = context;
         }
-        
+
         public async Task<List<PlanEstudioDTO>> GetAllAsync()
         {
             // 🚀 OPTIMIZADO: Proyección directa en SQL para evitar carga de objetos pesados

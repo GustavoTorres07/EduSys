@@ -419,6 +419,123 @@ namespace EduSys.Api.Services
             }
         }
 
+        // 🚀 DISEÑO DEL ACTA INDIVIDUAL
+        public byte[] GenerarActaIndividual(ActaIndividualDTO datos)
+        {
+            if (datos == null) throw new ArgumentNullException(nameof(datos));
+
+            try
+            {
+                var AzulOficial = "#1e3a58";
+                var GrisClaro = "#f8fafc";
+                var GrisBorde = "#cbd5e1";
+
+                var document = Document.Create(container =>
+                {
+                    container.Page(page =>
+                    {
+                        page.Size(PageSizes.A4);
+                        page.Margin(2, Unit.Centimetre);
+                        page.PageColor(Colors.White);
+                        page.DefaultTextStyle(x => x.FontSize(10).FontFamily("Arial").FontColor(Colors.Black));
+
+                        // --- HEADER ---
+                        page.Header().Row(row =>
+                        {
+                            row.RelativeItem().Column(col =>
+                            {
+                                col.Item().Text("INSTITUTO DE EDUCACIÓN SUPERIOR").FontSize(12).Bold().FontColor(AzulOficial);
+                                col.Item().Text("ACTA ACADÉMICA OFICIAL").FontSize(9).FontColor(Colors.Grey.Darken2);
+                            });
+
+                            row.RelativeItem().Column(col =>
+                            {
+                                col.Item().AlignRight().Text($"ACTA Nº: {datos.NumeroActa}").FontSize(12).Bold().FontColor(Colors.Red.Darken2);
+                                col.Item().AlignRight().Text($"Emisión: {datos.FechaEmision:dd/MM/yyyy HH:mm}").FontSize(8).Italic();
+                            });
+                        });
+
+                        // --- CONTENT ---
+                        page.Content().PaddingVertical(15).Column(col =>
+                        {
+                            col.Item().PaddingTop(20);
+
+                            // Párrafo Legal
+                            col.Item().Text(text =>
+                            {
+                                text.ParagraphSpacing(8);
+                                text.Span("Las autoridades del Instituto certifican a través del presente documento que el/la alumno/a ");
+                                text.Span(datos.AlumnoNombre.ToUpper()).Bold();
+                                text.Span(", Documento Nacional de Identidad N° ");
+                                text.Span(datos.DNI).Bold();
+                                text.Span(" y Legajo N° ");
+                                text.Span(datos.Legajo).Bold();
+                                text.Span(", correspondiente a la carrera ");
+                                text.Span(datos.CarreraNombre.ToUpper()).Bold();
+                                text.Span(", ha registrado la siguiente situación académica:");
+                            });
+
+                            // --- CUADRO DE DATOS ---
+                            col.Item().PaddingTop(20).PaddingBottom(20).Background(GrisClaro).Border(1).BorderColor(GrisBorde).Padding(15).Column(box =>
+                            {
+                                box.Spacing(8);
+                                box.Item().Row(r => { r.RelativeItem().Text("ASIGNATURA:").FontSize(9).Bold().FontColor(Colors.Grey.Darken2); r.RelativeItem(3).Text(datos.MateriaNombre.ToUpper()).FontSize(11).Bold(); });
+
+                                // 🚀 AQUÍ MOVIMOS EL NOMBRE DEL PROFESOR
+                                box.Item().Row(r => { r.RelativeItem().Text("DOCENTE A CARGO:").FontSize(9).Bold().FontColor(Colors.Grey.Darken2); r.RelativeItem(3).Text(datos.DocenteFirma.ToUpper()).FontSize(10).Bold(); });
+
+                                box.Item().Row(r => { r.RelativeItem().Text("INSTANCIA:").FontSize(9).Bold().FontColor(Colors.Grey.Darken2); r.RelativeItem(3).Text($"{datos.TipoActa.ToUpper()} ({datos.Detalle})").FontSize(10); });
+
+                                string notaStr = datos.Nota.HasValue ? datos.Nota.Value.ToString("0.##") : "S/C";
+                                box.Item().Row(r => { r.RelativeItem().Text("CALIFICACIÓN:").FontSize(9).Bold().FontColor(Colors.Grey.Darken2); r.RelativeItem(3).Text(notaStr).FontSize(12).Bold().FontColor(AzulOficial); });
+
+                                // Solo mostramos el estado si no es un parcial (opcional, como discutimos)
+                                if (!datos.TipoActa.Contains("Parcial", StringComparison.OrdinalIgnoreCase) && !datos.TipoActa.Contains("Recuperatorio", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    box.Item().Row(r => { r.RelativeItem().Text("ESTADO FINAL:").FontSize(9).Bold().FontColor(Colors.Grey.Darken2); r.RelativeItem(3).Text(datos.EstadoAcademico.ToUpper()).FontSize(11).Bold(); });
+                                }
+                            });
+
+                            col.Item().PaddingTop(10).Text("El presente documento reviste carácter de instrumento público interno. Cualquier alteración o falsificación del mismo será pasible de las sanciones correspondientes.").FontSize(8).Italic().FontColor(Colors.Grey.Darken2);
+
+                            // --- SELLO Y FIRMA ---
+                            string rutaImagen = ObtenerRutaSelloLocal();
+                            if (System.IO.File.Exists(rutaImagen))
+                            {
+                                var imagenBytes = System.IO.File.ReadAllBytes(rutaImagen);
+                                col.Item().PaddingTop(50).AlignRight().Width(4, Unit.Centimetre).Image(imagenBytes);
+                            }
+
+                            col.Item().PaddingTop(5).AlignRight().Column(c =>
+                            {
+                                c.Item().Text("___________________________").FontColor(Colors.Grey.Lighten1);
+                                // 🚀 DEVOLVEMOS LA FIRMA A SECRETARÍA
+                                c.Item().Text("SECRETARÍA ACADÉMICA").FontSize(10).Bold().FontColor(AzulOficial);
+                                c.Item().Text("Firma Autorizada").FontSize(8).Italic().FontColor(Colors.Grey.Medium);
+                            });
+                        });
+
+                        // --- FOOTER ---
+                        page.Footer().Column(f => {
+                            f.Item().LineHorizontal(1).LineColor(Colors.Black);
+                            f.Item().PaddingTop(5).Row(row =>
+                            {
+                                row.RelativeItem().Text("Acta generada y sellada digitalmente por Sistema EduSys.").FontSize(7).FontColor(Colors.Grey.Medium);
+                                row.RelativeItem().AlignRight().Text($"Identificador de Seguridad: {Guid.NewGuid().ToString().Substring(0, 12).ToUpper()}").FontSize(7).FontColor(Colors.Grey.Medium);
+                            });
+                        });
+                    });
+                });
+
+                return document.GeneratePdf();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error crítico al generar el Acta Individual en PDF.");
+                throw;
+            }
+        }
+
         private string ObtenerRutaSelloLocal()
         {
             string ruta = Path.Combine(_env.WebRootPath ?? "wwwroot", "images", "sello_edusys.png");

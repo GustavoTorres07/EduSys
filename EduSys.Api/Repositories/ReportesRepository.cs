@@ -244,5 +244,69 @@ namespace EduSys.Api.Repositories
                 })
                 .FirstOrDefaultAsync();
         }
+
+        public async Task<ActaIndividualDTO?> GetDatosActaIndividualAsync(int idActa)
+        {
+            // Cargamos el acta con TODAS las rutas posibles hacia el nombre del docente
+            var acta = await _context.ActaAlumnos
+                .AsNoTracking()
+                .Include(a => a.IdAlumnoNavigation).ThenInclude(al => al.IdUsuarioNavigation)
+                .Include(a => a.IdPlanMateriaNavigation).ThenInclude(pm => pm.IdMateriaNavigation)
+                .Include(a => a.IdPlanMateriaNavigation).ThenInclude(pm => pm.IdPlanNavigation).ThenInclude(p => p.IdCarreraNavigation)
+                // Ruta 1: Docente que cerró el acta directamente
+                .Include(a => a.IdDocenteFirmaNavigation).ThenInclude(d => d.IdUsuarioNavigation)
+                // Ruta 2: Docentes de la comisión (si es parcial/recu)
+                .Include(a => a.IdEvaluacionReferenciaNavigation)
+                    .ThenInclude(e => e.IdComisionNavigation)
+                        .ThenInclude(c => c.DocenteComisions)
+                            .ThenInclude(dc => dc.IdDocenteNavigation)
+                                .ThenInclude(d => d.IdUsuarioNavigation)
+                // Ruta 3: Docentes de la comisión (si es cierre de cursada)
+                .Include(a => a.IdInscripcionCursadaReferenciaNavigation)
+                    .ThenInclude(i => i.IdComisionNavigation)
+                        .ThenInclude(c => c.DocenteComisions)
+                            .ThenInclude(dc => dc.IdDocenteNavigation)
+                                .ThenInclude(d => d.IdUsuarioNavigation)
+                .FirstOrDefaultAsync(a => a.Id == idActa);
+
+            if (acta == null) return null;
+
+            // Lógica para determinar qué nombre mostrar en la firma
+            string nombreProfesor = "Secretaría Académica";
+
+            // Intentamos obtener el docente titular o el primero asignado
+            var docentesComision = acta.IdEvaluacionReferenciaNavigation?.IdComisionNavigation?.DocenteComisions
+                                ?? acta.IdInscripcionCursadaReferenciaNavigation?.IdComisionNavigation?.DocenteComisions;
+
+            if (acta.IdDocenteFirmaNavigation != null)
+            {
+                nombreProfesor = $"{acta.IdDocenteFirmaNavigation.IdUsuarioNavigation.Nombre} {acta.IdDocenteFirmaNavigation.IdUsuarioNavigation.Apellido}";
+            }
+            else if (docentesComision != null && docentesComision.Any())
+            {
+                var docentePrincipal = docentesComision.FirstOrDefault(dc => dc.RolDocente == "Titular")
+                                     ?? docentesComision.First();
+
+                nombreProfesor = $"{docentePrincipal.IdDocenteNavigation.IdUsuarioNavigation.Nombre} {docentePrincipal.IdDocenteNavigation.IdUsuarioNavigation.Apellido}";
+            }
+
+            return new ActaIndividualDTO
+            {
+                IdActa = acta.Id,
+                NumeroActa = acta.NumeroActa,
+                FechaEmision = acta.FechaEmision,
+                TipoActa = acta.TipoActa,
+                Detalle = acta.Detalle,
+                Nota = acta.Nota,
+                EstadoAcademico = acta.EstadoAcademico,
+                AlumnoNombre = $"{acta.IdAlumnoNavigation.IdUsuarioNavigation.Nombre} {acta.IdAlumnoNavigation.IdUsuarioNavigation.Apellido}",
+                DNI = acta.IdAlumnoNavigation.IdUsuarioNavigation.Dni,
+                Legajo = acta.IdAlumnoNavigation.Legajo,
+                MateriaNombre = acta.IdPlanMateriaNavigation.IdMateriaNavigation.Nombre ?? "S/D",
+                CarreraNombre = acta.IdPlanMateriaNavigation.IdPlanNavigation.IdCarreraNavigation.Nombre ?? "S/D",
+                Sede = acta.IdAlumnoNavigation.IdSedeNavigation?.Nombre ?? "Sede Central",
+                DocenteFirma = nombreProfesor // <--- Aquí pasamos el nombre detectado
+            };
+        }
     }
 }
