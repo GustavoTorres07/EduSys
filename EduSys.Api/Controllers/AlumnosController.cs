@@ -2,6 +2,7 @@
 using EduSys.Shared.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace EduSys.Api.Controllers
 {
@@ -97,6 +98,31 @@ namespace EduSys.Api.Controllers
                 return NotFound(new { message = "No se encontró un perfil de alumno asociado a este usuario." });
 
             return Ok(alumnoDto);
+        }
+
+        [HttpGet("miperfil")]
+        // Solo [Authorize] heredado — cualquier usuario autenticado puede pedir SU propio perfil
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(AlumnoRequestDTO))]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<AlumnoRequestDTO>> GetMiPerfil()
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                              ?? User.FindFirst("sub")?.Value;
+
+            if (!int.TryParse(userIdClaim, out int idUsuario))
+                return Unauthorized();
+
+            // Primero resolvemos el Id de alumno desde el idUsuario
+            var alumnoLigero = await _alumnoRepo.GetByUsuarioAsync(idUsuario);
+            if (alumnoLigero == null)
+                return NotFound(new { message = "No se encontró un perfil de alumno para este usuario." });
+
+            // Luego traemos el detalle completo
+            var alumno = await _alumnoRepo.GetByIdAsync(alumnoLigero.Id);
+            if (alumno == null)
+                return NotFound();
+
+            return Ok(alumno);
         }
     }
 }

@@ -11,5 +11,6 @@ namespace EduSys.Web.Services.Interfaces
 
         // 🚀 CORRECCIÓN: Le quitamos el "int idUsuario" porque el Backend lo saca del Token
         Task<List<AsistenciaMateriaDTO>> GetMisAsistenciasAsync();
+        Task<List<InscripcionFinalDTO>> GetMisInscripcionesFinalesAsync();
     }
 }

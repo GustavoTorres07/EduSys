@@ -4,6 +4,7 @@
 @using EduSys.Shared.DTOs
 @using EduSys.Web.Services.Interfaces
 @using EduSys.Web.Auth
+@using EduSys.Web.Pages.Shared.Dialogos
 @using Microsoft.AspNetCore.Components.Authorization
 @using Blazored.LocalStorage
 
@@ -12,75 +13,147 @@
 @inject IJSRuntime JSRuntime
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ILocalStorageService LocalStorage
-@inject ISnackbar Snackbar 
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
 
 <style>
     body, html {
-        margin: 0; padding: 0; height: 100%; overflow: hidden; background-color: white !important;
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow: hidden;
+        background-color: white !important;
     }
 
     :root {
-        --color-steel-blue: #456990; --color-teal: #49BEAA; --color-salmon: #EF767A;
-        --color-mint: #49DCB1; --color-mustard: #EEB868; --color-text-dark: #1a202c;
-        --color-text-muted: #64748b; --color-border: #cbd5e1;
+        --color-steel-blue: #456990;
+        --color-teal: #49BEAA;
+        --color-salmon: #EF767A;
+        --color-mint: #49DCB1;
+        --color-mustard: #EEB868;
+        --color-text-dark: #1a202c;
+        --color-text-muted: #64748b;
+        --color-border: #cbd5e1;
     }
 
     .login-wrapper {
-        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; display: flex; background-color: white;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        display: flex;
+        background-color: white;
     }
 
     .brand-section {
-        flex: 1; background: linear-gradient(135deg, var(--color-steel-blue) 0%, #2A4565 100%);
-        display: flex; flex-direction: column; justify-content: center; align-items: center;
-        color: white; padding: 4rem; position: relative;
+        flex: 1;
+        background: linear-gradient(135deg, var(--color-steel-blue) 0%, #2A4565 100%);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        color: white;
+        padding: 4rem;
+        position: relative;
     }
 
-    .brand-section::before {
-        content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-        background-image: radial-gradient(circle at 10% 90%, rgba(255,255,255,0.05) 0%, transparent 40%), radial-gradient(circle at 90% 10%, rgba(73, 190, 170, 0.15) 0%, transparent 40%);
-        pointer-events: none;
-    }
+        .brand-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: radial-gradient(circle at 10% 90%, rgba(255,255,255,0.05) 0%, transparent 40%), radial-gradient(circle at 90% 10%, rgba(73, 190, 170, 0.15) 0%, transparent 40%);
+            pointer-events: none;
+        }
 
     .form-section {
-        flex: 1; display: flex; flex-direction: column; justify-content: center;
-        align-items: center; padding: 4rem; background-color: white !important; overflow-y: auto;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 4rem;
+        background-color: white !important;
+        overflow-y: auto;
     }
 
-    .form-container { width: 100%; max-width: 420px; }
-
-    .custom-input { margin-bottom: 1.5rem; position: relative; }
-
-    .custom-input input, .custom-input .mud-input-slot, .custom-input .mud-input-root input {
-        color: var(--color-text-dark) !important;
-        -webkit-text-fill-color: var(--color-text-dark) !important;
-        font-weight: 600 !important; background-color: transparent !important;
+    .form-container {
+        width: 100%;
+        max-width: 420px;
     }
 
-    .custom-input .mud-input-label { color: var(--color-text-muted) !important; background-color: white !important; padding: 0 4px; }
-    .custom-input .mud-input-control.mud-input-focused .mud-input-label { color: var(--color-steel-blue) !important; }
-    .custom-input .mud-input-outlined-border { border-color: var(--color-border) !important; }
-    .custom-input .mud-input-adornment-icon, .custom-input .mud-icon-root { color: var(--color-text-muted) !important; }
+    .custom-input {
+        margin-bottom: 1.5rem;
+        position: relative;
+    }
+
+        .custom-input input, .custom-input .mud-input-slot, .custom-input .mud-input-root input {
+            color: var(--color-text-dark) !important;
+            -webkit-text-fill-color: var(--color-text-dark) !important;
+            font-weight: 600 !important;
+            background-color: transparent !important;
+        }
+
+        .custom-input .mud-input-label {
+            color: var(--color-text-muted) !important;
+            background-color: white !important;
+            padding: 0 4px;
+        }
+
+        .custom-input .mud-input-control.mud-input-focused .mud-input-label {
+            color: var(--color-steel-blue) !important;
+        }
+
+        .custom-input .mud-input-outlined-border {
+            border-color: var(--color-border) !important;
+        }
+
+        .custom-input .mud-input-adornment-icon, .custom-input .mud-icon-root {
+            color: var(--color-text-muted) !important;
+        }
 
     .btn-primary-custom {
-        background-color: var(--color-steel-blue) !important; color: white !important;
-        font-weight: 700; letter-spacing: 1px; box-shadow: 0 4px 14px rgba(69, 105, 144, 0.3);
+        background-color: var(--color-steel-blue) !important;
+        color: white !important;
+        font-weight: 700;
+        letter-spacing: 1px;
+        box-shadow: 0 4px 14px rgba(69, 105, 144, 0.3);
         transition: transform 0.2s;
     }
 
-    .btn-primary-custom:hover:not(:disabled) {
-        background-color: #355270 !important; transform: translateY(-2px);
+        .btn-primary-custom:hover:not(:disabled) {
+            background-color: #355270 !important;
+            transform: translateY(-2px);
+        }
+
+    .fade-in {
+        animation: fadeIn 0.5s ease-out;
     }
 
-    .fade-in { animation: fadeIn 0.5s ease-out; }
-
     @@keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 
     @@media (max-width: 960px) {
-        .brand-section { display: none; }
-        .form-section { flex: 1; padding: 2rem; }
+        .brand-section {
+            display: none;
+        }
+
+        .form-section {
+            flex: 1;
+            padding: 2rem;
+        }
     }
 </style>
 
@@ -111,22 +184,22 @@
                     <EditForm Model="@loginModel" OnValidSubmit="ProcesarLogin">
                         <DataAnnotationsValidator />
                         <div class="custom-input">
-                            <MudTextField @bind-Value="loginModel.Email" 
+                            <MudTextField @bind-Value="loginModel.Email"
                                           For="@(() => loginModel.Email)"
-                                          Label="Correo Institucional" 
-                                          Variant="Variant.Outlined" 
-                                          Adornment="Adornment.Start" 
-                                          AdornmentIcon="@Icons.Material.Filled.Email" 
+                                          Label="Correo Institucional"
+                                          Variant="Variant.Outlined"
+                                          Adornment="Adornment.Start"
+                                          AdornmentIcon="@Icons.Material.Filled.Email"
                                           Disabled="@procesando" />
                         </div>
                         <div class="custom-input">
-                            <MudTextField @bind-Value="loginModel.Clave" 
+                            <MudTextField @bind-Value="loginModel.Clave"
                                           For="@(() => loginModel.Clave)"
-                                          Label="Contraseña" 
-                                          Variant="Variant.Outlined" 
-                                          InputType="@PasswordInput" 
-                                          Adornment="Adornment.Start" 
-                                          AdornmentIcon="@Icons.Material.Filled.Lock" 
+                                          Label="Contraseña"
+                                          Variant="Variant.Outlined"
+                                          InputType="@PasswordInput"
+                                          Adornment="Adornment.Start"
+                                          AdornmentIcon="@Icons.Material.Filled.Lock"
                                           Disabled="@procesando" />
                             <div style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; z-index: 10;" @onclick="TogglePasswordVisibility">
                                 <MudIcon Icon="@PasswordInputIcon" Size="Size.Medium" Style="color: #495057;" />
@@ -143,7 +216,7 @@
                             </div>
                         </div>
 
-                        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" FullWidth="true" Size="Size.Large" Class="btn-primary-custom py-3 rounded-lg mb-8" Disabled="@procesando">
+                        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" FullWidth="true" Size="Size.Large" Class="btn-primary-custom py-3 rounded-lg mb-4" Disabled="@procesando">
                             @if (procesando)
                             {
                                 <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Surface" Class="mr-2" />
@@ -154,6 +227,10 @@
                                 <MudText>INGRESAR</MudText>
                             }
                         </MudButton>
+
+                        <div class="d-flex justify-center mb-6">
+                            <MudLink OnClick="AbrirSoportePublico" Underline="Underline.Hover" Style="color: var(--color-text-muted); font-weight: 500; font-size: 0.8rem; cursor: pointer;">¿Problemas? Contactar Soporte</MudLink>
+                        </div>
 
                         <MudDivider Class="mb-6" />
                         <div class="d-flex flex-column align-center">
@@ -172,19 +249,19 @@
                     <EditForm Model="@emailRecuperacionModel" OnValidSubmit="EnviarCorreoRecuperacion">
                         <DataAnnotationsValidator />
                         <div class="custom-input">
-                            <MudTextField @bind-Value="emailRecuperacion" 
-                                          Label="Correo Institucional" 
-                                          Variant="Variant.Outlined" 
-                                          Adornment="Adornment.Start" 
-                                          AdornmentIcon="@Icons.Material.Filled.MarkEmailRead" 
-                                          Disabled="@procesando" 
+                            <MudTextField @bind-Value="emailRecuperacion"
+                                          Label="Correo Institucional"
+                                          Variant="Variant.Outlined"
+                                          Adornment="Adornment.Start"
+                                          AdornmentIcon="@Icons.Material.Filled.MarkEmailRead"
+                                          Disabled="@procesando"
                                           Required="true"
                                           RequiredError="El correo es requerido" />
                         </div>
                         <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" FullWidth="true" Size="Size.Large" Class="btn-primary-custom py-3 rounded-lg mt-4" Disabled="@procesando">
                             @if (procesando)
                             {
-                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Surface" Class="mr-2"/>
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Surface" Class="mr-2" />
                                 <MudText>ENVIANDO...</MudText>
                             }
                             else
@@ -201,14 +278,13 @@
 </div>
 
 @code {
-    // Capturamos el returnUrl de la query string (ej: /?returnUrl=alumno/mis-notas)
     [SupplyParameterFromQuery(Name = "returnUrl")]
     public string? ReturnUrl { get; set; }
 
     private LoginDTO loginModel = new LoginDTO();
     private string emailRecuperacion = "";
-    private object emailRecuperacionModel = new object(); 
-    
+    private object emailRecuperacionModel = new object();
+
     private bool procesando = false;
     private int vistaActual = 0;
     private bool jsReady = false;
@@ -243,6 +319,13 @@
 
     void CambiarVista(int vista) { vistaActual = vista; procesando = false; }
 
+    private void AbrirSoportePublico()
+    {
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true };
+        var parameters = new DialogParameters { ["EsPublico"] = true };
+        DialogService.Show<DialogoNuevoTicket>("Solicitar Soporte Técnico", parameters, options);
+    }
+
     private async Task ProcesarLogin()
     {
         procesando = true;
@@ -269,7 +352,6 @@
 
                 await Task.Delay(500);
 
-                // ✅ Redirección segura: valida el returnUrl contra el rol del usuario
                 var destino = ResolverDestino(sesion.Rol, sesion.DebeCambiarPass, ReturnUrl);
                 Navigation.NavigateTo(destino, forceLoad: true);
             }
@@ -291,37 +373,27 @@
         }
     }
 
-/// <summary>
-    /// Determina a dónde redirigir al usuario tras el login.
-    /// Si hay un returnUrl válido, lo usa y delega la seguridad a la página de destino.
-    /// De lo contrario → redirige al dashboard propio del rol estructural.
-    /// </summary>
     private string ResolverDestino(string rol, bool debeCambiarPass, string? returnUrl)
     {
-        // 1. Cambio de contraseña obligatorio tiene prioridad absoluta
         if (debeCambiarPass)
             return "/cambiar-clave";
 
-        // 2. Si hay un returnUrl, confiamos en él y redirigimos.
-        // La etiqueta [Authorize(Roles="...")] de la página destino se encargará de 
-        // bloquear el acceso si el usuario no tiene el permiso granular adecuado.
         if (!string.IsNullOrWhiteSpace(returnUrl))
         {
             var rutaLimpia = Uri.UnescapeDataString(returnUrl).TrimStart('/');
             return "/" + rutaLimpia;
         }
 
-        // 3. Dashboard por defecto para cada rol estructural base
+        // 🔥 NUEVA REDIRECCIÓN: Ahora todos apuntan al Dashboard central, excepto Coordinador
         var dashboards = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
-            ["Alumno"]               = "/dashboard-alumno?login=exito",
-            ["Docente"]              = "/dashboard-docente?login=exito",
-            ["Administrador"]        = "/admin/dashboard?login=exito",
-            ["Secretaria Academica"] = "/?login=exito",
-            ["Coordinador"]          = "/Home?login=exito"
+            ["Alumno"] = "/dashboard-alumno?login=exito",
+            ["Docente"] = "/dashboard-docente?login=exito",
+            ["Administrador"] = "/admin/dashboard?login=exito",
+            ["Secretaria Academica"] = "/admin/dashboard?login=exito",
+            ["Coordinador"] = "/Home?login=exito" // Puedes cambiarlo a /dashboard si en el futuro le haces uno
         };
 
-        // Si el rol estructural no está en la lista, lo mandamos al Home por defecto.
         return dashboards.TryGetValue(rol, out var db) ? db : "/Home?login=exito";
     }
 
@@ -359,13 +431,13 @@
         }
     }
 
-    private async Task MostrarAlerta(string t, string ti, string tx) 
-    { 
-        try 
-        { 
-            if (!jsReady) await Task.Delay(200); 
-            await JSRuntime.InvokeVoidAsync("mostrarAlerta", t, ti, tx); 
-        } 
-        catch { } 
+    private async Task MostrarAlerta(string t, string ti, string tx)
+    {
+        try
+        {
+            if (!jsReady) await Task.Delay(200);
+            await JSRuntime.InvokeVoidAsync("mostrarAlerta", t, ti, tx);
+        }
+        catch { }
     }
 }

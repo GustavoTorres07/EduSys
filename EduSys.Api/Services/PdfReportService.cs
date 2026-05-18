@@ -536,6 +536,107 @@ namespace EduSys.Api.Services
             }
         }
 
+        public byte[] GenerarCertificadoAlumnoRegular(CertificadoAlumnoRegularDTO datos)
+        {
+            if (datos == null) throw new ArgumentNullException(nameof(datos));
+
+            try
+            {
+                var AzulOficial = "#1e3a58";
+
+                var document = Document.Create(container =>
+                {
+                    container.Page(page =>
+                    {
+                        page.Size(PageSizes.A4);
+                        page.Margin(2, Unit.Centimetre);
+                        page.PageColor(Colors.White);
+                        page.DefaultTextStyle(x => x.FontSize(11).FontFamily("Arial").FontColor(Colors.Black));
+
+                        // --- HEADER ---
+                        page.Header().Row(row =>
+                        {
+                            row.RelativeItem().Column(col =>
+                            {
+                                col.Item().Text(datos.InstitucionNombre).FontSize(14).Bold().FontColor(AzulOficial);
+                                col.Item().Text("DEPARTAMENTO DE ALUMNOS").FontSize(9).FontColor(Colors.Grey.Darken2);
+                            });
+
+                            row.RelativeItem().Column(col =>
+                            {
+                                col.Item().AlignRight().Text("CERTIFICADO DE ALUMNO REGULAR").FontSize(12).Bold().Underline();
+                                col.Item().AlignRight().Text($"Emisión: {datos.FechaEmision:dd/MM/yyyy}").FontSize(9).Italic();
+                            });
+                        });
+
+                        // --- CONTENT ---
+                        page.Content().PaddingVertical(1, Unit.Centimetre).Column(col =>
+                        {
+                            col.Item().PaddingTop(40).Text(text =>
+                            {
+                                text.ParagraphSpacing(10);
+                                text.Span("Por medio de la presente, la autoridad que suscribe certifica que el/la alumno/a ");
+                                text.Span(datos.AlumnoNombre.ToUpper()).Bold();
+                                text.Span(", Documento Nacional de Identidad N° ");
+                                text.Span(datos.Dni).Bold();
+                                text.Span(" y Legajo N° ");
+                                text.Span(datos.Legajo).Bold();
+                                text.Span(", es ");
+                                text.Span("ALUMNO/A REGULAR").Bold().Underline();
+                                text.Span(" de la carrera ");
+                                text.Span(datos.Carrera.ToUpper()).Bold();
+                                text.Span(" que se dicta en esta Institución, correspondiente al ciclo lectivo ");
+                                text.Span(datos.PeriodoAcademico).Bold();
+                                text.Span(".\n\n");
+
+                                text.Span("El presente certificado se expide a pedido de la parte interesada en la ciudad de ");
+                                text.Span(datos.Ciudad);
+                                text.Span(", provincia de ");
+                                text.Span(datos.Provincia);
+                                text.Span($", a los {datos.FechaEmision.Day} días del mes de {datos.FechaEmision.ToString("MMMM", new System.Globalization.CultureInfo("es-ES"))} de {datos.FechaEmision.Year}, para ser presentado ante quien corresponda.");
+                            });
+
+                            // --- SELLO Y FIRMA ---
+                            string rutaImagen = ObtenerRutaSelloLocal();
+                            if (System.IO.File.Exists(rutaImagen))
+                            {
+                                var imagenBytes = System.IO.File.ReadAllBytes(rutaImagen);
+                                col.Item().PaddingTop(60).AlignRight().Width(4, Unit.Centimetre).Image(imagenBytes);
+                            }
+                            else
+                            {
+                                col.Item().PaddingTop(80); // Espacio en blanco si no encuentra el sello
+                            }
+
+                            col.Item().PaddingTop(5).AlignRight().Column(c =>
+                            {
+                                c.Item().Text("___________________________").FontColor(Colors.Grey.Lighten1);
+                                c.Item().Text("SECRETARÍA ACADÉMICA").FontSize(10).Bold().FontColor(AzulOficial);
+                                c.Item().Text("Firma Autorizada").FontSize(8).Italic().FontColor(Colors.Grey.Medium);
+                            });
+                        });
+
+                        // --- FOOTER ---
+                        page.Footer().Column(f => {
+                            f.Item().LineHorizontal(1).LineColor(Colors.Black);
+                            f.Item().PaddingTop(5).Row(row =>
+                            {
+                                row.RelativeItem().Text("Documento generado automáticamente por sistema EduSys.").FontSize(7).FontColor(Colors.Grey.Medium);
+                                row.RelativeItem().AlignRight().Text($"Identificador: {Guid.NewGuid().ToString().Substring(0, 12).ToUpper()}").FontSize(7).FontColor(Colors.Grey.Medium);
+                            });
+                        });
+                    });
+                });
+
+                return document.GeneratePdf();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error crítico al generar el Certificado de Alumno Regular.");
+                throw;
+            }
+        }
+
         private string ObtenerRutaSelloLocal()
         {
             string ruta = Path.Combine(_env.WebRootPath ?? "wwwroot", "images", "sello_edusys.png");

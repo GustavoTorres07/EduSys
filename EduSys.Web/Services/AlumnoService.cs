@@ -30,15 +30,15 @@ namespace EduSys.Web.Services
             }
         }
 
-        public async Task<AlumnoRequestDTO?> GetByIdAsync(int id)
+        public async Task<AlumnoRequestDTO?> GetMiPerfilAsync()
         {
             try
             {
-                return await _http.GetFromJsonAsync<AlumnoRequestDTO>($"api/alumnos/{id}");
+                return await _http.GetFromJsonAsync<AlumnoRequestDTO>("api/alumnos/miperfil");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error al obtener la información detallada del alumno con ID {Id}.", id);
+                _logger.LogError(ex, "Error al obtener el perfil propio del alumno autenticado.");
                 return null;
             }
         }
@@ -83,6 +83,20 @@ namespace EduSys.Web.Services
             {
                 _logger.LogError(ex, "Excepción crítica al intentar editar el alumno con ID {Id}.", dto.IdAlumno);
                 return false;
+            }
+        }
+
+        public async Task<AlumnoRequestDTO?> GetByIdAsync(int id)
+        {
+            try
+            {
+                // Llama al endpoint GET api/alumnos/{id}
+                return await _http.GetFromJsonAsync<AlumnoRequestDTO>($"api/alumnos/{id}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al obtener la ficha del alumno con ID {Id}.", id);
+                return null;
             }
         }
 

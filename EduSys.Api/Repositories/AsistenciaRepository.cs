@@ -82,11 +82,37 @@ namespace EduSys.Api.Repositories
             }
         }
 
+        // En AsistenciaRepository.cs, reemplaza el método GuardarGrillaAsync por este:
+
         public async Task<bool> GuardarGrillaAsync(GuardarAsistenciaRequestDTO request)
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
+                // 1. OBTENER LAS INSCRIPCIONES DE LA COMISIÓN (Para saber qué borrar)
+                var idsInscripciones = await _context.InscripcionCursada
+                    .Where(i => i.IdComision == request.IdComision)
+                    .Select(i => i.Id)
+                    .ToListAsync();
+
+                // 2. ELIMINAR COLUMNAS (Fechas específicas)
+                if (request.FechasAEliminar != null && request.FechasAEliminar.Any() && idsInscripciones.Any())
+                {
+                    // Convertir DateTime a DateOnly para la BD
+                    var fechasSql = request.FechasAEliminar.Select(f => DateOnly.FromDateTime(f)).ToList();
+
+                    // Buscar todas las asistencias de esa comisión que coincidan con las fechas a borrar
+                    var asistenciasABorrar = await _context.Asistencia
+                        .Where(a => idsInscripciones.Contains(a.IdInscripcionCursada) && fechasSql.Contains(a.Fecha))
+                        .ToListAsync();
+
+                    if (asistenciasABorrar.Any())
+                    {
+                        _context.Asistencia.RemoveRange(asistenciasABorrar);
+                    }
+                }
+
+                // 3. GUARDAR / ACTUALIZAR EL RESTO DE ASISTENCIAS
                 foreach (var dto in request.Asistencias)
                 {
                     if (dto.Id == 0) // Es un registro nuevo
@@ -94,7 +120,6 @@ namespace EduSys.Api.Repositories
                         var nuevaAsistencia = new Asistencia
                         {
                             IdInscripcionCursada = dto.IdInscripcionCursada,
-                            // Pasando de DateTime (Frontend) a DateOnly (SQL Database)
                             Fecha = DateOnly.FromDateTime(dto.Fecha),
                             EstaPresente = dto.EstaPresente,
                             EsJustificado = dto.EsJustificado,
@@ -112,7 +137,6 @@ namespace EduSys.Api.Repositories
                             asistenciaExistente.EsJustificado = dto.EsJustificado;
                             asistenciaExistente.Observacion = dto.Observacion;
 
-                            // Solo actualiza la URL si viene una nueva, para no borrar la anterior por error
                             if (!string.IsNullOrWhiteSpace(dto.UrlCertificado))
                             {
                                 asistenciaExistente.UrlCertificado = dto.UrlCertificado;

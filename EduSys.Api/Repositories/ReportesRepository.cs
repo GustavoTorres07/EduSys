@@ -156,16 +156,25 @@ namespace EduSys.Api.Repositories
 
             int idPlan = alumno.IdPlanActual.Value;
 
-            // 🚀 PARALELISMO: Ejecutar consultas pesadas al mismo tiempo
-            var planMateriasTask = _context.PlanMateria.AsNoTracking().Include(pm => pm.IdMateriaNavigation).Where(pm => pm.IdPlan == idPlan).ToListAsync();
-            var cursadasTask = _context.InscripcionCursada.AsNoTracking().Include(ic => ic.IdComisionNavigation).Where(ic => ic.IdAlumno == idAlumno && ic.Estado != "Baja").ToListAsync();
-            var finalesTask = _context.InscripcionFinals.AsNoTracking().Include(f => f.IdMesaFinalNavigation).Where(f => f.IdAlumno == idAlumno && f.Estado != "Anulado").ToListAsync();
+            // 🚀 CORRECCIÓN: Ejecución secuencial. 
+            // EF Core NO soporta Task.WhenAll() usando la misma instancia de _context.
+            var planMaterias = await _context.PlanMateria
+                .AsNoTracking()
+                .Include(pm => pm.IdMateriaNavigation)
+                .Where(pm => pm.IdPlan == idPlan)
+                .ToListAsync();
 
-            await Task.WhenAll(planMateriasTask, cursadasTask, finalesTask);
+            var cursadas = await _context.InscripcionCursada
+                .AsNoTracking()
+                .Include(ic => ic.IdComisionNavigation)
+                .Where(ic => ic.IdAlumno == idAlumno && ic.Estado != "Baja")
+                .ToListAsync();
 
-            var planMaterias = planMateriasTask.Result;
-            var cursadas = cursadasTask.Result;
-            var finales = finalesTask.Result;
+            var finales = await _context.InscripcionFinals
+                .AsNoTracking()
+                .Include(f => f.IdMesaFinalNavigation)
+                .Where(f => f.IdAlumno == idAlumno && f.Estado != "Anulado")
+                .ToListAsync();
 
             var historia = new HistoriaAcademicaDTO
             {
@@ -223,7 +232,6 @@ namespace EduSys.Api.Repositories
 
             return historia;
         }
-
         public async Task<ConstanciaFinalDTO?> GetDatosConstanciaFinalAsync(int idInscripcion, int idAlumno)
         {
             return await _context.InscripcionFinals

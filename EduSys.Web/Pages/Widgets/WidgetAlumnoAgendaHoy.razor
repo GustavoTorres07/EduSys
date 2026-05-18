@@ -1,0 +1,268 @@
+﻿@using EduSys.Shared.DTOs
+@using EduSys.Web.Services.Interfaces
+@using System.Security.Claims
+@using System.Globalization
+
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IAlumnoService AlumnoService
+@inject IPeriodoService PeriodoService
+@inject IReportesService ReportesService
+@inject NavigationManager Nav
+
+<style>
+    .waa-agenda {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(30, 58, 88, 0.02);
+        font-family: 'Inter', sans-serif;
+    }
+
+    .waa-agenda-head {
+        padding: 1.5rem;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .waa-agenda-title {
+        font-size: 1.1rem;
+        font-weight: 800;
+        color: #0f172a;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .waa-day-badge {
+        background: #1e3a58;
+        color: white;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .waa-agenda-list {
+        padding: 1.5rem;
+        flex-grow: 1;
+        overflow-y: auto;
+    }
+
+        .waa-agenda-list::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .waa-agenda-list::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+    .clase-item {
+        display: flex;
+        gap: 1rem;
+        position: relative;
+        margin-bottom: 1.5rem;
+    }
+
+        .clase-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .clase-item:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            left: 24px;
+            top: 50px;
+            bottom: -20px;
+            width: 2px;
+            background: #e2e8f0;
+        }
+
+    .time-col {
+        width: 50px;
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 0.5rem 0;
+        z-index: 1;
+        height: 50px;
+    }
+
+    .time-start {
+        font-size: 0.8rem;
+        font-weight: 800;
+        color: #1e293b;
+        line-height: 1;
+    }
+
+    .time-end {
+        font-size: 0.6rem;
+        font-weight: 600;
+        color: #64748b;
+        margin-top: 2px;
+    }
+
+    .info-col {
+        flex: 1;
+        background: #f8fafc;
+        border: 1px solid #f1f5f9;
+        border-radius: 12px;
+        padding: 1rem;
+        transition: all 0.2s;
+        border-left: 4px solid #456990;
+        cursor: pointer;
+    }
+
+        .info-col:hover {
+            background: #ffffff;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            transform: translateX(4px);
+        }
+
+    .c-mat {
+        font-weight: 800;
+        font-size: 0.9rem;
+        color: #0f172a;
+        margin-bottom: 4px;
+    }
+
+    .c-det {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.75rem;
+        color: #64748b;
+        font-weight: 500;
+    }
+
+    /* Clase EN VIVO */
+    .clase-item.is-live .info-col {
+        border-left-color: #10b981;
+        background: #f0fdf4;
+        border-color: #a7f3d0;
+    }
+
+    .clase-item.is-live .time-col {
+        background: #10b981;
+        border-color: #10b981;
+        color: white;
+    }
+
+    .clase-item.is-live .time-start, .clase-item.is-live .time-end {
+        color: white;
+    }
+
+    .live-pulse-dot {
+        width: 8px;
+        height: 8px;
+        background: #10b981;
+        border-radius: 50%;
+        display: inline-block;
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+        animation: pulse-live 1.5s infinite;
+        margin-right: 6px;
+    }
+
+    @@keyframes pulse-live {
+        70% {
+            box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+        }
+
+        100% {
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+        }
+    }
+</style>
+
+<div class="waa-agenda">
+    <div class="waa-agenda-head">
+        <div class="waa-agenda-title"><MudIcon Icon="@Icons.Material.Filled.Today" Style="color: #49BEAA;" /> Agenda de Hoy</div>
+        <div class="waa-day-badge">@diaSemanaActual</div>
+    </div>
+
+    <div class="waa-agenda-list">
+        @if (cargando)
+        {
+            <div class="d-flex justify-center py-8"><MudProgressCircular Color="Color.Primary" Indeterminate="true" /></div>
+        }
+        else if (clasesDeHoy.Any())
+        {
+            @foreach (var cl in clasesDeHoy)
+            {
+                var now = DateTime.Now.TimeOfDay;
+                bool isLive = now >= cl.HoraInicio && now <= cl.HoraFin;
+
+                <div class="clase-item @(isLive ? "is-live" : "")" @onclick='() => Nav.NavigateTo("/horarios-alumno")'>
+                    <div class="time-col">
+                        <span class="time-start">@cl.HoraInicio.ToString(@"hh\:mm")</span>
+                        <span class="time-end">@cl.HoraFin.ToString(@"hh\:mm")</span>
+                    </div>
+                    <div class="info-col">
+                        <div class="d-flex justify-space-between align-start">
+                            <div class="c-mat">@cl.Materia</div>
+                            @if (isLive)
+                            {
+                                <span style="font-size: 0.65rem; font-weight: 800; color: #059669;"><span class="live-pulse-dot"></span>EN CURSO</span>
+                            }
+                        </div>
+                        <div class="d-flex align-center gap-3 mt-1">
+                            <div class="c-det"><MudIcon Icon="@Icons.Material.Outlined.MeetingRoom" Style="font-size: 14px; color: #456990;" /> @(string.IsNullOrEmpty(cl.Aula) ? "A Conf." : cl.Aula)</div>
+                            <div class="c-det"><MudIcon Icon="@Icons.Material.Outlined.Groups" Style="font-size: 14px; color: #456990;" /> Com. @cl.ComisionCodigo</div>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="d-flex flex-column align-center justify-center h-100 text-center pa-6">
+                <MudIcon Icon="@Icons.Material.Outlined.Celebration" Style="font-size: 3rem; color: #cbd5e1; margin-bottom: 10px;" />
+                <MudText Typo="Typo.body1" Style="font-weight: 700; color: #475569;">¡Día libre!</MudText>
+                <MudText Typo="Typo.body2" Style="color: #94a3b8;">No tienes cursadas programadas para hoy.</MudText>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private bool cargando = true;
+    private List<HorarioVisualizacionDTO> clasesDeHoy = new();
+    private string diaSemanaActual = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            diaSemanaActual = DateTime.Now.ToString("dddd", new CultureInfo("es-ES"));
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var userIdStr = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? authState.User.FindFirst("sub")?.Value;
+
+            if (int.TryParse(userIdStr, out int idUsuario))
+            {
+                var alumno = await AlumnoService.GetByUsuarioIdAsync(idUsuario);
+                var periodos = await PeriodoService.GetAllAsync();
+                var pActivo = periodos.FirstOrDefault(p => p.Activo);
+
+                if (alumno != null && pActivo != null)
+                {
+                    var misMaterias = await ReportesService.GetHorariosCursandoAsync(pActivo.Id, alumno.Id);
+                    clasesDeHoy = misMaterias
+                        .Where(h => h.Dia.Trim().Equals(diaSemanaActual, StringComparison.OrdinalIgnoreCase))
+                        .OrderBy(h => h.HoraInicio).ToList();
+                }
+            }
+        }
+        finally { cargando = false; }
+    }
+}

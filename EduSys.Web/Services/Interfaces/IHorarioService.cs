@@ -10,5 +10,6 @@ namespace EduSys.Web.Services.Interfaces
         Task<List<HorarioVisualizacionDTO>> GetVisualizacionAsync(int idPeriodo, int idCarrera, int idSede);
         Task<byte[]> DescargarPdfAsync(int idPeriodo, int idCarrera, int idSede);
         Task<List<HorarioVisualizacionDTO>> GetHorariosCursandoAsync(int idPeriodo, int idAlumno);
+        Task<List<HorarioVisualizacionDTO>> GetMisHorariosAsync();
     }
 }

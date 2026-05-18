@@ -1,0 +1,343 @@
+﻿@page "/dashboard"
+@page "/dashboard-alumno"
+@page "/dashboard-docente"
+@page "/admin/dashboard"
+
+@using Microsoft.AspNetCore.Authorization
+@using EduSys.Web.Utils
+@using System.Security.Claims
+@using System.Globalization
+
+@attribute [Authorize]
+
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Nav
+@implements IDisposable
+
+<style>
+    @@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600;700&display=swap');
+
+    :root {
+        --blue: #1e3a58;
+        --blue-light: #344f6e;
+        --teal: #49BEAA;
+        --mint: #49DCB1;
+        --amber: #EEB868;
+        --coral: #EF767A;
+        --bg: #f4f7fb;
+        --surface: #ffffff;
+        --border: #e2e8f0;
+        --text: #0f172a;
+        --text-mid: #475569;
+        --text-soft: #94a3b8;
+        --serif: 'Source Serif 4', Georgia, serif;
+        --ui: 'Inter', system-ui, sans-serif;
+        --r: 12px;
+        --sh-sm: 0 2px 4px rgba(30, 58, 88, 0.04);
+        --sh-md: 0 10px 25px rgba(30, 58, 88, 0.08);
+    }
+
+    .db {
+        font-family: var(--ui);
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+        padding-bottom: 3rem;
+    }
+
+    /* ── HEADER ANIMADO (MESH GRADIENT) ──────────────────────────────────── */
+    .db-hero {
+        background: linear-gradient(120deg, #ffffff 0%, #f8fafc 100%);
+        border-bottom: 1px solid var(--border);
+        padding: 2.5rem 3rem;
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: var(--sh-sm);
+        margin-bottom: 2rem;
+    }
+
+        .db-hero::before, .db-hero::after {
+            content: '';
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(60px);
+            opacity: 0.4;
+            animation: float 10s infinite alternate;
+            z-index: 0;
+        }
+
+        .db-hero::before {
+            width: 300px;
+            height: 300px;
+            background: var(--teal);
+            top: -100px;
+            right: 5%;
+        }
+
+        .db-hero::after {
+            width: 400px;
+            height: 400px;
+            background: var(--blue);
+            bottom: -150px;
+            right: 15%;
+            animation-delay: -5s;
+        }
+
+    @@keyframes float {
+        0% {
+            transform: translate(0, 0) scale(1);
+        }
+
+        100% {
+            transform: translate(-30px, 20px) scale(1.1);
+        }
+    }
+
+    .db-hero-content {
+        position: relative;
+        z-index: 1;
+    }
+
+    .db-badge-rol {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(73, 190, 170, 0.1);
+        color: var(--teal);
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 800;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        margin-bottom: 1rem;
+        border: 1px solid rgba(73, 190, 170, 0.2);
+    }
+
+    .db-title {
+        font-family: var(--serif);
+        font-size: 2.5rem;
+        font-weight: 600;
+        color: var(--text);
+        letter-spacing: -0.5px;
+        line-height: 1.1;
+        margin: 0 0 0.5rem 0;
+    }
+
+    .db-subtitle {
+        font-size: 0.95rem;
+        color: var(--text-mid);
+        font-weight: 400;
+        max-width: 500px;
+    }
+
+    .db-clock-widget {
+        position: relative;
+        z-index: 1;
+        text-align: right;
+        background: rgba(255,255,255,0.7);
+        backdrop-filter: blur(10px);
+        padding: 1.5rem;
+        border-radius: var(--r);
+        border: 1px solid var(--border);
+        box-shadow: var(--sh-sm);
+    }
+
+    .db-time {
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: var(--blue);
+        line-height: 1;
+        font-family: var(--ui);
+        letter-spacing: -1px;
+    }
+
+    .db-time-sec {
+        font-size: 1.2rem;
+        color: var(--text-soft);
+        font-weight: 600;
+    }
+
+    .db-date {
+        font-size: 0.85rem;
+        color: var(--text-mid);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-top: 5px;
+    }
+
+    /* ── WIDGET GRID ─────────────────────────────── */
+    .db-container {
+        padding: 0 3rem;
+    }
+
+    .db-grid {
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        gap: 1.5rem;
+    }
+
+    .db-col-12 {
+        grid-column: span 12;
+    }
+
+    .db-col-8 {
+        grid-column: span 12;
+    }
+
+    .db-col-4 {
+        grid-column: span 12;
+    }
+
+    @@media (min-width: 1024px) {
+        .db-col-8 {
+            grid-column: span 8;
+        }
+
+        .db-col-4 {
+            grid-column: span 4;
+        }
+    }
+
+    /* Animación de entrada de los widgets */
+    .widget-enter {
+        animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    @@keyframes slideUpFade {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+
+<div class="db">
+    <div class="db-hero">
+        <div class="db-hero-content">
+            <div class="db-badge-rol">
+                <MudIcon Icon="@Icons.Material.Filled.VerifiedUser" Size="Size.Small" />
+                @rolLabel
+            </div>
+            <h1 class="db-title">@saludoDinamico, <span style="color: var(--blue);">@nombreUsuario</span></h1>
+            <p class="db-subtitle">@subtitulo</p>
+        </div>
+
+        <div class="db-clock-widget d-none d-md-block">
+            <div class="db-time">
+                @horaActual.ToString("HH:mm")<span class="db-time-sec">:@horaActual.ToString("ss")</span>
+            </div>
+            <div class="db-date">@fechaLiteral</div>
+        </div>
+    </div>
+
+    <div class="db-container">
+        @if (cargando)
+        {
+            <div class="d-flex flex-column align-center justify-center py-10">
+                <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+                <MudText Class="mt-3" Style="color: var(--text-soft); font-weight: 500;">Preparando tu entorno...</MudText>
+            </div>
+        }
+        else
+        {
+            <div class="db-grid">
+                @foreach (var (cfg, index) in misWidgets.Select((c, i) => (c, i)))
+                {
+                    if (WidgetRegistry.Componentes.TryGetValue(cfg.ComponentKey, out Type? tipo))
+                    {
+                        string colClass = cfg.ColSpanLg == 12 ? "db-col-12" : (cfg.ColSpanLg == 8 ? "db-col-8" : "db-col-4");
+                        <div class="@colClass widget-enter" style="animation-delay: @(index * 0.1)s;">
+                            <DynamicComponent Type="@tipo" />
+                        </div>
+                    }
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private bool cargando = true;
+    private string nombreUsuario = "Usuario";
+    private string saludoDinamico = "Bienvenido";
+    private string subtitulo = "Tu panel de control principal";
+    private string rolLabel = "EduSys";
+
+    private DateTime horaActual = DateTime.Now;
+    private string fechaLiteral = "";
+    private System.Threading.Timer? timer;
+    private List<WidgetConfig> misWidgets = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Iniciar reloj
+        timer = new System.Threading.Timer(_ => InvokeAsync(() => { horaActual = DateTime.Now; StateHasChanged(); }), null, 0, 1000);
+
+        var ci = new CultureInfo("es-ES");
+        fechaLiteral = DateTime.Now.ToString("dddd, dd 'de' MMMM", ci);
+
+        int hora = DateTime.Now.Hour;
+        saludoDinamico = hora < 12 ? "Buenos días" : (hora < 19 ? "Buenas tardes" : "Buenas noches");
+
+        var uri = Nav.ToAbsoluteUri(Nav.Uri);
+        if (uri.Query.Contains("login=exito")) Nav.NavigateTo(uri.GetLeftPart(UriPartial.Path), replace: true);
+
+        try
+        {
+            var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = auth.User;
+            nombreUsuario = user.FindFirst("Nombre")?.Value ?? user.FindFirst(ClaimTypes.GivenName)?.Value ?? "Usuario";
+
+            if (user.IsInRole("Administrador") || user.IsInRole("Secretaria Academica"))
+            {
+                rolLabel = "Administración Central";
+                subtitulo = "Monitoreo en tiempo real de operaciones, auditoría e infraestructura académica.";
+                misWidgets = new()
+                {
+                    new() { Id="w1", ComponentKey="AdminMetricas",  ColSpanXs=12, ColSpanMd=12, ColSpanLg=12 },
+                    new() { Id="w2", ComponentKey="AdminActividad", ColSpanXs=12, ColSpanMd=6,  ColSpanLg=8  },
+                    new() { Id="w3", ComponentKey="Notificaciones", ColSpanXs=12, ColSpanMd=6,  ColSpanLg=4  },
+                    new() { Id="w4", ComponentKey="AdminTickets",   ColSpanXs=12, ColSpanMd=12, ColSpanLg=12 },
+                };
+            }
+            // 🚀 ESTE BLOQUE FALTABA: Identificamos al Docente y le pasamos SUS widgets
+            else if (user.IsInRole("Docente"))
+            {
+                rolLabel = "Docente";
+                subtitulo = "Gestión académica y comisiones";
+                misWidgets = new()
+                {
+                    new() { Id="d1", ComponentKey="DocenteAccesos", ColSpanXs=12, ColSpanMd=12, ColSpanLg=12 },
+                    new() { Id="d2", ComponentKey="DocenteAgenda",  ColSpanXs=12, ColSpanMd=7,  ColSpanLg=8  },
+                    new() { Id="d3", ComponentKey="Notificaciones", ColSpanXs=12, ColSpanMd=5,  ColSpanLg=4  },
+                };
+            }
+            else // Si no es Admin ni Docente, por descarte es Alumno
+            {
+                rolLabel = "Alumno";
+                subtitulo = "Tu progreso, agenda de hoy y eventos académicos";
+                misWidgets = new()
+                {
+                    new() { Id="a1", ComponentKey="AlumnoAccesos",   ColSpanXs=12, ColSpanMd=12, ColSpanLg=12 },
+                    new() { Id="a2", ComponentKey="AlumnoAgendaHoy", ColSpanXs=12, ColSpanMd=7,  ColSpanLg=8  },
+                    new() { Id="a3", ComponentKey="AlumnoExamenes",  ColSpanXs=12, ColSpanMd=5,  ColSpanLg=4  },
+                    new() { Id="a4", ComponentKey="Notificaciones",  ColSpanXs=12, ColSpanMd=12, ColSpanLg=12 },
+                };
+            }
+        }
+        catch (Exception ex) { Console.WriteLine($"Dashboard error: {ex.Message}"); }
+        finally { cargando = false; }
+    }
+
+    public void Dispose() => timer?.Dispose();
+}

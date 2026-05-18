@@ -1,0 +1,93 @@
+﻿@page "/mis-tickets"
+@using EduSys.Shared.DTOs
+@using EduSys.Web.Services.Interfaces
+@* Ajusta este using según dónde hayas guardado el modal *@
+@using EduSys.Web.Pages.Shared.Dialogos
+@using Microsoft.AspNetCore.Authorization
+@inject ISoporteService SoporteService
+@inject NavigationManager Nav
+@inject IDialogService DialogService
+@attribute [Authorize]
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="pt-6 pb-10">
+    <div class="d-flex justify-space-between align-center mb-6">
+        <div>
+            <MudText Typo="Typo.h4" Style="font-weight: 800; color: #1a2d45;">Mis Tickets de Ayuda</MudText>
+            <MudText Typo="Typo.body1" Style="color: #6a7d98;">Historial de consultas y problemas técnicos</MudText>
+        </div>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="AbrirNuevoTicket">
+            Nuevo Ticket
+        </MudButton>
+    </div>
+
+    <MudTable Items="@tickets" Loading="@cargando" Hover="true" Elevation="2" Class="rounded-lg">
+        <HeaderContent>
+            <MudTh><MudText Style="font-weight: 700;">N° TICKET</MudText></MudTh>
+            <MudTh><MudText Style="font-weight: 700;">FECHA</MudText></MudTh>
+            <MudTh><MudText Style="font-weight: 700;">CATEGORÍA</MudText></MudTh>
+            <MudTh><MudText Style="font-weight: 700;">ASUNTO</MudText></MudTh>
+            <MudTh><MudText Style="font-weight: 700;">ESTADO</MudText></MudTh>
+            <MudTh></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="N° Ticket"><span style="font-family: monospace; font-weight: 600; color: #456990;">@context.NumeroTicket</span></MudTd>
+            <MudTd DataLabel="Fecha">@context.FechaCreacion.ToString("dd/MM/yyyy HH:mm")</MudTd>
+            <MudTd DataLabel="Categoría">@context.Categoria</MudTd>
+            <MudTd DataLabel="Asunto">@context.Asunto</MudTd>
+            <MudTd DataLabel="Estado">
+                @if (context.Estado == "Abierto")
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined">Abierto</MudChip>
+                }
+                else if (context.Estado == "Pendiente")
+                {
+
+                    <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Filled">Pendiente</MudChip>
+                }
+                else
+                {
+
+                    <MudChip T="string" Size="Size.Small" Color="Color.Default">Cerrado</MudChip>
+                }
+            </MudTd>
+            <MudTd DataLabel="Acción">
+                <MudButton Variant="Variant.Text" Color="Color.Primary" EndIcon="@Icons.Material.Filled.ArrowForward" OnClick="@(() => Nav.NavigateTo($"/ticket/{context.Id}"))">
+                    Ver Chat
+                </MudButton>
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText Class="pa-4 text-center" Style="color: #6a7d98;">No tienes tickets creados.</MudText>
+        </NoRecordsContent>
+    </MudTable>
+</MudContainer>
+
+@code {
+    private List<SoporteTicketDTO> tickets = new();
+    private bool cargando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarTickets();
+    }
+
+    private async Task CargarTickets()
+    {
+        cargando = true;
+        tickets = await SoporteService.GetMisTicketsAsync();
+        cargando = false;
+    }
+
+    private async Task AbrirNuevoTicket()
+    {
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true };
+        var parameters = new DialogParameters { ["EsPublico"] = false };
+        var dialog = DialogService.Show<DialogoNuevoTicket>("Nuevo Ticket", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await CargarTickets(); // Recarga la tabla si se creó uno nuevo
+        }
+    }
+}

@@ -287,7 +287,8 @@
                         nombrePlan = alumnoLigero.NombrePlan ?? "No asignado";
 
                         // 2. Obtener la ficha completa (incluyendo documentos y bloqueos)
-                        alumno = await AlumnoService.GetByIdAsync(alumnoLigero.Id);
+                        alumno = await AlumnoService.GetMiPerfilAsync();
+
 
                         if (alumno != null)
                         {

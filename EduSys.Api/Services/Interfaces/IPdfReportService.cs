@@ -8,5 +8,7 @@ namespace EduSys.Api.Services.Interfaces
         byte[] GenerarConstanciaInscripcionFinal(ConstanciaFinalDTO datos);
         byte[] GenerarAnaliticoProvisorio(HistoriaAcademicaDTO datos);
         byte[] GenerarActaIndividual(ActaIndividualDTO datos);
+        byte[] GenerarCertificadoAlumnoRegular(CertificadoAlumnoRegularDTO datos);
+
     }
 }

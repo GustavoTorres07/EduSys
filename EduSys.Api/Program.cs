@@ -22,9 +22,18 @@ builder.Services.AddDbContext<EduSysDbContext>(options =>
 // --- CORS (Comunicación con Blazor) ---
 builder.Services.AddCors(options =>
 {
+    //options.AddPolicy("PermitirBlazor", policy =>
+    //{
+    //    policy.WithOrigins("https://localhost:7157", "http://localhost:5166")
+    //          .AllowAnyMethod()
+    //          .AllowAnyHeader();
+    //});
     options.AddPolicy("PermitirBlazor", policy =>
     {
-        policy.WithOrigins("https://localhost:7157", "http://localhost:5166")
+        // 🚀 RECOMENDADO PARA EL DESPLIEGUE INICIAL: 
+        // Permite que el Front se conecte sin importar qué dominio final le pongas.
+        // Una vez que sepas el dominio exacto del front, cambias AllowAnyOrigin() por WithOrigins("https://tu-front.runasp.net")
+        policy.AllowAnyOrigin()
               .AllowAnyMethod()
               .AllowAnyHeader();
     });
@@ -89,7 +98,7 @@ builder.Services.AddScoped<IPeriodoRepository, PeriodoRepository>();
 builder.Services.AddScoped<IVentanaOperativaRepository, VentanaOperativaRepository>();
 builder.Services.AddScoped<IInfrastructureRepository, InfrastructureRepository>();
 builder.Services.AddScoped<IAulaRepository, AulaRepository>();
-
+builder.Services.AddScoped<ISoporteRepository, SoporteRepository>();
 builder.Services.AddScoped<IAsistenciaRepository, AsistenciaRepository>();
 
 builder.Services.AddScoped<IRolRepository, RolRepository>();

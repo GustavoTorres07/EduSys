@@ -1,0 +1,437 @@
+﻿@page "/admin/tickets"
+
+@using EduSys.Shared.DTOs
+@using EduSys.Web.Services.Interfaces
+@using Microsoft.AspNetCore.Authorization
+
+@inject ISoporteService  SoporteService
+@inject NavigationManager Nav
+@inject IDialogService   DialogService
+
+@attribute [Authorize(Roles = "SOP_GESTION_TICKETS, Administrador, Secretaria Academica")]
+
+<style>
+    @@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;600&family=Inter:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+
+    :root {
+        --blue:      #456990;
+        --blue-dark: #344f6e;
+        --blue-pale: #edf2f7;
+        --teal:      #49BEAA;
+        --mint:      #49DCB1;
+        --amber:     #EEB868;
+        --coral:     #EF767A;
+        --bg:        #f7f9fc;
+        --surface:   #ffffff;
+        --border:    #dde3ea;
+        --text:      #1a2733;
+        --text-mid:  #4a5568;
+        --text-soft: #8a9ab0;
+        --serif:     'Source Serif 4', Georgia, serif;
+        --ui:        'Inter', system-ui, sans-serif;
+        --mono:      'DM Mono', monospace;
+        --r:         6px;
+        --sh:        0 1px 4px rgba(69,105,144,.10);
+        --sh-md:     0 4px 16px rgba(69,105,144,.13);
+    }
+
+    .tka { font-family: var(--ui); color: var(--text); }
+    .tka-topbar { background: var(--blue); height: 3px; }
+
+    /* ── BREADCRUMB ──────────────────────────────── */
+    .tka-bc { display: flex; align-items: center; gap: 6px; padding: 10px 0 4px; }
+    .tka-bc-item { font-size: .75rem; font-weight: 500; color: var(--text-soft); cursor: pointer; transition: color .15s; }
+    .tka-bc-item:hover { color: var(--blue); }
+    .tka-bc-item.cur { color: var(--text-mid); cursor: default; font-weight: 600; }
+    .tka-bc-sep { font-size: .65rem; color: var(--border); }
+
+    /* ── SECTION HEAD ────────────────────────────── */
+    .tka-head { padding: 16px 0 20px; border-bottom: 1px solid var(--border); margin-bottom: 22px; }
+    .tka-head-label { font-size: .68rem; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--blue); margin-bottom: 5px; }
+    .tka-head-title { font-family: var(--serif); font-size: 1.55rem; font-weight: 600; color: var(--text); letter-spacing: -.3px; line-height: 1.2; margin: 0; }
+    .tka-head-sub { font-size: .83rem; color: var(--text-soft); margin-top: 4px; }
+
+    /* ── PANEL DE FILTROS ────────────────────────── */
+    .tka-filter-panel {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-top: 3px solid var(--blue);
+        border-radius: var(--r);
+        padding: 1.125rem 1.375rem 1.25rem;
+        margin-bottom: 18px;
+        box-shadow: var(--sh);
+    }
+
+    .tka-filter-grid {
+        display: grid;
+        grid-template-columns: 1.6fr 1fr 1fr 1fr auto;
+        gap: 14px;
+        align-items: flex-end;
+    }
+
+    @@media (max-width: 1100px) { .tka-filter-grid { grid-template-columns: 1fr 1fr; } }
+    @@media (max-width:  640px) { .tka-filter-grid { grid-template-columns: 1fr; } }
+
+    /* Grupo de campo */
+    .tka-fg { display: flex; flex-direction: column; gap: 5px; }
+
+    .tka-fg-label {
+        font-size: .63rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: var(--text-soft);
+    }
+
+    /* INPUT nativo — búsqueda */
+    .tka-search-wrap { position: relative; }
+
+    .tka-search-ico {
+        position: absolute;
+        left: 10px; top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-soft);
+        display: flex; align-items: center;
+        pointer-events: none;
+        font-size: 16px;
+        transition: color .15s;
+    }
+
+    .tka-search-wrap:focus-within .tka-search-ico { color: var(--blue); }
+
+    .tka-input {
+        width: 100%;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: var(--r);
+        padding: 8px 10px 8px 34px;
+        font-family: var(--ui);
+        font-size: .84rem;
+        font-weight: 500;
+        color: var(--text);
+        -webkit-text-fill-color: var(--text);
+        outline: none;
+        transition: border-color .15s, box-shadow .15s;
+        box-sizing: border-box;
+    }
+
+    .tka-input:focus {
+        border-color: var(--blue);
+        box-shadow: 0 0 0 3px rgba(69,105,144,.10);
+        background: var(--surface);
+    }
+
+    .tka-input::placeholder { color: #a0aec0; -webkit-text-fill-color: #a0aec0; font-weight: 400; }
+
+    /* SELECT nativo */
+    .tka-sel-wrap { position: relative; }
+
+    .tka-sel {
+        width: 100%;
+        appearance: none; -webkit-appearance: none;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: var(--r);
+        padding: 8px 30px 8px 10px;
+        font-family: var(--ui);
+        font-size: .84rem;
+        font-weight: 500;
+        color: var(--text);
+        cursor: pointer; outline: none;
+        transition: border-color .15s, box-shadow .15s;
+        box-sizing: border-box;
+    }
+
+    .tka-sel:focus {
+        border-color: var(--blue);
+        box-shadow: 0 0 0 3px rgba(69,105,144,.10);
+        background: var(--surface);
+    }
+
+    .tka-sel-chev { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); color: var(--text-soft); pointer-events: none; font-size: 16px; }
+
+    /* DATE INPUT nativo */
+    .tka-date {
+        width: 100%;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: var(--r);
+        padding: 8px 10px;
+        font-family: var(--ui);
+        font-size: .83rem;
+        font-weight: 500;
+        color: var(--text);
+        -webkit-text-fill-color: var(--text);
+        outline: none;
+        transition: border-color .15s, box-shadow .15s;
+        cursor: pointer;
+        box-sizing: border-box;
+    }
+
+    .tka-date:focus {
+        border-color: var(--blue);
+        box-shadow: 0 0 0 3px rgba(69,105,144,.10);
+        background: var(--surface);
+    }
+
+    /* Botón filtrar */
+    .tka-filter-btn {
+        display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+        padding: 8px 18px; height: 37px;
+        border-radius: var(--r);
+        background: var(--blue); border: 1px solid var(--blue); color: #fff;
+        font-family: var(--ui); font-size: .78rem; font-weight: 700;
+        cursor: pointer; transition: all .13s; white-space: nowrap;
+        letter-spacing: .3px;
+    }
+
+    .tka-filter-btn:hover { background: var(--blue-dark); box-shadow: 0 3px 10px rgba(69,105,144,.25); }
+
+    /* ── TABLA ───────────────────────────────────── */
+    .tka-table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; box-shadow: var(--sh-md); }
+    .tka-caption { background: var(--blue); padding: 10px 18px; display: flex; align-items: center; justify-content: space-between; }
+    .tka-caption-title { font-family: var(--serif); font-size: .88rem; font-weight: 600; color: #fff; }
+    .tka-caption-meta { font-size: .7rem; color: rgba(255,255,255,.5); }
+
+    .tka-scroll { overflow-x: auto; }
+    .tka-scroll::-webkit-scrollbar { height: 4px; }
+    .tka-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    .tka-table { width: 100%; border-collapse: collapse; font-size: .8rem; font-family: var(--ui); min-width: 700px; }
+    .tka-table thead tr { background: #1a2d45; }
+    .tka-table thead th { padding: 10px 14px; font-size: .62rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,.6); border-right: 1px solid rgba(255,255,255,.07); text-align: left; white-space: nowrap; }
+    .tka-table thead th.center { text-align: center; }
+
+    .tka-table tbody tr { border-bottom: 1px solid #f0f3f8; transition: background .1s; }
+    .tka-table tbody tr:last-child { border-bottom: none; }
+    .tka-table tbody tr:hover { background: #f6f9fd; }
+    .tka-table tbody td { padding: 11px 14px; vertical-align: middle; color: var(--text-mid); }
+    .tka-table tbody td.center { text-align: center; }
+
+    .tka-num { font-family: var(--mono); font-weight: 600; font-size: .75rem; color: var(--blue); }
+    .tka-nombre { font-weight: 600; color: var(--text); font-size: .82rem; }
+    .tka-email { font-size: .72rem; color: var(--text-soft); margin-top: 1px; }
+    .tka-cat { font-size: .6rem; font-weight: 800; text-transform: uppercase; letter-spacing: .8px; color: var(--coral); }
+    .tka-asunto { font-weight: 500; color: var(--text); font-size: .8rem; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px; }
+    .tka-fecha-main { font-weight: 600; color: var(--text); font-size: .8rem; }
+    .tka-fecha-hora { font-family: var(--mono); font-size: .7rem; color: var(--text-soft); margin-top: 1px; }
+
+    .tka-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 20px; font-size: .6rem; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; white-space: nowrap; }
+    .tka-badge-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+    .tka-badge-abierto  { background: #feeef0; color: #8a2020; border: 1px solid #f0b8b8; }
+    .tka-badge-abierto  .tka-badge-dot { background: var(--coral); }
+    .tka-badge-pendiente{ background: #fdf6e8; color: #7a5010; border: 1px solid #ecd890; }
+    .tka-badge-pendiente .tka-badge-dot { background: var(--amber); }
+    .tka-badge-cerrado  { background: #f0faf6; color: #2a5a46; border: 1px solid #c0e8d8; }
+    .tka-badge-cerrado  .tka-badge-dot { background: var(--mint); }
+
+    .tka-btn { display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: var(--r); background: var(--blue); border: 1px solid var(--blue); color: #fff; font-family: var(--ui); font-size: .72rem; font-weight: 600; cursor: pointer; transition: all .13s; white-space: nowrap; }
+    .tka-btn:hover { background: var(--blue-dark); }
+
+    /* empty */
+    .tka-empty { padding: 56px 24px; text-align: center; }
+    .tka-empty-title { font-family: var(--serif); font-size: 1.05rem; font-weight: 600; color: var(--text-mid); margin: 12px 0 6px; }
+    .tka-empty-sub { font-size: .82rem; color: var(--text-soft); }
+
+    /* skeleton */
+    @@keyframes sk { 0%{background-position:-600px 0} 100%{background-position:600px 0} }
+    .sk { background: linear-gradient(90deg,#eaedf1 25%,#f4f6f9 50%,#eaedf1 75%); background-size: 1200px 100%; animation: sk 1.4s infinite linear; border-radius: var(--r); display: block; }
+</style>
+
+<div class="tka">
+    <div class="tka-topbar"></div>
+
+    <div class="tka-bc">
+        <span class="tka-bc-item">Inicio</span>
+        <span class="tka-bc-sep">›</span>
+        <span class="tka-bc-item">Sistema</span>
+        <span class="tka-bc-sep">›</span>
+        <span class="tka-bc-item cur">Bandeja de Soporte</span>
+    </div>
+
+    <div class="tka-head">
+        <div class="tka-head-label">Gestión de Soporte</div>
+        <h1 class="tka-head-title">Bandeja de Soporte</h1>
+        <p class="tka-head-sub">Gestión de tickets de usuarios y alumnos · últimos 10 resultados por consulta</p>
+    </div>
+
+    @* ── PANEL DE FILTROS ─────────────────────────── *@
+    <div class="tka-filter-panel">
+        <div class="tka-filter-grid">
+
+            @* Buscador *@
+            <div class="tka-fg">
+                <label class="tka-fg-label">Buscar</label>
+                <div class="tka-search-wrap">
+                    <span class="tka-search-ico">
+                        <MudIcon Icon="@Icons.Material.Filled.Search" Style="font-size:16px;" />
+                    </span>
+                    <input class="tka-input"
+                           type="text"
+                           placeholder="N° ticket, solicitante o asunto…"
+                           @bind="busqueda"
+                           @bind:event="oninput"
+                           @onkeydown="@(async e => { if (e.Key == "Enter") await CargarTickets(); })" />
+                </div>
+            </div>
+
+            @* Estado *@
+            <div class="tka-fg">
+                <label class="tka-fg-label">Estado</label>
+                <div class="tka-sel-wrap">
+                    <select class="tka-sel"
+                            value="@filtroEstado"
+                            @onchange="@(e => filtroEstado = e.Value?.ToString() ?? "Todos")">
+                        <option value="Todos">Todos los estados</option>
+                        <option value="Abierto">Abiertos — sin responder</option>
+                        <option value="Pendiente">Pendientes — respondidos</option>
+                        <option value="Cerrado">Cerrados / Resueltos</option>
+                    </select>
+                    <MudIcon Icon="@Icons.Material.Filled.UnfoldMore" Class="tka-sel-chev" />
+                </div>
+            </div>
+
+            @* Desde *@
+            <div class="tka-fg">
+                <label class="tka-fg-label">Desde</label>
+                <input class="tka-date"
+                       type="date"
+                       @bind="fechaDesde"
+                       @bind:format="yyyy-MM-dd" />
+            </div>
+
+            @* Hasta *@
+            <div class="tka-fg">
+                <label class="tka-fg-label">Hasta</label>
+                <input class="tka-date"
+                       type="date"
+                       @bind="fechaHasta"
+                       @bind:format="yyyy-MM-dd" />
+            </div>
+
+            @* Botón *@
+            <div class="tka-fg" style="justify-content:flex-end;">
+                <label class="tka-fg-label" style="opacity:0; pointer-events:none;">·</label>
+                <button class="tka-filter-btn" @onclick="CargarTickets">
+                    <MudIcon Icon="@Icons.Material.Filled.FilterList" Style="font-size:15px;" />
+                    Filtrar
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    @* ── TABLA ────────────────────────────────────── *@
+    @if (cargando)
+    {
+        <div style="display:flex;flex-direction:column;gap:1px;border-radius:6px;overflow:hidden;">
+            <span class="sk" style="height:44px;border-radius:0;"></span>
+            @for (int i = 0; i < 7; i++) { <span class="sk" style="height:58px;border-radius:0;"></span> }
+        </div>
+    }
+    else
+    {
+        <div class="tka-table-wrap">
+            <div class="tka-caption">
+                <span class="tka-caption-title">
+                    @(filtroEstado == "Todos" ? "Todos los tickets" : $"Tickets {filtroEstado.ToLower()}s")
+                </span>
+                <span class="tka-caption-meta">
+                    @tickets.Count resultado@(tickets.Count == 1 ? "" : "s")
+                    @if (!string.IsNullOrWhiteSpace(busqueda)) { <span> · "@busqueda"</span> }
+                </span>
+            </div>
+            <div class="tka-scroll">
+                <table class="tka-table">
+                    <thead>
+                        <tr>
+                            <th>N° Ticket</th>
+                            <th>Solicitante</th>
+                            <th>Asunto</th>
+                            <th>Fecha</th>
+                            <th class="center">Estado</th>
+                            <th class="center">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (tickets.Any())
+                        {
+                            @foreach (var t in tickets)
+                            {
+                                <tr>
+                                    <td><span class="tka-num">@t.NumeroTicket</span></td>
+                                    <td>
+                                        <div class="tka-nombre">@t.NombreSolicitante</div>
+                                        <div class="tka-email">@t.EmailSolicitante</div>
+                                    </td>
+                                    <td>
+                                        <div class="tka-cat">@t.Categoria</div>
+                                        <div class="tka-asunto">@t.Asunto</div>
+                                    </td>
+                                    <td>
+                                        <div class="tka-fecha-main">@t.FechaCreacion.ToString("dd/MM/yyyy")</div>
+                                        <div class="tka-fecha-hora">@t.FechaCreacion.ToString("HH:mm") hs</div>
+                                    </td>
+                                    <td class="center">
+                                        @{
+                                            var (cls, lbl) = t.Estado switch {
+                                                "Abierto"   => ("tka-badge-abierto",   "Abierto"),
+                                                "Pendiente" => ("tka-badge-pendiente", "Pendiente"),
+                                                _           => ("tka-badge-cerrado",   "Cerrado")
+                                            };
+                                        }
+                                        <span class="tka-badge @cls">
+                                            <span class="tka-badge-dot"></span>
+                                            @lbl
+                                        </span>
+                                    </td>
+                                    <td class="center">
+                                        <button class="tka-btn" @onclick="@(() => Nav.NavigateTo($"/ticket/{t.Id}"))">
+                                            Ver
+                                            <MudIcon Icon="@Icons.Material.Filled.ArrowForward" Style="font-size:13px;" />
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="6">
+                                    <div class="tka-empty">
+                                        <MudIcon Icon="@Icons.Material.Outlined.SearchOff" Style="font-size:2.5rem;color:#dde3ea;" />
+                                        <div class="tka-empty-title">Sin resultados</div>
+                                        <p class="tka-empty-sub">No hay tickets con los filtros actuales.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<SoporteTicketDTO> tickets      = new();
+    private bool                   cargando     = true;
+    private string                 filtroEstado = "Abierto";
+    private string                 busqueda     = "";
+    private DateTime               fechaDesde   = DateTime.Now.AddDays(-30);
+    private DateTime               fechaHasta   = DateTime.Now;
+
+    protected override async Task OnInitializedAsync() => await CargarTickets();
+
+    private async Task CargarTickets()
+    {
+        cargando = true;
+        tickets  = await SoporteService.GetAllTicketsAdminAsync(
+                       filtroEstado,
+                       busqueda,
+                       fechaDesde,
+                       fechaHasta,
+                       limite: 10);
+        cargando = false;
+    }
+}

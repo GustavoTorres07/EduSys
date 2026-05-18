@@ -1,0 +1,226 @@
+﻿@page "/ticket/{IdTicket:int}"
+@using EduSys.Shared.DTOs
+@using EduSys.Web.Services.Interfaces
+@using Microsoft.AspNetCore.Authorization
+@inject ISoporteService SoporteService
+@inject ISnackbar Snackbar
+@using EduSys.Web.Pages.Shared.Dialogos
+@inject NavigationManager Nav
+@inject IDialogService DialogService
+@attribute [Authorize]
+
+<style>
+    /* 🚀 ESTILOS PARA LA CAJA DE RESPUESTA */
+    .respuesta-input .mud-input-outlined-border { border: 1px solid #456990 !important; border-radius: 6px; }
+    .respuesta-input .mud-input:focus-within .mud-input-outlined-border { border: 2px solid #2b4162 !important; }
+    .respuesta-input .mud-input-label { color: #456990 !important; font-weight: 700 !important; background-color: #ffffff !important; padding: 0 6px; }
+    .respuesta-input .mud-input-slot { color: #1a2d45 !important; -webkit-text-fill-color: #1a2d45 !important; font-weight: 500 !important; }
+</style>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="pt-6 pb-10">
+    
+    <MudButton StartIcon="@Icons.Material.Filled.ArrowBack" Color="Color.Default" Class="mb-4" OnClick="Volver" Style="font-weight: 600;">
+        Volver a la bandeja
+    </MudButton>
+
+    @if (cargando)
+    {
+        <div class="d-flex justify-center mt-10"><MudProgressCircular Color="Color.Primary" Indeterminate="true" /></div>
+    }
+    else if (detalle != null)
+    {
+        <MudPaper Elevation="2" Class="pa-6 mb-4 rounded-lg" Style="border-top: 5px solid #456990;">
+            <div class="d-flex justify-space-between align-start mb-5">
+                <div>
+                    <MudText Typo="Typo.h5" Style="font-weight: 800; color: #1a2d45; line-height: 1.2;">@detalle.Ticket.Asunto</MudText>
+                    <div class="d-flex align-center mt-2" style="gap: 12px;">
+                        <span style="font-family: monospace; color: #6a7d98; font-weight: 700; font-size: 1.05rem;">@detalle.Ticket.NumeroTicket</span>
+                        <MudChip T="string" Size="Size.Small" Color="Color.Dark" Variant="Variant.Outlined" Style="font-weight: 700;">@detalle.Ticket.Categoria</MudChip>
+                    </div>
+                </div>
+                
+                <div class="d-flex align-center" style="gap: 12px;">
+                    @if (detalle.Ticket.Estado == "Abierto")
+                    {
+                        <MudChip T="string" Color="Color.Error" Variant="Variant.Filled" Icon="@Icons.Material.Filled.MarkEmailUnread" Size="Size.Large"><strong>ABIERTO</strong></MudChip>
+                    }
+                    else if (detalle.Ticket.Estado == "Pendiente")
+                    {
+                        <MudChip T="string" Color="Color.Warning" Variant="Variant.Filled" Icon="@Icons.Material.Filled.HourglassTop" Size="Size.Large" Style="color: #433004;"><strong>PENDIENTE</strong></MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Color="Color.Success" Variant="Variant.Filled" Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large"><strong>CERRADO</strong></MudChip>
+                    }
+
+                    <AuthorizeView Roles="SOP_GESTION_TICKETS, Administrador, Secretaria Academica">
+                        <Authorized>
+                            @if (!detalle.Ticket.EstaCerrado)
+                            {
+                                <MudButton Variant="Variant.Outlined" Color="Color.Success" Size="Size.Medium" StartIcon="@Icons.Material.Filled.Check" OnClick="ConfirmarResolver" Style="font-weight: 800; border-width: 2px;">
+                                    RESOLVER
+                                </MudButton>
+                            }
+                            else
+                            {
+                                <MudButton Variant="Variant.Outlined" Color="Color.Info" Size="Size.Medium" StartIcon="@Icons.Material.Filled.SettingsBackupRestore" OnClick="ConfirmarReabrir" Style="font-weight: 800; border-width: 2px;">
+                                    REABRIR TICKET
+                                </MudButton>
+                            }
+                        </Authorized>
+                    </AuthorizeView>
+                </div>
+            </div>
+            
+            <div style="background-color: #f8fafc; padding: 12px 16px; border-radius: 8px; border: 1px solid #eef1f6;">
+                <MudText Typo="Typo.body2" Style="color: #6a7d98; font-weight: 600; text-transform: uppercase; font-size: 0.7rem;">Solicitado por</MudText>
+                <div class="d-flex align-center">
+                    <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Style="color: #456990; margin-right: 8px;" />
+                    <MudText Typo="Typo.body1" Style="font-weight: 700; color: #1a2d45;">@detalle.Ticket.NombreSolicitante (@detalle.Ticket.EmailSolicitante)</MudText>
+                </div>
+            </div>
+        </MudPaper>
+
+        <div class="d-flex flex-column" style="gap: 16px; margin-bottom: 24px;">
+            @foreach (var msg in detalle.HistorialMensajes)
+            {
+                bool esMio = !msg.EsRespuestaSoporte;
+                <div class="d-flex flex-column @(esMio ? "align-end" : "align-start")">
+                    <div style="font-size: 0.75rem; color: #6a7d98; margin-bottom: 4px;">
+                        <strong>@(msg.EsRespuestaSoporte ? "Soporte Técnico" : msg.NombreAutor)</strong> • @msg.Fecha.ToString("dd/MM HH:mm")
+                    </div>
+                    <MudPaper Elevation="0" Class="pa-4 rounded-lg" Style="@(esMio ? "background-color: #e0f2fe; color: #0c4a6e; max-width: 85%;" : "background-color: #ffffff; border: 1px solid #e2e8f2; color: #1a2d45; max-width: 85%;")">
+                        <MudText Typo="Typo.body1" Style="white-space: pre-wrap; font-weight: 500;">@msg.Mensaje</MudText>
+                    </MudPaper>
+                </div>
+            }
+        </div>
+
+        @if (!detalle.Ticket.EstaCerrado || PuedeReabrirUsuario())
+        {
+            @if (detalle.Ticket.EstaCerrado && PuedeReabrirUsuario())
+            {
+                <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Class="rounded-lg mb-4" Icon="@Icons.Material.Filled.Info" Style="font-weight: 600; color: #433004;">
+                    Este ticket fue marcado como resuelto. Si el problema persiste, puedes enviar un mensaje dentro de las próximas 72hs para reabrirlo automáticamente.
+                </MudAlert>
+            }
+
+            <MudPaper Elevation="3" Class="pa-4 rounded-lg" Style="background-color: #ffffff;">
+                <MudTextField @bind-Value="nuevoMensaje" Label="Escribe una respuesta..." Variant="Variant.Outlined" Lines="3" Class="mb-3 respuesta-input" />
+                <div class="d-flex justify-end">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="EnviarMensaje" Disabled="@(_enviando || string.IsNullOrWhiteSpace(nuevoMensaje))" Style="background-color: #456990; color: white; font-weight: 600;">
+                        @if (_enviando) { <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" Color="Color.Surface" /> }
+                        @(detalle.Ticket.EstaCerrado ? "Reabrir y Enviar" : "Enviar Respuesta")
+                    </MudButton>
+                </div>
+            </MudPaper>
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Success" Variant="Variant.Filled" Class="rounded-lg" Icon="@Icons.Material.Filled.Lock" Style="font-weight: 600;">
+                Este ticket fue cerrado definitivamente tras 72hs de inactividad. Si tienes un nuevo problema, por favor genera una nueva solicitud.
+            </MudAlert>
+        }
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public int IdTicket { get; set; }
+    private SoporteTicketDetalleDTO? detalle;
+    private bool cargando = true;
+    private string nuevoMensaje = "";
+    private bool _enviando = false;
+
+    protected override async Task OnInitializedAsync() => await CargarDetalle();
+
+    private async Task CargarDetalle()
+    {
+        try { cargando = true; detalle = await SoporteService.GetDetalleTicketAsync(IdTicket); }
+        catch { Snackbar.Add("Error al cargar el ticket.", Severity.Error); Volver(); }
+        finally { cargando = false; }
+    }
+
+    // Calcula si han pasado menos de 72hs desde el cierre
+    private bool PuedeReabrirUsuario()
+    {
+        if (detalle == null || !detalle.Ticket.EstaCerrado || !detalle.Ticket.FechaCierre.HasValue) 
+            return false;
+
+        var horasTranscurridas = (DateTime.Now - detalle.Ticket.FechaCierre.Value).TotalHours;
+        return horasTranscurridas <= 72;
+    }
+
+    private async Task EnviarMensaje()
+    {
+        _enviando = true;
+        try {
+            var msgCreado = await SoporteService.AgregarMensajeAsync(new NuevoMensajeRequestDTO { IdTicket = IdTicket, Mensaje = nuevoMensaje });
+            if (msgCreado != null && detalle != null) {
+                detalle.HistorialMensajes.Add(msgCreado);
+                nuevoMensaje = "";
+                
+                var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+                bool esStaff = authState.User.IsInRole("Administrador") || authState.User.IsInRole("Secretaria Academica") || authState.User.IsInRole("SOP_GESTION_TICKETS");
+                
+                // Si estaba cerrado, al enviar mensaje se reabre automáticamente
+                detalle.Ticket.Estado = esStaff ? "Pendiente" : "Abierto";
+                detalle.Ticket.FechaCierre = null; 
+            }
+        }
+        catch { Snackbar.Add("Error al enviar mensaje.", Severity.Error); }
+        finally { _enviando = false; }
+    }
+
+    private async Task ConfirmarResolver() 
+    {
+        var parameters = new DialogParameters<DialogoConfirmacion>
+        {
+            { x => x.Titulo, "Resolver Ticket" },
+            { x => x.Mensaje, "¿Deseas marcar este ticket como resuelto? Se iniciará un período de gracia de 72hs para el usuario." },
+            { x => x.TextoConfirmar, "RESOLVER" },
+            { x => x.ColorBoton, Color.Success }
+        };
+
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall };
+        var dialog = await DialogService.ShowAsync<DialogoConfirmacion>("Confirmar", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled) 
+        {
+            await ActualizarEstado("Cerrado", "Ticket resuelto exitosamente.");
+        }
+    }
+
+    private async Task ConfirmarReabrir() 
+    {
+        var parameters = new DialogParameters<DialogoConfirmacion>
+        {
+            { x => x.Titulo, "Reabrir Ticket" },
+            { x => x.Mensaje, "¿Deseas volver a abrir este ticket de forma manual para continuar la conversación?" },
+            { x => x.TextoConfirmar, "REABRIR" },
+            { x => x.ColorBoton, Color.Info }
+        };
+
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall };
+        var dialog = await DialogService.ShowAsync<DialogoConfirmacion>("Confirmar", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled) 
+        {
+            await ActualizarEstado("Abierto", "Ticket reabierto.");
+        }
+    }
+
+    private async Task ActualizarEstado(string nuevoEstado, string mensajeExito) {
+        bool exito = await SoporteService.CambiarEstadoTicketAsync(IdTicket, nuevoEstado);
+        if (exito && detalle != null) {
+            detalle.Ticket.Estado = nuevoEstado;
+            detalle.Ticket.FechaCierre = nuevoEstado == "Cerrado" ? DateTime.Now : null; // Actualizamos fecha localmente
+            Snackbar.Add(mensajeExito, Severity.Success);
+        }
+    }
+
+    private void Volver() => Nav.NavigateTo("javascript:history.back()");
+    
+    [Inject] private AuthenticationStateProvider AuthStateProvider { get; set; } = default!;
+}

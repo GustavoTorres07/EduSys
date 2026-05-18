@@ -2,6 +2,7 @@
 @using EduSys.Web.Services.Interfaces
 @using System.Security.Claims
 @using EduSys.Web.Auth
+@using EduSys.Web.Pages.Shared.Dialogos
 @using Microsoft.AspNetCore.Components.Authorization
 @using MudBlazor
 
@@ -18,7 +19,6 @@
                      VisibleStateDuration="4000" />
 <MudDialogProvider />
 
-@* Cortina de salida limpia *@
 @if (_saliendo)
 {
     <div style="position:fixed;inset:0;background:#ffffff;z-index:999999;"></div>
@@ -26,7 +26,7 @@
 
 <style>
     @@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Lora:wght@500&display=swap');
-    /* ─── AppBar ─────────────────────────────────── */
+
     .eds-appbar {
         background: #456990 !important;
         border-bottom: 1px solid rgba(255,255,255,0.1) !important;
@@ -52,7 +52,6 @@
         margin-top: 1px;
     }
 
-    /* Botón de ícono en la appbar */
     .eds-appbar-icon-btn {
         color: rgba(255,255,255,0.7) !important;
         transition: color 0.15s !important;
@@ -62,7 +61,6 @@
             color: #ffffff !important;
         }
 
-    /* Chip de usuario en la appbar */
     .eds-user-chip {
         display: flex;
         align-items: center;
@@ -90,7 +88,6 @@
         text-overflow: ellipsis;
     }
 
-    /* Menú desplegable de perfil */
     .eds-profile-menu-head {
         padding: 1.125rem 1.25rem;
         display: flex;
@@ -117,19 +114,16 @@
         margin-top: 2px;
     }
 
-    /* Drawer */
     .eds-drawer .mud-drawer-content {
         border-right: 1px solid #eef1f6 !important;
     }
 
-    /* Contenido principal */
     .eds-main-content {
         background: #f0f3f8;
         min-height: 100vh;
         font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
     }
 
-    /* Error boundary */
     .eds-error-card {
         max-width: 580px;
         margin: 4rem auto;
@@ -144,11 +138,7 @@
 
 <MudLayout>
 
-    @* ── APP BAR ──────────────────────────────────── *@
-    <MudAppBar Elevation="0"
-               Fixed="true"
-               Class="eds-appbar"
-               Style="z-index:1300;">
+    <MudAppBar Elevation="0" Fixed="true" Class="eds-appbar" Style="z-index:1300;">
 
         <MudIconButton Icon="@Icons.Material.Filled.Menu"
                        Color="Color.Inherit"
@@ -167,24 +157,22 @@
             <Authorized>
                 <div class="d-flex align-center" style="gap:0.5rem;">
 
-                    @* Notificaciones *@
                     <NotificacionesMenu />
 
-                    @* Mensajería *@
                     <MudTooltip Text="Mensajería" Arrow="true">
                         <MudIconButton Icon="@Icons.Material.Outlined.Email"
                                        Color="Color.Inherit"
                                        Class="eds-appbar-icon-btn" />
                     </MudTooltip>
 
-                    @* Soporte *@
+                    @* Botón de Soporte Técnico vinculado al modal *@
                     <MudTooltip Text="Soporte técnico" Arrow="true">
                         <MudIconButton Icon="@Icons.Material.Outlined.SupportAgent"
                                        Color="Color.Inherit"
-                                       Class="eds-appbar-icon-btn" />
+                                       Class="eds-appbar-icon-btn"
+                                       OnClick="AbrirSoporteInterno" />
                     </MudTooltip>
 
-                    @* Perfil — chip con avatar *@
                     <MudMenu AnchorOrigin="Origin.BottomRight"
                              TransformOrigin="Origin.TopRight"
                              LockScroll="true"
@@ -247,7 +235,6 @@
 
     </MudAppBar>
 
-    @* ── DRAWER (MENÚ LATERAL) ────────────────────── *@
     <MudDrawer @bind-Open="_drawerOpen"
                Variant="DrawerVariant.Responsive"
                ClipMode="DrawerClipMode.Always"
@@ -258,7 +245,6 @@
         <NavMenu />
     </MudDrawer>
 
-    @* ── CONTENIDO PRINCIPAL ──────────────────────── *@
     <MudMainContent Class="eds-main-content">
         <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pt-6 pb-10 px-4">
 
@@ -303,7 +289,6 @@
     private bool _saliendo = false;
     private ErrorBoundary? _errorBoundary;
 
-    /* ── TEMA EDUSYS ──────────────────────────────── */
     private readonly MudTheme _theme = new MudTheme
     {
         PaletteLight = new PaletteLight
@@ -344,6 +329,13 @@
         Navigation.NavigateTo(Navigation.Uri, forceLoad: true);
     }
 
+    private void AbrirSoporteInterno()
+    {
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true };
+        var parameters = new DialogParameters { ["EsPublico"] = false };
+        DialogService.Show<DialogoNuevoTicket>("Nuevo Ticket de Soporte", parameters, options);
+    }
+
     private async Task CerrarSesionAsync()
     {
         try
@@ -381,7 +373,6 @@
         }
     }
 
-    /* ── HELPERS ─────────────────────────────────── */
     private string GetFullUserName(ClaimsPrincipal user)
     {
         var nombre = user.FindFirst("Nombre")?.Value ?? user.FindFirst(ClaimTypes.GivenName)?.Value;

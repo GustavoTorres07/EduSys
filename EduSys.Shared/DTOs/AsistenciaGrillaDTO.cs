@@ -33,5 +33,7 @@ namespace EduSys.Shared.DTOs
     {
         public int IdComision { get; set; }
         public List<AsistenciaDetalleDTO> Asistencias { get; set; } = new();
+
+        public List<DateTime> FechasAEliminar { get; set; } = new();
     }
 }

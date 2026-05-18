@@ -127,6 +127,22 @@ namespace EduSys.Web.Services
             }
         }
 
+        public async Task<List<HorarioVisualizacionDTO>> GetMisHorariosAsync()
+        {
+            try
+            {
+                // Asumo que crearás esta ruta en el backend, en HorariosController o DocentePortalController.
+                // Como el usuario ya está autenticado, la API extrae el ID del token.
+                return await _http.GetFromJsonAsync<List<HorarioVisualizacionDTO>>("api/horarios/mis-horarios")
+                       ?? new List<HorarioVisualizacionDTO>();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al obtener los horarios del usuario autenticado.");
+                return new List<HorarioVisualizacionDTO>();
+            }
+        }
+
         // ==========================================
         // HELPERS
         // ==========================================

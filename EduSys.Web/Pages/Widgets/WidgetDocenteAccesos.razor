@@ -1,0 +1,197 @@
+﻿@using EduSys.Shared.DTOs
+@using EduSys.Web.Services.Interfaces
+@using System.Globalization
+@inject IHorarioService HorarioService
+@inject NavigationManager Nav
+
+<style>
+    .wda-acc {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(30, 58, 88, 0.02);
+        font-family: 'Inter', sans-serif;
+    }
+
+    .wda-acc-head {
+        padding: 1.5rem;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .wda-acc-title {
+        font-size: 1.1rem;
+        font-weight: 800;
+        color: #0f172a;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .wda-acc-grid {
+        padding: 1.5rem;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+        flex-grow: 1;
+    }
+
+    .acc-tile {
+        background: #f8fafc;
+        border: 1px solid #f1f5f9;
+        border-radius: 12px;
+        padding: 1.25rem 1rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+    }
+
+        .acc-tile:hover {
+            background: #ffffff;
+            border-color: var(--hc);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(30, 58, 88, 0.08);
+        }
+
+    .acc-icon-box {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg-c);
+        color: var(--hc);
+        margin-bottom: 0.75rem;
+        transition: transform 0.3s ease;
+    }
+
+    .acc-tile:hover .acc-icon-box {
+        transform: scale(1.1) rotate(-5deg);
+    }
+
+    .acc-title {
+        font-weight: 700;
+        font-size: 0.85rem;
+        color: #1e293b;
+        margin-bottom: 2px;
+    }
+
+    .acc-sub {
+        font-size: 0.65rem;
+        font-weight: 600;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* Efecto Pulso para clases de hoy */
+    .acc-live-badge {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        background: #fffbeb;
+        color: #d97706;
+        font-size: 0.55rem;
+        font-weight: 800;
+        padding: 2px 6px;
+        border-radius: 10px;
+        border: 1px solid #fde68a;
+        animation: pulse-amber 2s infinite;
+    }
+
+    @@keyframes pulse-amber {
+        0% {
+            box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4);
+        }
+
+        70% {
+            box-shadow: 0 0 0 4px rgba(245, 158, 11, 0);
+        }
+
+        100% {
+            box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+        }
+    }
+</style>
+
+<div class="wda-acc">
+    <div class="wda-acc-head">
+        <div class="wda-acc-title">
+            <MudIcon Icon="@Icons.Material.Filled.DashboardCustomize" Style="color: #EEB868;" />
+            Accesos Rápidos
+        </div>
+    </div>
+
+    @if (cargando)
+    {
+        <div class="d-flex justify-center align-center flex-grow-1 py-10"><MudProgressCircular Color="Color.Tertiary" Indeterminate="true" /></div>
+    }
+    else
+    {
+        <div class="wda-acc-grid">
+
+            <div class="acc-tile" style="--hc: #f59e0b; --bg-c: #fef3c7;" @onclick='() => Nav.NavigateTo("/horarios")'>
+                @if (clasesHoy > 0)
+                {
+                    <span class="acc-live-badge">@clasesHoy HOY</span>
+                }
+                <div class="acc-icon-box"><MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Size="Size.Medium" /></div>
+                <span class="acc-title">Horarios</span>
+                <span class="acc-sub">Agenda Semanal</span>
+            </div>
+
+            <div class="acc-tile" style="--hc: #0ea5e9; --bg-c: #e0f2fe;" @onclick='() => Nav.NavigateTo("/mis-comisiones")'>
+                <div class="acc-icon-box"><MudIcon Icon="@Icons.Material.Filled.Groups" Size="Size.Medium" /></div>
+                <span class="acc-title">Mis Comisiones</span>
+                <span class="acc-sub">Gestión de Alumnos</span>
+            </div>
+
+            <div class="acc-tile" style="--hc: #10b981; --bg-c: #dcfce7;" @onclick='() => Nav.NavigateTo("/docente/tomar-asistencia")'>
+                <div class="acc-icon-box"><MudIcon Icon="@Icons.Material.Filled.FactCheck" Size="Size.Medium" /></div>
+                <span class="acc-title">Asistencia</span>
+                <span class="acc-sub">Pasar Lista</span>
+            </div>
+
+            <div class="acc-tile" style="--hc: #ef4444; --bg-c: #fee2e2;" @onclick='() => Nav.NavigateTo("/mis-tickets")'>
+                <div class="acc-icon-box"><MudIcon Icon="@Icons.Material.Filled.SupportAgent" Size="Size.Medium" /></div>
+                <span class="acc-title">Soporte</span>
+                <span class="acc-sub">Mesa de Ayuda</span>
+            </div>
+
+        </div>
+    }
+</div>
+
+@code {
+    private bool cargando = true;
+    private int clasesHoy = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var misHorarios = await HorarioService.GetMisHorariosAsync();
+            if (misHorarios != null && misHorarios.Any())
+            {
+                var cultura = new CultureInfo("es-ES");
+                string diaSemanaActual = cultura.DateTimeFormat.GetDayName(DateTime.Now.DayOfWeek);
+
+                clasesHoy = misHorarios.Count(h => h.Dia.Trim().Equals(diaSemanaActual, StringComparison.OrdinalIgnoreCase));
+            }
+        }
+        catch { }
+        finally { cargando = false; }
+    }
+}

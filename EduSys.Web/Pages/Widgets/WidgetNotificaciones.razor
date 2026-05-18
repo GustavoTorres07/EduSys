@@ -1,0 +1,145 @@
+﻿@using EduSys.Shared.DTOs
+@using EduSys.Web.Services.Interfaces
+@inject INotificacionApiService NotificacionService
+
+<style>
+    .wn-card {
+        background: #fff;
+        border-radius: 16px;
+        border: 1px solid #e2e8f0;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 4px 6px rgba(30, 58, 88, 0.02);
+    }
+
+    .wn-header {
+        padding: 1.5rem;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .wn-title {
+        font-size: 1.1rem;
+        font-weight: 800;
+        color: #0f172a;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .wn-list {
+        padding: 1rem 1.5rem;
+        flex: 1;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 0.875rem;
+    }
+
+        .wn-list::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .wn-list::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+    .wn-item {
+        background: #f8fafc;
+        border: 1px solid #f1f5f9;
+        border-radius: 10px;
+        padding: 1.25rem;
+        transition: all 0.2s;
+        position: relative;
+    }
+
+        .wn-item:hover {
+            background: #fff;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+            border-color: #cbd5e1;
+            transform: translateY(-2px);
+        }
+
+        /* Punto dinámico para nuevas */
+        .wn-item.nuevo::before {
+            content: '';
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            width: 12px;
+            height: 12px;
+            background: #ef4444;
+            border-radius: 50%;
+            border: 2px solid #fff;
+        }
+
+    .wn-tipo {
+        font-size: 0.65rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--nc);
+        margin-bottom: 6px;
+    }
+
+    .wn-titulo {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: #1e293b;
+        line-height: 1.3;
+        margin-bottom: 4px;
+    }
+
+    .wn-msg {
+        font-size: 0.8rem;
+        color: #64748b;
+        line-height: 1.5;
+    }
+
+    .wn-fecha {
+        display: block;
+        margin-top: 8px;
+        font-family: 'DM Mono', monospace;
+        font-size: 0.7rem;
+        color: #94a3b8;
+    }
+</style>
+
+<div class="wn-card">
+    <div class="wn-header">
+        <div class="wn-title"><MudIcon Icon="@Icons.Material.Filled.Campaign" Style="color: #EEB868;" /> Comunicados</div>
+    </div>
+
+    <div class="wn-list">
+        @if (!cargando && notificaciones.Any())
+        {
+            @foreach (var n in notificaciones.Take(8))
+            {
+                string nc = GetColor(n.Tipo);
+                <div class="wn-item @(n.Leida ? "" : "nuevo")" style="--nc:@nc;">
+                    <div class="wn-tipo">@n.Tipo</div>
+                    <div class="wn-titulo">@n.Titulo</div>
+                    <div class="wn-msg">@n.Mensaje</div>
+                    <span class="wn-fecha">@n.Fecha.ToString("dd MMM yyyy")</span>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    private List<NotificacionDTO> notificaciones = new();
+    private bool cargando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try { notificaciones = await NotificacionService.GetMisNotificacionesAsync() ?? new(); }
+        finally { cargando = false; }
+    }
+
+    private string GetColor(string t) => t switch { "Examen" => "#ef4444", "Inscripcion" => "#10b981", _ => "#456990" };
+}

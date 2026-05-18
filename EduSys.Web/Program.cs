@@ -27,9 +27,16 @@ builder.Services.AddScoped<AuthMessageHandler>();
 // 💡 PRO-TIP: A futuro, puedes poner la URL en wwwroot/appsettings.json
 // var apiUrl = builder.Configuration["ApiBaseUrl"] ?? "https://localhost:7188/";
 
+//builder.Services.AddHttpClient("Api", client =>
+//{
+//    client.BaseAddress = new Uri("https://localhost:7188/"); // Reemplazar con apiUrl a futuro
+//})
+//.AddHttpMessageHandler<AuthMessageHandler>();
+
 builder.Services.AddHttpClient("Api", client =>
 {
-    client.BaseAddress = new Uri("https://localhost:7188/"); // Reemplazar con apiUrl a futuro
+    // 🚀 AHORA APUNTA A TU DOMINIO REAL EN MONSTERASP
+    client.BaseAddress = new Uri("https://edusysapi.runasp.net/");
 })
 .AddHttpMessageHandler<AuthMessageHandler>();
 
@@ -79,7 +86,6 @@ builder.Services.AddScoped<INotasService, NotasService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IReportesService, ReportesService>();
 builder.Services.AddScoped<IHistorialService, HistorialService>();
-builder.Services.AddScoped<HorarioPdfService>(); // (Este es una clase concreta, sin interfaz)
 
 builder.Services.AddScoped<IAsistenciaService, AsistenciaService>();
 
@@ -87,6 +93,7 @@ builder.Services.AddScoped<IUsuarioService, UsuarioService>();
 builder.Services.AddScoped<INotificacionApiService, NotificacionApiService>();
 builder.Services.AddScoped<IRolService, RolService>();  
 builder.Services.AddScoped<IActasService, ActasService>();
+builder.Services.AddScoped<ISoporteService, SoporteService>();
 // ==================================================================
 // 4. CONFIGURACIONES ADICIONALES Y ARRANQUE
 // ==================================================================

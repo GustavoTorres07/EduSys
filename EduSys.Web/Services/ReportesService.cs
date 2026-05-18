@@ -97,7 +97,7 @@ namespace EduSys.Web.Services
 
         public async Task<byte[]> DescargarCertificadoRegularPdfAsync(int idAlumno, int idPeriodo)
         {
-            return await ProcesarDescargaPdfAsync($"api/reportes/certificado-alumno-regular-descargar?idAlumno={idAlumno}&idPeriodo={idPeriodo}", "el certificado de alumno regular");
+            return await ProcesarDescargaPdfAsync($"api/reportes/certificado-regular?idAlumno={idAlumno}&idPeriodo={idPeriodo}", "el certificado de alumno regular");
         }
 
         public async Task<byte[]> DescargarConstanciaFinalAsync(int idInscripcion)

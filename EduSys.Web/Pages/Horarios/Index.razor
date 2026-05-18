@@ -8,7 +8,6 @@
 @using System.Security.Claims
 @using System.IO
 
-@inject HorarioPdfService PdfService
 @inject ICarreraService CarreraService
 @inject IHorarioService HorarioService
 @inject IPeriodoService PeriodoService
@@ -658,40 +657,68 @@
         finally { loadingHorarios = false; StateHasChanged(); }
     }
 
-    private async Task DescargarOVisualizarPdf(bool forzarDescarga)
+private async Task DescargarOVisualizarPdf(bool forzarDescarga)
     {
         if (carreraSeleccionada == null || filtroSedeId == 0 || filtroPeriodoId == 0)
         {
             Snackbar.Add("Seleccione una sede para generar el documento.", Severity.Warning);
             return;
         }
+        
         _procesandoPdf = true;
         StateHasChanged();
+        
         try
         {
-            var pdfBytes = await HorarioService.DescargarPdfAsync(
-                filtroPeriodoId, carreraSeleccionada.Id, filtroSedeId);
-            if (pdfBytes == null || pdfBytes.Length == 0)
+            // 🚀 LLAMADA DIRECTA AL BACKEND (Infalible)
+            var url = $"api/Reportes/horario-descargar?idPeriodo={filtroPeriodoId}&idCarrera={carreraSeleccionada.Id}&idSede={filtroSedeId}";
+            var response = await Http.GetAsync(url);
+
+            if (!response.IsSuccessStatusCode)
             {
-                Snackbar.Add("Documento no disponible.", Severity.Error);
+                Snackbar.Add("No se pudo generar el documento. Verifica los datos.", Severity.Error);
                 return;
             }
-            using var stream    = new MemoryStream(pdfBytes);
-            using var streamRef = new DotNetStreamReference(stream);
-            var nombre = $"Horario_{carreraSeleccionada.Nombre}_{ObtenerNombreSede(filtroSedeId)}_{ObtenerNombrePeriodo(filtroPeriodoId)}.pdf"
-                         .Replace(" ", "_");
+
+            var pdfBytes = await response.Content.ReadAsByteArrayAsync();
+            var nombre = $"Horario_{carreraSeleccionada.Nombre}_{ObtenerNombreSede(filtroSedeId)}_{ObtenerNombrePeriodo(filtroPeriodoId)}.pdf".Replace(" ", "_");
+            
+            // Convertimos a Base64 para el truco de JavaScript
+            string base64 = Convert.ToBase64String(pdfBytes);
+
             if (forzarDescarga)
             {
-                await JS.InvokeVoidAsync("downloadFileFromStream", nombre, streamRef);
+                await JS.InvokeVoidAsync("eval", $@"
+                    var link = document.createElement('a');
+                    link.download = '{nombre}';
+                    link.href = 'data:application/pdf;base64,{base64}';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                ");
                 Snackbar.Add("Descarga iniciada.", Severity.Success);
             }
             else
             {
-                await JS.InvokeVoidAsync("openFileInNewTab", nombre, streamRef);
+                await JS.InvokeVoidAsync("eval", $@"
+                    fetch('data:application/pdf;base64,{base64}')
+                    .then(res => res.blob())
+                    .then(blob => {{
+                        var url = window.URL.createObjectURL(blob);
+                        window.open(url, '_blank');
+                    }});
+                ");
             }
         }
-        catch { Snackbar.Add("Error al generar el PDF.", Severity.Error); }
-        finally { _procesandoPdf = false; StateHasChanged(); }
+        catch 
+        { 
+            Snackbar.Add("Error al generar el PDF.", Severity.Error); 
+        }
+        finally 
+        { 
+            _procesandoPdf = false; 
+            StateHasChanged(); 
+        }
     }
 
     private string ObtenerNombrePeriodo(int id) =>

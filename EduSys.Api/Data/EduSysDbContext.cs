@@ -49,8 +49,10 @@ public partial class EduSysDbContext : DbContext
     public virtual DbSet<Notificacion> Notificacions { get; set; }
     public virtual DbSet<EstadoMateria> EstadoMaterias { get; set; }
 
-    // ✅ NUEVO: DbSet de la tabla de Actas Individuales
+    // --- NUEVAS TABLAS ---
     public virtual DbSet<ActaAlumno> ActaAlumnos { get; set; }
+    public virtual DbSet<SoporteTicket> SoporteTickets { get; set; }
+    public virtual DbSet<SoporteMensaje> SoporteMensajes { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -670,7 +672,6 @@ public partial class EduSysDbContext : DbContext
                   .HasConstraintName("FK_SolicitudIngreso_Sede");
         });
 
-        // ✅ NUEVO: CONFIGURACIÓN DE LA TABLA ActaAlumno
         modelBuilder.Entity<ActaAlumno>(entity =>
         {
             entity.ToTable("ActaAlumno");
@@ -716,6 +717,51 @@ public partial class EduSysDbContext : DbContext
                   .WithMany()
                   .HasForeignKey(d => d.IdDocenteFirma)
                   .HasConstraintName("FK_ActaAlumno_Docente");
+        });
+
+        // ✅ NUEVO: CONFIGURACIÓN DE LA TABLA SoporteTicket
+        modelBuilder.Entity<SoporteTicket>(entity =>
+        {
+            entity.ToTable("SoporteTicket");
+            entity.HasKey(e => e.Id);
+
+            entity.HasIndex(e => e.NumeroTicket).IsUnique();
+
+            entity.Property(e => e.NumeroTicket).HasMaxLength(20).IsRequired();
+            entity.Property(e => e.Categoria).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.Asunto).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.Estado).HasMaxLength(20).HasDefaultValue("Abierto");
+            entity.Property(e => e.FechaCreacion).HasDefaultValueSql("(getdate())").HasColumnType("datetime");
+            entity.Property(e => e.FechaCierre).HasColumnType("datetime");
+
+            entity.HasOne(d => d.UsuarioNavigation)
+                  .WithMany()
+                  .HasForeignKey(d => d.IdUsuario)
+                  .OnDelete(DeleteBehavior.ClientSetNull)
+                  .HasConstraintName("FK_SoporteTicket_Usuario");
+        });
+
+        // ✅ NUEVO: CONFIGURACIÓN DE LA TABLA SoporteMensaje
+        modelBuilder.Entity<SoporteMensaje>(entity =>
+        {
+            entity.ToTable("SoporteMensaje");
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Mensaje).HasColumnType("nvarchar(max)").IsRequired();
+            entity.Property(e => e.Fecha).HasDefaultValueSql("(getdate())").HasColumnType("datetime");
+            entity.Property(e => e.EsRespuestaSoporte).HasDefaultValueSql("((0))");
+
+            entity.HasOne(d => d.TicketNavigation)
+                  .WithMany(p => p.Mensajes)
+                  .HasForeignKey(d => d.IdTicket)
+                  .OnDelete(DeleteBehavior.ClientSetNull)
+                  .HasConstraintName("FK_SoporteMensaje_Ticket");
+
+            entity.HasOne(d => d.UsuarioNavigation)
+                  .WithMany()
+                  .HasForeignKey(d => d.IdUsuario)
+                  .OnDelete(DeleteBehavior.ClientSetNull)
+                  .HasConstraintName("FK_SoporteMensaje_Usuario");
         });
 
         OnModelCreatingPartial(modelBuilder);

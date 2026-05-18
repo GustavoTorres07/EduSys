@@ -1,0 +1,155 @@
+﻿<MudDialog DisableSidePadding="true" Class="custom-dialog-container">
+    <TitleContent>
+        <div class="dialog-header">
+            <MudIcon Icon="@GetIconoPorColor()" Class="dialog-header-icon" />
+            <MudText Typo="Typo.h6" Class="dialog-header-title">@Titulo</MudText>
+        </div>
+    </TitleContent>
+    
+    <DialogContent>
+        <div class="dialog-content-body">
+            <MudText Typo="Typo.body1" Class="dialog-message">@Mensaje</MudText>
+        </div>
+    </DialogContent>
+    
+    <DialogActions>
+        <div class="dialog-actions-container">
+            <MudButton OnClick="Cancelar" Variant="Variant.Text" Class="btn-cancel">
+                Cancelar
+            </MudButton>
+            <MudButton Variant="Variant.Filled" OnClick="Confirmar" Class="btn-confirm">
+                @TextoConfirmar
+            </MudButton>
+        </div>
+    </DialogActions>
+</MudDialog>
+
+<style>
+    /* Contenedor principal del modal: fuerza fondo blanco y bordes redondeados */
+    .custom-dialog-container {
+        background-color: #ffffff !important;
+        border-radius: 12px !important;
+        border: 1px solid #dde3ea !important;
+        min-width: 380px !important;
+        overflow: hidden !important;
+        box-shadow: 0 10px 25px rgba(26,39,51,0.15) !important;
+    }
+
+    /* Cabecera del modal */
+    .dialog-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 16px 24px 12px;
+        border-bottom: 1px solid #eef1f6;
+        background-color: #fcfdfe;
+    }
+
+    .dialog-header-title {
+        color: #1a2d45 !important;
+        font-weight: 800 !important;
+        font-family: 'Inter', sans-serif !important;
+        margin: 0 !important;
+        font-size: 1.15rem !important;
+    }
+
+    .dialog-header-icon {
+        color: @GetColorHex() !important;
+        font-size: 28px !important;
+    }
+
+    /* Cuerpo del mensaje */
+    .dialog-content-body {
+        padding: 24px;
+        background-color: #ffffff;
+    }
+
+    .dialog-message {
+        color: #4a5568 !important;
+        font-weight: 500 !important;
+        font-size: 0.95rem !important;
+        line-height: 1.5 !important;
+    }
+
+    /* Contenedor de botones */
+    .dialog-actions-container {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        padding: 12px 24px 20px;
+        background-color: #ffffff;
+    }
+
+    /* Botón cancelar */
+    .btn-cancel {
+        color: #64748b !important;
+        font-weight: 600 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        transition: background-color 0.2s !important;
+    }
+    
+        .btn-cancel:hover {
+            background-color: #f1f5f9 !important;
+        }
+
+    /* Botón confirmar: usa la variable CSS generada dinámicamente */
+    .btn-confirm {
+        background-color: @GetColorHex() !important;
+        color: #ffffff !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        padding: 6px 20px !important;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
+        transition: transform 0.1s, box-shadow 0.1s !important;
+    }
+
+        .btn-confirm:hover {
+            transform: translateY(-1px) !important;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2) !important;
+            filter: brightness(0.95);
+        }
+</style>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = null!;
+    
+    [Parameter] public string Titulo { get; set; } = "Confirmación";
+    [Parameter] public string Mensaje { get; set; } = "¿Está seguro que desea realizar esta acción?";
+    [Parameter] public string TextoConfirmar { get; set; } = "CONFIRMAR";
+    
+    // Mantenemos ColorBoton para compatibilidad con llamadas existentes
+    [Parameter] public Color ColorBoton { get; set; } = Color.Primary;
+
+    private void Cancelar() => MudDialog.Cancel();
+    private void Confirmar() => MudDialog.Close(DialogResult.Ok(true));
+
+    // Helper para mapear el Enum de Color de MudBlazor a los colores hexadecimales de EduSys
+    private string GetColorHex()
+    {
+        return ColorBoton switch
+        {
+            Color.Primary => "#456990",   // Blue
+            Color.Secondary => "#EF767A", // Coral
+            Color.Info => "#49BEAA",      // Teal
+            Color.Success => "#10b981",   // Green
+            Color.Warning => "#EEB868",   // Amber
+            Color.Error => "#ef4444",     // Red
+            _ => "#456990"
+        };
+    }
+
+    // Helper para elegir un icono acorde al color/intención
+    private string GetIconoPorColor()
+    {
+        return ColorBoton switch
+        {
+            Color.Info => Icons.Material.Filled.Info,
+            Color.Success => Icons.Material.Filled.CheckCircle,
+            Color.Warning => Icons.Material.Filled.Warning,
+            Color.Error => Icons.Material.Filled.Error,
+            _ => Icons.Material.Filled.HelpOutline
+        };
+    }
+}

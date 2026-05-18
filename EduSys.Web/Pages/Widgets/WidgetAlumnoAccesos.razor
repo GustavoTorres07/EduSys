@@ -1,0 +1,187 @@
+﻿@using EduSys.Shared.DTOs
+@using EduSys.Web.Services.Interfaces
+@inject IAlumnoPortalService AlumnoPortalService
+@inject NavigationManager Nav
+
+<style>
+    .waa-acc {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(30, 58, 88, 0.02);
+        font-family: 'Inter', sans-serif;
+    }
+
+    .waa-acc-head {
+        padding: 1.5rem;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .waa-acc-title {
+        font-size: 1.1rem;
+        font-weight: 800;
+        color: #0f172a;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .waa-acc-grid {
+        padding: 1.5rem;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+        flex-grow: 1;
+    }
+
+    .acc-tile {
+        background: #f8fafc;
+        border: 1px solid #f1f5f9;
+        border-radius: 12px;
+        padding: 1.25rem 1rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+    }
+
+        .acc-tile:hover {
+            background: #ffffff;
+            border-color: var(--hc);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(30, 58, 88, 0.08);
+        }
+
+    .acc-icon-box {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg-c);
+        color: var(--hc);
+        margin-bottom: 0.75rem;
+        transition: transform 0.3s ease;
+    }
+
+    .acc-tile:hover .acc-icon-box {
+        transform: scale(1.1) rotate(-5deg);
+    }
+
+    .acc-title {
+        font-weight: 700;
+        font-size: 0.85rem;
+        color: #1e293b;
+        margin-bottom: 2px;
+    }
+
+    .acc-sub {
+        font-size: 0.65rem;
+        font-weight: 600;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* Efecto Pulso */
+    .acc-live-badge {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        background: #dcfce7;
+        color: #059669;
+        font-size: 0.55rem;
+        font-weight: 800;
+        padding: 2px 6px;
+        border-radius: 10px;
+        border: 1px solid #bbf7d0;
+        animation: pulse-green 2s infinite;
+    }
+
+    @@keyframes pulse-green {
+        0% {
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+        }
+
+        70% {
+            box-shadow: 0 0 0 4px rgba(16, 185, 129, 0);
+        }
+
+        100% {
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+        }
+    }
+</style>
+
+<div class="waa-acc">
+    <div class="waa-acc-head">
+        <div class="waa-acc-title">
+            <MudIcon Icon="@Icons.Material.Filled.DashboardCustomize" Style="color: #456990;" />
+            Accesos Rápidos
+        </div>
+    </div>
+
+    @if (cargando)
+    {
+        <div class="d-flex justify-center align-center flex-grow-1 py-10"><MudProgressCircular Color="Color.Primary" Indeterminate="true" /></div>
+    }
+    else
+    {
+        <div class="waa-acc-grid">
+            <div class="acc-tile" style="--hc: #f59e0b; --bg-c: #fef3c7;" @onclick='() => Nav.NavigateTo("/alumno/mis-cursadas")'>
+                @if (materiasActivas > 0)
+                {
+                    <span class="acc-live-badge">@materiasActivas EN CURSO</span>
+                }
+                <div class="acc-icon-box"><MudIcon Icon="@Icons.Material.Filled.Grade" Size="Size.Medium" /></div>
+                <span class="acc-title">Mis Notas</span>
+                <span class="acc-sub">Desempeño</span>
+            </div>
+
+            <div class="acc-tile" style="--hc: #0ea5e9; --bg-c: #e0f2fe;" @onclick='() => Nav.NavigateTo("/horarios-alumno")'>
+                <div class="acc-icon-box"><MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Size="Size.Medium" /></div>
+                <span class="acc-title">Horarios</span>
+                <span class="acc-sub">Agenda @DateTime.Now.Year</span>
+            </div>
+
+            <div class="acc-tile" style="--hc: #10b981; --bg-c: #dcfce7;" @onclick='() => Nav.NavigateTo("/inscripcion-materias")'>
+                <div class="acc-icon-box"><MudIcon Icon="@Icons.Material.Filled.AppRegistration" Size="Size.Medium" /></div>
+                <span class="acc-title">Inscribirse</span>
+                <span class="acc-sub">Materias Nuevas</span>
+            </div>
+
+            <div class="acc-tile" style="--hc: #6366f1; --bg-c: #e0e7ff;" @onclick='() => Nav.NavigateTo("/tramites")'>
+                <div class="acc-icon-box"><MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Medium" /></div>
+                <span class="acc-title">Trámites</span>
+                <span class="acc-sub">Certificados</span>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool cargando = true;
+    private int materiasActivas = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var cursadas = await AlumnoPortalService.GetMisAsistenciasAsync();
+            if (cursadas != null) materiasActivas = cursadas.Count(c => c.CicloLectivo == DateTime.Now.Year);
+        }
+        finally { cargando = false; }
+    }
+}

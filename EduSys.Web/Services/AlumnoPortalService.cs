@@ -76,7 +76,6 @@ namespace EduSys.Web.Services
             }
         }
 
-        // 🚀 NUEVO MÉTODO PARA ASISTENCIAS
         public async Task<List<AsistenciaMateriaDTO>> GetMisAsistenciasAsync()
         {
             try
@@ -88,6 +87,22 @@ namespace EduSys.Web.Services
             {
                 _logger.LogError(ex, "Error al obtener la lista de asistencias del alumno.");
                 return new List<AsistenciaMateriaDTO>();
+            }
+        }
+
+        // 🚀 NUEVO MÉTODO PARA EXÁMENES FINALES
+        public async Task<List<InscripcionFinalDTO>> GetMisInscripcionesFinalesAsync()
+        {
+            try
+            {
+                // Asumo que esta es la ruta en tu API. ¡Asegúrate de que coincida con tu Controlador!
+                var resultado = await _http.GetFromJsonAsync<List<InscripcionFinalDTO>>("api/AlumnoPortal/mis-finales");
+                return resultado ?? new List<InscripcionFinalDTO>();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al obtener la lista de inscripciones a finales del alumno.");
+                return new List<InscripcionFinalDTO>();
             }
         }
     }

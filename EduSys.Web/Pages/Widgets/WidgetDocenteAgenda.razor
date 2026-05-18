@@ -1,0 +1,380 @@
+﻿@using EduSys.Shared.DTOs
+@using EduSys.Web.Services.Interfaces
+@inject IHorarioService HorarioService
+@inject NavigationManager Nav
+
+<style>
+    .wdg {
+        background: #ffffff;
+        border: 1px solid #dde3ea;
+        border-radius: 10px;
+        overflow: hidden;
+        font-family: 'Inter', system-ui, sans-serif;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 1px 4px rgba(69,105,144,.08);
+    }
+
+    /* ── HEADER ──────────────────────────────────── */
+    .wdg-head {
+        background: #456990;
+        padding: .875rem 1.25rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .wdg-head-left {
+        display: flex;
+        align-items: center;
+        gap: .625rem;
+    }
+
+    .wdg-head-title {
+        font-family: 'Source Serif 4', Georgia, serif;
+        font-size: .9rem;
+        font-weight: 600;
+        color: #ffffff;
+    }
+
+    .wdg-head-day {
+        font-size: .68rem;
+        color: rgba(255,255,255,.5);
+        font-weight: 500;
+    }
+
+    .wdg-ver-btn {
+        font-size: .7rem;
+        font-weight: 600;
+        color: #49DCB1;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-family: inherit;
+        transition: color .12s;
+    }
+
+        .wdg-ver-btn:hover {
+            color: #3aaa95;
+        }
+
+    /* ── LISTA ───────────────────────────────────── */
+    .wdg-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: .5rem 0;
+    }
+
+        .wdg-list::-webkit-scrollbar {
+            width: 3px;
+        }
+
+        .wdg-list::-webkit-scrollbar-thumb {
+            background: #dde3ea;
+            border-radius: 3px;
+        }
+
+    /* Item de clase */
+    .wdg-item {
+        display: flex;
+        align-items: stretch;
+        gap: 0;
+        padding: .75rem 1.25rem;
+        border-bottom: 1px solid #f5f7fb;
+        transition: background .1s;
+        animation: wdg-in .35s ease-out both;
+    }
+
+        .wdg-item:last-child {
+            border-bottom: none;
+        }
+
+        .wdg-item:hover {
+            background: #f8fafd;
+        }
+
+    @@keyframes wdg-in {
+        from {
+            opacity: 0;
+            transform: translateX(-5px)
+        }
+
+        to {
+            opacity: 1;
+            transform: translateX(0)
+        }
+    }
+
+    /* Columna de hora */
+    .wdg-time-col {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 2px;
+        min-width: 48px;
+        padding-right: 12px;
+        border-right: 2px solid var(--wdg-c, #456990);
+        margin-right: 12px;
+        flex-shrink: 0;
+    }
+
+    .wdg-time {
+        font-family: 'DM Mono', monospace;
+        font-size: .72rem;
+        font-weight: 600;
+        color: #1a2733;
+        line-height: 1;
+    }
+
+    .wdg-time-end {
+        font-family: 'DM Mono', monospace;
+        font-size: .65rem;
+        color: #8a9ab5;
+        line-height: 1;
+    }
+
+    /* Contenido */
+    .wdg-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .wdg-materia {
+        font-size: .82rem;
+        font-weight: 700;
+        color: #1a2733;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-bottom: 3px;
+    }
+
+    .wdg-meta {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .wdg-meta-item {
+        display: flex;
+        align-items: center;
+        gap: 3px;
+        font-size: .7rem;
+        color: #8a9ab5;
+        font-weight: 500;
+    }
+
+    /* Badge de comisión */
+    .wdg-com {
+        display: inline-block;
+        background: #eef4fb;
+        border: 1px solid #c8d8ec;
+        border-radius: 4px;
+        padding: 1px 6px;
+        font-size: .62rem;
+        font-weight: 700;
+        color: #456990;
+        margin-left: auto;
+        flex-shrink: 0;
+        align-self: flex-start;
+    }
+
+    /* Indicador "ahora" */
+    .wdg-now-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: rgba(73,220,177,.15);
+        border: 1px solid rgba(73,220,177,.3);
+        border-radius: 20px;
+        padding: 1px 7px;
+        font-size: .58rem;
+        font-weight: 700;
+        color: #1a8060;
+        text-transform: uppercase;
+        letter-spacing: .5px;
+        margin-top: 4px;
+    }
+
+    .wdg-now-dot {
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: #49DCB1;
+        animation: wdg-pulse 2s ease-in-out infinite;
+    }
+
+    @@keyframes wdg-pulse {
+        0%, 100% {
+            opacity: 1
+        }
+
+        50% {
+            opacity: .3
+        }
+    }
+
+    /* empty */
+    .wdg-empty {
+        padding: 2.5rem 1.5rem;
+        text-align: center;
+    }
+
+    .wdg-empty-t {
+        font-family: 'Source Serif 4', serif;
+        font-style: italic;
+        font-size: 1rem;
+        color: #8a9ab5;
+        margin-bottom: .25rem;
+    }
+
+    .wdg-empty-s {
+        font-size: .75rem;
+        color: #b0bcce;
+    }
+
+    /* skeleton */
+    @@keyframes sk {
+        0% {
+            background-position: -600px 0
+        }
+
+        100% {
+            background-position: 600px 0
+        }
+    }
+
+    .sk {
+        background: linear-gradient(90deg,#eaedf1 25%,#f4f6f9 50%,#eaedf1 75%);
+        background-size: 1200px 100%;
+        animation: sk 1.4s infinite linear;
+        border-radius: 4px;
+        display: block;
+    }
+</style>
+
+<div class="wdg">
+    <div class="wdg-head">
+        <div class="wdg-head-left">
+            <MudIcon Icon="@Icons.Material.Filled.Today" Style="color:rgba(255,255,255,.7);font-size:18px;" />
+            <div>
+                <div class="wdg-head-title">Agenda de hoy</div>
+                <div class="wdg-head-day">@diaHoy</div>
+            </div>
+        </div>
+        <button class="wdg-ver-btn" @onclick="@(() => Nav.NavigateTo("/horarios"))">
+            Ver completo →
+        </button>
+    </div>
+
+    <div class="wdg-list">
+        @if (cargando)
+        {
+            @for (int i = 0; i < 4; i++)
+            {
+                <div style="display:flex;align-items:stretch;gap:0;padding:.75rem 1.25rem;border-bottom:1px solid #f5f7fb;">
+                    <div style="display:flex;flex-direction:column;gap:3px;min-width:48px;padding-right:12px;border-right:2px solid #eef1f6;margin-right:12px;">
+                        <span class="sk" style="height:10px;width:38px;"></span>
+                        <span class="sk" style="height:9px;width:34px;"></span>
+                    </div>
+                    <div style="flex:1;display:flex;flex-direction:column;gap:5px;">
+                        <span class="sk" style="height:12px;width:140px;"></span>
+                        <span class="sk" style="height:9px;width:100px;"></span>
+                    </div>
+                </div>
+            }
+        }
+        else if (clasesHoy.Any())
+        {
+            @foreach (var (cl, i) in clasesHoy.Select((c, i) => (c, i)))
+            {
+                bool esAhora = DateTime.Now.TimeOfDay >= cl.HoraInicio &&
+                               DateTime.Now.TimeOfDay <= cl.HoraFin;
+
+                string[] colores = { "#456990", "#49BEAA", "#EEB868", "#EF767A", "#49DCB1", "#7c3aed" };
+                string color = colores[i % colores.Length];
+
+                <div class="wdg-item" style="animation-delay:@(i * .05)s;">
+                    <div class="wdg-time-col" style="--wdg-c:@color;">
+                        <span class="wdg-time">@cl.HoraInicio.ToString(@"hh\:mm")</span>
+                        <span class="wdg-time-end">@cl.HoraFin.ToString(@"hh\:mm")</span>
+                    </div>
+                    <div class="wdg-info">
+                        <div style="display:flex;align-items:flex-start;gap:.5rem;">
+                            <div class="wdg-materia" style="flex:1;">@cl.Materia</div>
+                            <span class="wdg-com">@cl.ComisionCodigo</span>
+                        </div>
+                        <div class="wdg-meta">
+                            @if (!string.IsNullOrWhiteSpace(cl.Aula))
+                            {
+                                <span class="wdg-meta-item">
+                                    <MudIcon Icon="@Icons.Material.Outlined.MeetingRoom" Style="font-size:11px;" />
+                                    @cl.Aula
+                                </span>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(cl.Sede))
+                            {
+                                <span class="wdg-meta-item">
+                                    <MudIcon Icon="@Icons.Material.Outlined.Place" Style="font-size:11px;" />
+                                    @cl.Sede
+                                </span>
+                            }
+                        </div>
+                        @if (esAhora)
+                        {
+                            <div class="wdg-now-badge">
+                                <span class="wdg-now-dot"></span>
+                                En curso ahora
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="wdg-empty">
+                <MudIcon Icon="@Icons.Material.Outlined.EventAvailable" Style="font-size:2.2rem;color:#dde3ea;" />
+                <div class="wdg-empty-t">Sin clases hoy</div>
+                <div class="wdg-empty-s">No tenés clases programadas para hoy.</div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<HorarioVisualizacionDTO> clasesHoy = new();
+    private bool cargando = true;
+    private string diaHoy = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var ci = new System.Globalization.CultureInfo("es-ES");
+        diaHoy = DateTime.Now.ToString("dddd d 'de' MMMM", ci);
+        diaHoy = char.ToUpper(diaHoy[0]) + diaHoy[1..];
+
+        try
+        {
+            // Traemos todos los horarios del docente y filtramos por el día actual
+            var todos = await HorarioService.GetMisHorariosAsync();
+            string diaActual = DateTime.Now.DayOfWeek switch
+            {
+                DayOfWeek.Monday => "Lunes",
+                DayOfWeek.Tuesday => "Martes",
+                DayOfWeek.Wednesday => "Miércoles",
+                DayOfWeek.Thursday => "Jueves",
+                DayOfWeek.Friday => "Viernes",
+                DayOfWeek.Saturday => "Sábado",
+                _ => "Domingo"
+            };
+
+            clasesHoy = (todos ?? new())
+                .Where(h => h.Dia.Equals(diaActual, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(h => h.HoraInicio)
+                .ToList();
+        }
+        catch { }
+        finally { cargando = false; }
+    }
+}
